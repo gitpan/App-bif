@@ -1,0 +1,607 @@
+#!perl
+use strict;
+use warnings;
+use OptArgs qw/dispatch/;
+
+eval { dispatch(qw/run App::bif/) };
+
+if ($@) {
+    print STDERR $@;
+    exit 1;
+}
+
+1;
+
+__END__
+
+=encoding utf-8
+
+=head1 NAME
+
+bif - distributed project management tool
+
+=head1 VERSION
+
+0.1.0 (yyyy-mm-dd)
+
+=head1 SYNOPSIS
+
+  bif COMMAND [...]
+
+=head1 DESCRIPTION
+
+Bif is a project management tool with a command-line interface. It
+tracks tasks and issues using a local database, exchanging updates with
+remote databases on demand.
+
+The underlying data model supports a couple of noteworthy features that
+make bif particularly useful for distributed teams and interdependent
+projects:
+
+=over
+
+=item Offline Operation
+
+Many bif actions work offline; you can create and update tasks and
+issues while disconnected from the network.
+
+=item Inter-project Cooperation
+
+Bif issues (and tasks) can be linked with (or copied to) multiple
+projects, mirroring the inter-project relationships that exist in the
+real world.
+
+=back
+
+This document is the bif manual and includes design background,
+terminology, general concepts and a complete usage guide.  Those who
+are impatient to get started may prefer to begin with the hands-on
+L<bif-intro>(3) or browse a list of common questions and answers in
+L<bif-faq>(3). The documentation index is in L<bif-doc>(3).
+
+=head2 Command Structure
+
+Bif commands are structured where possible the same way an English
+speaker describes actions, verb followed by subject. The entire set of
+bif commands and their arguments are listed below:
+
+    bif drop ID
+    bif export PATH... HUB
+    bif help [COMMAND...]
+    bif import PATH... HUB
+    bif init [DIRECTORY]
+    bif list ITEMS
+        bif list hubs
+        bif list issue-status PATH
+        bif list project-status PATH
+        bif list projects
+        bif list task-status PATH
+        bif list topics
+    bif log [ID]
+    bif new ITEM
+        bif new issue [TITLE...]
+        bif new project [PATH] [TITLE...]
+        bif new task [TITLE...]
+    bif push ID PATH [HUB]
+    bif show ID
+    bif sql STATEMENT...
+    bif sync [ID] [HUB]
+    bif update ID [STATUS]
+    bif upgrade [DIRECTORY]
+
+Reference documents for bif commands have titles like
+I<bif-command-name>, which can also be displayed by running C<bif help
+command name>.
+
+In addition to the above commands a few useful aliases are created by
+default:
+
+    bif lt          # bif list topics
+    bif lts         # bif list topics --status stalled
+    bif lp          # bif list projects --status active
+
+=head3 Global Options
+
+The following options are common to all commands:
+
+=over
+
+=item --debug, -D
+
+Turn on debugging statements, which are included in the I<stdout>
+stream.
+
+=item --help, -h
+
+Print a full usage message and exit. Some arguments and options are
+only shown when this option is used; a normal usage/error message may
+keep some rarely used options hidden.
+
+=item --no-pager
+
+Do not pipe a command's output to a pager.
+
+=back
+
+=head3 Command Interaction
+
+=over
+
+=item Input
+
+Some arguments and options not supplied on the command line are
+prompted for.  An editor based on the C<$EDITOR> or C<$VISUAL>
+environment variables may also be invoked for certain types of input.
+
+=item Output
+
+Normal output is printed to I<stdout> or sometimes paged with
+L<less>(1) when I<stdout> is connected to a terminal.  Error messages
+are sent to I<stderr>.
+
+=item Connectivity
+
+The only commands that involve network communication are C<import>,
+C<export>, and C<sync>. Everything else is a local action.
+
+=item Exit Status
+
+An exit value of zero indicates success.
+
+=back
+
+=head2 Design Background
+
+Communication is a core component of project management.  Email, a
+decentralized system, often plays a major role
+
+a part in fulfilling the communication requirements of projects up to a
+certain scale.  Tasks, issues, feature requests and the like can exist
+in multiple inboxes as shared conversation topics.  Throughout a
+topic's lifetime we want to assign it various kinds of meta-data
+(status, priority, due date, etc), but this information must be stored
+either in our own memories or using an external tool. It is partly
+because of this lack of ability to deal with structured meta-data that
+email on its own doesn't do the job.
+
+Managing data is exactly what relational databases are designed for,
+and bif takes advantage of SQLite for this purpose. A database schema
+helps ensure the integrity of the data, and relevant and insightful
+queries can be created using the full power of the underlying engine.
+SQLite gives us fulltime local reporting and data modification - a
+wonderful independence from the network when we need it.
+
+But a database on its own is also not a tool for communication.  SQL in
+its various implementations generally provides no built-in
+functionality for the efficient exchange of updates between
+repositories.  Distributed Version Control Systems (DVCS) on the other
+hand provide a useful model for the efficient tracking and exchange of
+updates between repositories. The DVCS ability of mapping textual
+differences to tree structures unfortunately doesn't translate well to
+row-based relational data sets.
+
+Bif therefore is an attempt at applying some DVCS princples to a
+standard Create, Retrieve, Update and Delete (CRUD) database
+application. The end goal is a distributed communication system that
+carries both conversations and structured meta-data. The finer details
+of the advantages and trade-offs with regards the bif design can be
+found in L<bif-design>(3).
+
+=head2 Definitions
+
+=over
+
+=item Repository
+
+A repository is simply a configuration file and an SQLite database
+inside a directory named F<.bif>. All bif commands find the "current"
+repository by searching upwards through the file-system for such a
+directory. The database contains the history, status and relationships
+of a set of topics.  The terms repository and database are often used
+interchangeably.
+
+=item Topic
+
+Topic is is a catch-all term for any task, issue, bug or feature etc
+which has a conversation (the history) plus associated meta data
+(status). Topics are identified by an integer ID, which is unique to
+the local repository and/or project. The status associated with topics
+are generally not universal, but tied to the context of a particular
+project.
+
+=item Project
+
+A project is also considered a topic, but one that comes with some
+extra functionality.  The key property of a project is that it is a
+container for grouping together other topics and the status they can
+have.  Multiple projects can be managed within a repository, and can be
+defined hierarchically. Projects are identified by their path (name)
+which includes the parent's path.
+
+=item Hub
+
+A hub is a type of repository that acts as a synchronisation point
+around which project activities can be exchanged. You can think of the
+term "hub" as being synonymous with "organisation." It is usually
+located on a remote server and accessed through a L<ssh>(1) tunnel.
+Hubs are identified either by their location URI or by an alias.
+
+=back
+
+=head2 Initialization
+
+=head3 Initializing A Repository
+
+A bif repository is created with the C<init> command. The default
+location is in the current directory.
+
+    #!sh
+    bif init
+    # Database initialised (v99) in /home/mark/src/bif/.bif/
+
+You do not have to remember this location if you are working in a
+subdirectory as it will be found automatically. An initialized
+repository always starts out empty; projects must be manually imported
+or created.
+
+=head3 Initializing Your Identity
+
+Some bif commands record the identity of the person making the change -
+i.e. the owner of the repository.  Rather than ask for this information
+each time, the user's name and email address are prompted for the first
+time bif init is run.
+
+=head2 Creating Topics
+
+=head3 Creating Projects
+
+The C<new project> command asks for a project path (like a name for
+identification), a title, and an initial comment.  That information can
+be given on the command line if desired, otherwise it will be prompted
+for.
+
+    #!sh
+    bif new project
+
+    # Path: [] todo
+    # Title: [] Things to do
+    # An editor is invoked for the comment
+
+Projects can be nested by defining them with a parent path and a "/":
+
+    #!sh
+    bif new project
+
+    # Path: [] todo/today
+    # Title: [] Things to do today
+    # An editor is invoked for the comment
+
+Apart from visual organisation, the main impact of having nested
+projects is that child projects are included when importing or
+exporting. Also, child projects will not be displayed in list commands
+if the parent project will not be displayed.
+
+A project has three different types of status associated with it.
+Project status is for the status of the project itself. Task and issue
+status is obviously for the status of tasks and issues associated with
+the project.  New projects can be created using different status
+templates, given specific initial status, or copied/forked from other
+projects.  See L<bif-new-project>(1) for details.
+
+=head3 Creating Tasks and Issues
+
+Tasks and issues are created similarly to projects, with a summary and
+a comment.  As they exist only in the context of a project they may
+also require a project path if more than one project exists in the
+repository.
+
+    #!sh
+    bif new task
+
+    # Project: [todo] todo/today
+    # Title: Take out the rubbish
+    # editor invoked - describe the task in more detail
+
+A task or an issue, like a project, is created with the default status
+for that type according to the project. An different initial status can
+be set with the C<--status> option:
+
+    #!sh
+    bif new issue --status needinfo
+
+    # Project: [todo] todo/today
+    # Title: Don't feel like taking out the rubbish
+    # editor invoked - describe the task in more detail
+
+A comment can be provided directly with the C<--message> option if
+desired instead of having the editor invoked.
+
+=head3 Template Projects
+
+Do you have repeatable projects?
+
+=head2 Retrieving Information
+
+Tasks and issues can be viewed, commented on and updated with the
+appropriate commands:
+
+
+=head2 Updating Topics
+
+=head3 Commenting
+
+bla blah blah
+
+=head3 State Changes
+
+bla blah blah
+
+=head3 Editing
+
+There is no mechanism for editing available in bif at this time.  Be as
+wild in your comments as you like, but as with the rest of the
+internet, once your changes have been shared, you most likely can't
+alter them or take them back. First rule of commenting is: take a deep
+breath first.
+
+=head3 Deletion
+
+Of course, even after taking a deep breath you may anyway make a change
+to your repository that you didn't mean to. You are not alone; this
+happens to all of us.  As long as you have not already synchronised
+your changes with a hub, they can be removed[1].
+
+The C<drop> command can be used to remove a particular comment, or an
+entire topic.
+
+[1] There is nothing magical or otherwise to stop you from dropping any
+change. However you will find that as soon as you re-synchronise with a
+hub that has those changes they will return to haunt you like the
+undead.
+
+=head2 Hub Authentication & Registration
+
+So far we have covered local-only operations, which are sufficient for
+managing simple, completely self-contained projects.  However the real
+value of bif comes from its collaboration capabilities.
+
+As previously mentioned, a remote repository known as a hub is the
+mechanism for exchanging updates with others.  You can either self host
+a hub on a server you control, or you can use a commercial provider.
+Regardless of who is hosting, the communication with the server is via
+ssh, for which you will want your own ssh keypair.
+
+Read the L<ssh-keygen>(1) manpage for how to create a keypair, and
+L<ssh-copy-id>(1) for how to transfer the public key to your own
+server.  Commercial providers will probably use another method (such as
+the L<bifhub>(1) tool) for transfering the public key during their
+signup process.
+
+Registering with a hub has two purposes. The first is to transfer your
+ssh key (and request access in the event the hub is restricted), and
+the second reason is for obtaining the list of projects in the hub.
+
+    #!sh
+    bif register my.org@provider.com
+
+By default the C<my.org> part of the provider address can be used as
+the hub name in other commands.  To view the list of projects we use
+the C<list remote-projects> command.
+
+    bif list remote-projects [HUB]
+
+You don't need to specifiy the C<HUB>, but it helps to cut down the
+noise when you work with multiple hubs.
+
+    #!sh
+    bif list remote-projects my.org
+
+=head2 Importing Projects
+
+If you are joining an established team with a pre-existing hub then you
+can import any of their projects into your local repository straight
+away. The import command has the general form:
+
+    bif import PATH... HUB
+
+So to import the stable project from the hub located at bifax.org/bif
+we run:
+
+    #!sh
+    bif import stable bif://bifax.org/bif
+
+Importing a project is a one-time activity. Updates to a project that
+occur after an import are exchanged with the C<sync> command (described
+below).
+
+=head2 Exporting Projects
+
+The inverse of C<import> is C<export> which has the same general form:
+
+    bif export PATH... HUB
+
+So to mirror the todo project from the local repository to the hub
+located at bif@bifax.org (which we registered as "bif") we run this:
+
+    #!sh
+    bif export todo bif@bifax.org
+
+As with importing, doing an export is a one-off activity; further
+updates are exchanged with the C<sync> command.
+
+=head2 Synchronising Updates
+
+Even after you have imported or exported a project, updates will not be
+exchanged until you run the C<sync> command.
+
+    bif sync [ID] [HUB]
+
+By default all topics will be synchronised to all relevant hubs, but
+you can limit that as desired.
+
+    #!sh
+    bif sync unstable   # ignore all other projects
+
+[TODO: describe the merge algorithm for meta data]
+
+=head2 Inter-Project Cooperation
+
+=head3 Collaborating Internally on Issues
+
+An issue is not necessarily only associated with just one project.
+Consider what happens when a software team makes a new stable release
+from their development version. This is effectively an internal fork -
+a new project that kicks off as the first project continues along the
+same path. At the time of the fork both projects will have exactly the
+same set of issues. From that point on the issue status may diverge
+based on project activities, but the issues they have in common have
+themselves not inherently changed.
+
+The C<new project> command lets us deal with the above situation. The
+C<--fork> option can be used to define an existing project from which
+the new projects issues will be derived from.
+
+    #!sh
+    bif new project v2 --fork devel
+
+There are also occasions when an issue reported in a project is
+actually in the domain of another project, possibily managed via a
+different organisation (and therefore a different hub).  This can
+happen when a project has external dependencies, also seen regularly
+with software.
+
+Bif therefore has the ability to manually copy/link an issue to other
+projects. In contrast to a one-off copy/duplicate however, comments
+made on the issue in one project will propagate to the other projects,
+as if there was only a single issue, which is in fact the case. The
+C<push> command is the way to ask another project for support on a
+particular issue:
+
+    bif push ID PATH [HUB]
+
+The C<push> command asks for (or can be given) an update message the
+same way that the C<update> command does:
+
+    #!sh
+    bif push 13 todo2 --message "Can you help us with this?"
+
+As was mentioned in the introduction, issue status are tracked on a
+per-project basis.  That means one project can consider the issue
+solved, and another project can still consider the issue to be
+blocking. The C<show> command reveals the details.
+
+=head3 Collaborating Externally on Issues
+
+You probably noticed above that the C<push> command also takes a C<HUB>
+argument.  Bif makes it possible under certain conditions to push an
+issue to projects hosted on external (third-party) hubs.
+
+If two hub owners have allowed collaboration ("linking") between them,
+then the other hubs projects will show up in the C<list
+remote-projects> command locally:
+
+    #!sh
+    bif list remote-projects
+
+By using the third argument to the C<push> command we can ask our hub
+to push the issue to the remote project:
+
+    #!sh
+    bif push 16 project3 other.hub
+
+This command is local - the change will be propagated during the next
+C<sync> call.
+
+=head3 Task Collaboration?!?
+
+It does not make sense to distribute tasks across projects the same way
+issues can be. A single task cannot have multiple status: it is either
+done or it is not, regardless of which projects are interested in the
+outcome.
+
+There are however reasons for migrating tasks from one project to
+another. The obvious one is simply that they can be defined (by
+accident or circumstance) in the wrong place. The default C<push>
+action on a task therefore results in a I<move>.
+
+Alternatively the C<--copy> option to C<push> does what it says on the
+label, which can be useful if you have a template task in a project
+that you regularly want to use in other projects. Once again however,
+C<new project> probably has more interesting mechanisms for copying
+template-style projects.
+
+How projects may track the outcome of a remote task with bif is still
+to be determined.
+
+=head2 Administration & Development
+
+New versions of bif will necessarily require changes to the database
+structure, and possibly the data itself. The C<upgrade> command exists
+to advance the database status to match that required by the bif
+software version. It is safe (but pointless) to run C<upgrade> when the
+versions already match. When and how this command is run should be
+described in the release notes of newer versions of bif.
+
+One other command which is more about the repository than project
+management is C<sql>. This is more of a developer or debugging aide for
+querying the database directly. This is needed as the bif software
+architecture prevents the SQLite command-line tool C<sqlite3> from
+working for some statements.
+
+=head1 FILES
+
+=over
+
+=item F<.bif/config>
+
+Per-repository configuration file.
+
+=item F<.bif/db.sqlite3>
+
+Per-repository SQLite database.
+
+=item F<$HOME/.config/Perl/App-bif/config>
+
+Global configuration file.
+
+=back
+
+=head1 SEE ALSO
+
+L<bifhub>(1), L<bifsync>(1)
+
+=head1 SUPPORT & DEVELOPMENT
+
+=over
+
+=item Website:
+
+L<http://bifax.org/bif/>
+
+=item Mailing List:
+
+Doesn't exist yet.
+
+=item Issue Tracker:
+
+Doesn't exit yet.
+
+=item Code Repository:
+
+git://bifax.org/bif.git/
+
+=back
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

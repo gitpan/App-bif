@@ -1,0 +1,36 @@
+
+=head1 Bif Changelog
+
+Bif release numbering follows the L<http://semver.org> versioning
+model.
+
+=begin comment
+
+=head2 0.2.0 yyyy-mm-dd (development)
+
+=over
+
+=item API Changes
+
+Initial release.
+
+=item New Features
+
+Initial release.
+
+=item Enhancements
+
+Initial release.
+
+=item Bug Fixes
+
+Initial release.
+
+=back
+
+=end comment
+
+=head2 0.1.0 yyyy-mm-dd (development)
+
+Initial release.
+

@@ -1,0 +1,158 @@
+
+=head1 NAME
+
+Bif::DB - helper methods for a read-only bif database
+
+=head1 VERSION
+
+0.1.0 (yyyy-mm-dd)
+
+=head1 SYNOPSIS
+
+    use strict;
+    use warnings;
+    use Bif::DB;
+
+    # Bif::DB inherits from DBIx::ThinSQL, which inherits from DBI.
+    my $db = Bif::DB->connect( $dsn );
+
+    # Read only operations on a bif database:
+    my $id = $db->path2project_id( $path );
+
+=head1 DESCRIPTION
+
+B<Bif::DB> is a L<DBI> derivative that provides various read-only
+methods for retrieving information from a L<bif> repository. For a
+read-write equivalent see L<Bif::DB::RW>. The read-only and read-write
+parts are separated for performance reasons.
+
+=head1 METHODS
+
+=over
+
+=item path2project_id( $path ) -> Int
+
+Returns the integer ID matching the project C<$path>, or C<undef> if no
+match is found.
+
+=item get_topic( $ID ) -> HashRef
+
+Looks up the topic identified by C<$ID> and returns undef or a hash
+reference containg the following keys:
+
+=over
+
+=item * id - the topic ID
+
+=item * first_update_id - the update_id that created the topic
+
+=item * kind - the type of the topic
+
+=item * uuid - the universally unique identifier of the topic
+
+=back
+
+If the topic is an issue then the following keys will also contain
+valid values:
+
+=over
+
+=item * project_issue_id - the project-specific topic ID
+
+=item * project_id - the project ID matching the project_issue_id
+
+=back
+
+=item get_update( "$ID.$UPDATE_ID" ) -> HashRef
+
+Looks up the update identified by C<$ID.$UPDATE_ID> and returns undef
+or a hash reference containg the following keys:
+
+=over
+
+=item * id - the topic ID
+
+=item * update_id - the ID of the update
+
+=item * kind - the type of the topic
+
+=item * uuid - the universally unique identifier of the topic
+
+=back
+
+If the update relates to an issue then the following keys will also
+contain valid values:
+
+=over
+
+=item * project_issue_id - the project-specific topic ID
+
+=item * project_id - the project ID matching the project_issue_id
+
+=back
+
+
+=item get_project( $PATH ) -> HashRef
+
+Looks up the project identified by C<$PATH> and returns undef or a hash
+reference containg the following keys:
+
+=over
+
+=item * id - the topic ID
+
+=item * first_update_id - the update_id that created the topic
+
+=item * kind - the type of the topic
+
+=item * uuid - the universally unique identifier of the topic
+
+=item * path - the path of the project
+
+=item * parent_id - the parent ID of the project
+
+=back
+
+=item status_ids( $project_id, $kind, @status ) -> \@ids, \@invalid
+
+Takes a project ID, a thread type (task, issue, etc) and a list of
+status names and returns an arrayref of matching IDs, and an arrayref
+of invalid names. This method will silently ignore any @status which
+are undefined.
+
+=item hub_info( $alias ) -> HashRef
+
+Returns a HASH reference containing information about the hub
+identified by C<$alias> with the following keys:
+
+=over
+
+=item * id - the topic ID for the hub
+
+=item * alias - the alias for the hub
+
+=item * location - the location of the hub
+
+=back
+
+Returns C<undef> if C<$alias> is not found.
+
+=back
+
+=head1 SEE ALSO
+
+L<Bif::DB::RW>
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

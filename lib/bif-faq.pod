@@ -1,0 +1,77 @@
+=head1 Bif Frequently Asked Questions
+
+=head2 General
+
+=head3 What kind of questions go in here?
+
+Anything related to bif of course.
+
+=head3 What kind of other questions go in here?
+
+I'm just filling space here to see what this looks like.
+
+=head2 Not so General
+
+=head3 What kind of other questions go in here?
+
+I'm just filling space here to see what this looks like.
+
+=head3 What kind of questions go in here?
+
+Anything related to bif of course.
+
+=head3 What kind of other questions go in here?
+
+I'm just filling space here to see what this looks like.
+
+=head3 What kind of questions go in here?
+
+Anything related to bif of course.
+
+
+=head2 Bif Deployment Models
+
+=head3 How does my organisation work with a downstream/upstream project?
+
+Say for example there are two organisations: downstream and upstream.
+The downstream project manager might want to send a C<bifhub link>
+request to the upstream hub asking for collaboration permission:
+
+    #!sh
+    # Downstream project manager
+    bifhub link downstream upstream.org@provider.com [upstream]
+
+If upstream agrees to link with your project, their project manager
+will link back, reversing the arguments:
+
+    #!sh
+    # Upstream project manager
+    bifhub link upstream downstream.org@provider.com downstream
+
+Bif doesn't actually make a distinction between upstream/downstream so
+the two examples above could occur in reverse (chronological) order if
+upstream decided to work with downstream first.
+
+When the users of either project next perform a C<bif sync>, the list
+of projects from the other project will be imported. You can view them
+using the L<bif list remote-projects> command:
+
+    #!sh
+    bif list remote-projects
+    # Hub       Project  Title
+    # -------------------------------------
+    # upstream  stable   The stable project
+    # upstream  devel    The devel project
+
+Note that these are shallow imports, in that only the projects and
+their status types are copied, and not their issues and/or tasks.
+Afterwards, downstream can push issues upstream like so:
+
+    #!sh
+    # Downstream project user
+    bif push 34 project upstream
+
+Be aware that this is a two way collaboration - upstream can also push
+issues downstream if they wish! I'll leave it up to the reader to think
+of the use cases for that.
+

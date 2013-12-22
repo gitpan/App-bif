@@ -1,0 +1,50 @@
+#!perl
+use strict;
+use warnings;
+use OptArgs qw/dispatch/;
+
+dispatch(qw/run App::bifsync/);
+
+__END__
+
+
+=head1 NAME
+
+bifsync - synchronization server for bif hubs
+
+=head1 VERSION
+
+0.1.0 (yyyy-mm-dd)
+
+=head1 SYNOPSIS
+
+  bifsync [DIRECTORY]
+
+=head1 DESCRIPTION
+
+Receive synchronization requests from bif clients.
+
+Input is accepted on I<stdin>. Normal output is printed to I<stdout>.
+Error messages are sent to I<stderr>.  Debugging information may go to
+I<stderr> when F<DIRECTORY/debug> exists, otherwise information and
+errors will be logged to the syslog.
+
+An exit value of zero indicates success.
+
+=head1 SEE ALSO
+
+L<bif>(1)
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+
