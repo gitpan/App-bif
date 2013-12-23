@@ -12,21 +12,10 @@ sub run {
 
     my $info =
          $db->get_topic( $opts->{id} )
-      || $db->get_update( $opts->{id} )
       || $db->get_project( $opts->{id} )
       || bif_err( 'TopicNotFound', 'topic not found: ' . $opts->{id} );
 
-    if ( $info->{update_id} ) {
-        bif_err( 'NoReplyUpdate',
-            'cannot set status when replying to a update' )
-          if $opts->{status};
-
-        bif_err( 'NoReplyUpdate', '--title invalid when replying to a update' )
-          if ( exists $opts->{title} );
-    }
-    else {
-        $info->{update_id} = $info->{first_update_id};
-    }
+    $info->{update_id} = $info->{first_update_id};
 
     my $func = __PACKAGE__->can( '_update_' . $info->{kind} )
       || bif_err(

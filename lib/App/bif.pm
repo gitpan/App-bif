@@ -450,6 +450,44 @@ opt message => (
 );
 
 # ------------------------------------------------------------------------
+# bif reply
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/reply/],
+    comment => 'reply to a previous update or comment',
+);
+
+arg update_id => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'ID.UPDATE_ID of an existing comment',
+);
+
+opt author => (
+    isa     => 'Str',
+    comment => 'Author',
+    hidden  => 1,
+);
+
+opt lang => (
+    isa     => 'Str',
+    comment => 'Lang',
+    hidden  => 1,
+);
+
+opt locale => (
+    isa     => 'Str',
+    comment => 'Locale',
+    hidden  => 1,
+);
+
+opt message => (
+    isa     => 'Str',
+    comment => 'Comment',
+    alias   => 'm',
+);
+
+# ------------------------------------------------------------------------
 # bif drop
 # ------------------------------------------------------------------------
 subcmd(

@@ -7,19 +7,19 @@ use Test::More;
 
 run_in_tempdir {
 
-    like exception { bif(qw/update/) }, qr/usage:/, 'usage';
+    like exception { bif(qw/reply/) }, qr/usage:/, 'usage';
 
-    isa_ok exception { bif(qw/update junk/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/reply junk/) }, 'Bif::Error::RepoNotFound';
 
     my $db = bif(qw/init/);
 
-    isa_ok exception { bif(qw/update todo/) }, 'Bif::Error::TopicNotFound';
+    isa_ok exception { bif(qw/reply todo/) }, 'Bif::Error::UpdateNotFound';
 
     my $p = bif(qw/ new project todo --message message title /);
 
     isa_ok exception {
-        bif( qw/update /, "$p->{id}.$p->{update_id}", qw/eval/ );
-    }, 'Bif::Error::TopicNotFound';
+        bif( qw/reply /, "$p->{id}.$p->{update_id}" );
+    }, 'Bif::Error::EmptyContent';
 
     subtest 'project', sub {
 

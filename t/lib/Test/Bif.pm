@@ -22,8 +22,10 @@ use Time::Piece;
 require Test::More;
 
 our $VERBOSE;
-our $SRC_DIR   = path(__FILE__)->parent(4)->absolute;
-our $SHARE_DIR = path(__FILE__)->parent(4)->child('share')->absolute;
+our $SRC_DIR = path(__FILE__)->parent(4)->absolute;
+
+$main::BIF_SHARE_DIR = $SRC_DIR->child('share');
+$main::BIF_DB_NOSYNC = 1;
 
 # Ensure that our test bifsync is found by tests
 $ENV{PATH} = $SRC_DIR->child('t') . ':' . $ENV{PATH};

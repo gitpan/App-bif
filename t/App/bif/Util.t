@@ -7,7 +7,7 @@ use File::chdir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path tempfile cwd/;
 use Term::ANSIColor qw/color/;
-use Test::Bif;    # really only to set $Test::Bif::SHARE_DIR
+use Test::Bif;
 use Test::More;
 use Test::Fatal qw/exception/;
 

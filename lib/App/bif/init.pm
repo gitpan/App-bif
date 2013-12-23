@@ -50,7 +50,8 @@ sub run {
     }
     else {
         require File::ShareDir;
-        my $share_dir = $Test::Bif::SHARE_DIR
+
+        my $share_dir = $main::BIF_SHARE_DIR
           || File::ShareDir::dist_dir('App-bif');
 
         my $deploy_dir = path( $share_dir, $db->{Driver}->{Name} );

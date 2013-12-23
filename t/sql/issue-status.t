@@ -8,6 +8,9 @@ use Test::Fatal;
 use Test::More;
 use Time::Piece;
 
+plan skip_all => 'need a rework';
+exit;
+
 run_in_tempdir {
 
     bif('init');
@@ -40,7 +43,7 @@ run_in_tempdir {
                         email      => 'x',
                         lang       => 'en',
                         status     => 'a_status',
-                        status      => 'a_status',
+                        status     => 'a_status',
                         rank       => 10,
                         def        => 1,
                     },
@@ -83,7 +86,7 @@ run_in_tempdir {
                                     email      => 'x2',
                                     lang       => 'en',
                                     status => 'b_status',
-                                    status  => 'a_status',
+                                    status => 'a_status',
                                     rank   => 10,
                                     def    => 1,
                                 },
@@ -103,7 +106,7 @@ run_in_tempdir {
                         mtime   => $mtime + 1,
                         mtimetz => $mtimetz + 1,
                         lang    => 'en',
-                        status   => 'b_status',
+                        status  => 'b_status',
                     },
                   ),
                   'update issue_status';

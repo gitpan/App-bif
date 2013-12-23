@@ -1,5 +1,3 @@
-* Split replies out of "update" into new "reply" command
-
 * Add internationalization support
 
 * Add an --output [human|yaml|json] option
@@ -194,8 +192,6 @@ the following for inspiration:
         # perhaps no need to import the id first? just try based on the
         # email-like address - autoconvert it to "ID HUB"?
         bif assign 13 mark@bifax.org
-
-* Use Log::Any::Test
 
 * Subtasks are probably useful. What do they look like? How do they
  relate? See https://trello.com/tour for a checklist idea. Need to

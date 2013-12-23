@@ -32,7 +32,7 @@ requires:
   Config::Tiny: 2.19
   Coro: 0
   Coro::Handle: 0
-  DBIx::ThinSQL: v0.0.10
+  DBIx::ThinSQL: v0.0.12
   DBIx::ThinSQL::SQLite: v0.0.6
   Exporter::Tidy: 0
   File::HomeDir: 0
@@ -41,11 +41,11 @@ requires:
   IO::Prompt::Tiny: 0
   Log::Any::Adapter: 0.11
   Log::Any::Plugin::Levels: 0
-  OptArgs: v0.1.2
+  OptArgs: v0.1.4
   POSIX: 0
   Path::Tiny: 0.019
   Proc::InvokeEditor: 0
-  Sys::Cmd: 0
+  Sys::Cmd: v0.81.0
   Term::ANSIColor: 0
   Term::Size: 0
   Text::Autoformat: 0
@@ -57,4 +57,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.0_1
+version: 0.1.0_2

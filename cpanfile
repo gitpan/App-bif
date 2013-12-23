@@ -12,13 +12,13 @@ on 'configure' => sub {
 on 'runtime' => sub {
 
     # Bif::DB
-    requires 'DBIx::ThinSQL' => '0.0.10';
+    requires 'DBIx::ThinSQL' => '0.0.12';
 
     # Bif::DB::RW
     requires 'DBIx::ThinSQL::SQLite' => '0.0.6';
 
     # App::bif
-    requires 'OptArgs' => '0.1.2';
+    requires 'OptArgs' => '0.1.4';
 
     # App::bif::init/upgrade
     requires 'File::ShareDir' => 0;
@@ -50,7 +50,7 @@ on 'runtime' => sub {
     # Synchronisation
     requires 'Coro';
     requires 'Coro::Handle';
-    requires 'Sys::Cmd';
+    requires 'Sys::Cmd' => '0.81.0';
 };
 
 on 'test' => sub {

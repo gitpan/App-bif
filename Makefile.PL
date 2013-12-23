@@ -15,7 +15,7 @@ homepage 'http://bifax.org/bif/';
 bugtracker 'bif://bifax.org/bif/';
 repository 'git://bifax.org/bif.git/';
 
-version '0.1.0_1';
+version '0.1.0_2';
 perl_version '5.006';
 
 tests_recursive 't';
@@ -51,7 +51,7 @@ use OptArgs qw/dispatch/;
 # local testing version in t/bifsync
 \$ENV{PATH} = \$Bin .':'.\$ENV{PATH};
 
-\$Test::Bif::SHARE_DIR = path('$dir', 'share');
+\$main::BIF_SHARE_DIR = path('$dir', 'share');
 
 dispatch(qw/run App::bif/);
 END

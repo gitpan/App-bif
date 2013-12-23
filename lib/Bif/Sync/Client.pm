@@ -30,7 +30,14 @@ sub BUILD {
         $self->child( spawn( 'ssh', $1, 'bifsync', $2 ) );
     }
     else {
-        $self->child( spawn( 'bifsync', $self->hub ) );
+        $self->child(
+            spawn(
+                sub {
+                    require OptArgs;
+                    OptArgs::dispatch( 'run', 'App::bifsync', $self->hub );
+                }
+            )
+        );
     }
 
     $self->child_watcher(

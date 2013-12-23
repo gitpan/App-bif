@@ -16,7 +16,7 @@ sub _connected {
     $dbh->do('PRAGMA temp_store = MEMORY;');
     $dbh->do('PRAGMA recursive_triggers = ON;');
     $dbh->do('PRAGMA synchronous = NORMAL;');
-    $dbh->do('PRAGMA synchronous = OFF;') if $Test::Bif::SHARE_DIR;
+    $dbh->do('PRAGMA synchronous = OFF;') if $main::BIF_DB_NOSYNC;
 
     # TODO remove this before the first production release.
     $dbh->do('PRAGMA reverse_unordered_selects = ON;');

@@ -36,6 +36,7 @@ lib/App/bif/new/issue.pm
 lib/App/bif/new/project.pm
 lib/App/bif/new/task.pm
 lib/App/bif/push.pm
+lib/App/bif/reply.pm
 lib/App/bif/show.pm
 lib/App/bif/sql.pm
 lib/App/bif/sync.pm
@@ -138,6 +139,7 @@ t/App/bif/new/issue.t
 t/App/bif/new/project.t
 t/App/bif/new/task.t
 t/App/bif/push.t
+t/App/bif/reply.t
 t/App/bif/show.t
 t/App/bif/update.t
 t/App/bif/upgrade.t

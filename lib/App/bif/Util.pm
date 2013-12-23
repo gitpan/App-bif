@@ -38,7 +38,7 @@ sub bif_err {
         Term::ANSIColor::color('red')
       . 'fatal:'
       . Term::ANSIColor::color('reset') . ' '
-      . shift . "\n";
+      . (shift) . "\n";
 
     die Bif::Error->new( $error, $msg ) unless @_;
     die Bif::Error->new( $error, sprintf( $msg, @_ ) );

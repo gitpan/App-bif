@@ -83,8 +83,9 @@ bif commands and their arguments are listed below:
         bif new project [PATH] [TITLE...]
         bif new task [TITLE...]
     bif push ID PATH [HUB]
+    bif reply UPDATE_ID
     bif show ID
-    bif sql STATEMENT...
+    bif sql [STATEMENT...]
     bif sync [ID] [HUB]
     bif update ID [STATUS]
     bif upgrade [DIRECTORY]
@@ -328,13 +329,24 @@ appropriate commands:
 
 =head2 Updating Topics
 
-=head3 Commenting
+You can add comments to a topic with the C<update> command.
 
-bla blah blah
+    bif update ID [--message MESSAGE]
+    
+If the C<--message> option is not used an editor will be invoked.  A
+second argument can also be used to change the status of the topic, and
+a C<--title> option can be used to modify the topic summary.
 
-=head3 State Changes
+    bif update ID [STATUS] [--title TITLE]
 
-bla blah blah
+Comments on a topic can also be nested. That is, you can C<reply> to a
+previous update (or a previous reply).
+
+    bif reply UPDATE_ID [--message MESSAGE]
+
+The C<UPDATE_ID> argument is actually a full C<ID.UPDATE_ID> value that
+you see with the C<log> command. A C<reply> cannot modify a topics
+status or title.
 
 =head3 Editing
 
