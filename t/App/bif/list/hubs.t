@@ -8,7 +8,7 @@ run_in_tempdir {
 
     bif(qw/init/);
 
-    is_deeply bif(qw/list hubs/), [], 'ListHubs';
+    isa_ok bif(qw/list hubs/), 'Bif::OK::ListHubs';
 };
 
 done_testing();

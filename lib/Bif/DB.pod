@@ -30,10 +30,11 @@ parts are separated for performance reasons.
 
 =over
 
-=item path2project_id( $path ) -> Int
+=item path2project_id( $path, [ $REPO_ID ] ) -> Int
 
 Returns the integer ID matching the project C<$path>, or C<undef> if no
-match is found.
+match is found. By default local projects are searched. An additional
+argument REPO_ID can be given to search projects is a different repo.
 
 =item get_topic( $ID ) -> HashRef
 
@@ -92,10 +93,14 @@ contain valid values:
 =back
 
 
+=item get_local_repo_id -> Int
+
+Returns the ID for the local repository topic.
+
 =item get_project( $PATH ) -> HashRef
 
-Looks up the project identified by C<$PATH> and returns undef or a hash
-reference containg the following keys:
+Looks up the project identified by C<$PATH> and returns undef, a
+negative integer, or a hash reference containg the following keys:
 
 =over
 
@@ -111,7 +116,12 @@ reference containg the following keys:
 
 =item * parent_id - the parent ID of the project
 
+=item * local - true if the project is locally synchronized
+
 =back
+
+C<$PATH> can be a plain C<PATH> or a C<PATH@ALIAS>. If more than one
+match is found then the negative number of matches is returned.
 
 =item status_ids( $project_id, $kind, @status ) -> \@ids, \@invalid
 
@@ -120,10 +130,10 @@ status names and returns an arrayref of matching IDs, and an arrayref
 of invalid names. This method will silently ignore any @status which
 are undefined.
 
-=item hub_info( $alias ) -> HashRef
+=item get_repo_locations( $alias ) -> @HashRef
 
-Returns a HASH reference containing information about the hub
-identified by C<$alias> with the following keys:
+Returns a list of HASH references containing information about the hub
+identified by C<$alias>, each with the following keys:
 
 =over
 
@@ -133,9 +143,15 @@ identified by C<$alias> with the following keys:
 
 =item * location - the location of the hub
 
+=item * is_default - true if it is the default location
+
 =back
 
 Returns C<undef> if C<$alias> is not found.
+
+=item get_max_update_id
+
+Returns the maximum update ID in the database.
 
 =back
 
@@ -149,7 +165,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

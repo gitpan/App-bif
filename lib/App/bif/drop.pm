@@ -1,24 +1,24 @@
 package App::bif::drop;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_dbw;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->dbw;
 
     my $info =
-         $db->get_topic( $opts->{id} )
-      || $db->get_update( $opts->{id} )
-      || $db->get_project( $opts->{id} )
-      || bif_err( 'TopicNotFound',
-        'topic, update or project not found: ' . $opts->{id} );
+         $db->get_topic( $ctx->{id} )
+      || $db->get_update( $ctx->{id} )
+      || $db->get_project( $ctx->{id} )
+      || return $ctx->err( 'TopicNotFound',
+        'topic, update or project not found: ' . $ctx->{id} );
 
-    if ( !$opts->{force} ) {
+    if ( !$ctx->{force} ) {
         print "Nothing dropped (missing --force, -f)\n";
-        return bif_ok('DropNoForce');
+        return $ctx->ok('DropNoForce');
     }
 
     if ( $info->{update_id} ) {
@@ -28,8 +28,20 @@ sub run {
             where       => { id => $info->{update_id} },
         );
 
+        $db->update_repo(
+            {
+                author  => $ctx->{user}->{name},
+                email   => $ctx->{user}->{email},
+                message => 'drop '
+                  . $info->{kind} . ' '
+                  . $info->{id}
+                  . ' update '
+                  . $info->{update_id},
+            }
+        );
+
         print "Dropped: $info->{kind} $info->{id}.$info->{update_id}\n";
-        return bif_ok( 'Drop' . ucfirst( $info->{kind} ) . 'Update', $info );
+        $ctx->ok( 'Drop' . ucfirst( $info->{kind} ) . 'Update', $info );
     }
     else {
 
@@ -38,8 +50,16 @@ sub run {
             where       => { id => $info->{id} },
         );
 
+        $db->update_repo(
+            {
+                author  => $ctx->{user}->{name},
+                email   => $ctx->{user}->{email},
+                message => 'drop ' . $info->{kind} . ' ' . $info->{id},
+            }
+        );
+
         print "Dropped: $info->{kind} $info->{id}\n";
-        return bif_ok( 'Drop' . ucfirst( $info->{kind} ), $info );
+        $ctx->ok( 'Drop' . ucfirst( $info->{kind} ), $info );
     }
 }
 
@@ -99,7 +119,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

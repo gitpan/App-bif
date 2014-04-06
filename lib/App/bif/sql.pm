@@ -1,21 +1,21 @@
 package App::bif::sql;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db = $opts->{write} ? bif_dbw : bif_db;
+    my $ctx = App::bif::Context->new(shift);
+    my $db = $ctx->{write} ? $ctx->dbw : $ctx->db;
 
-    if ( !$opts->{statement} ) {
+    if ( !$ctx->{statement} ) {
         local $/;
-        $opts->{statement} = <STDIN>;
+        $ctx->{statement} = <STDIN>;
     }
 
-    if ( $opts->{statement} =~ m/^(select)|(pragma)|(explain)/i ) {
-        my $sth = $db->prepare( $opts->{statement} );
+    if ( $ctx->{statement} =~ m/^(select)|(pragma)|(explain)/i ) {
+        my $sth = $db->prepare( $ctx->{statement} );
         $sth->execute(@_);
 
         my $header = join( ', ', @{ $sth->{NAME} } );
@@ -23,7 +23,7 @@ sub run {
         print DBI::neat_list($_) . "\n" for @{ $sth->fetchall_arrayref };
     }
     else {
-        print $db->do( $opts->{statement} ) . "\n";
+        print $db->do( $ctx->{statement} ) . "\n";
     }
 
     return 'BifSQL';
@@ -89,7 +89,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

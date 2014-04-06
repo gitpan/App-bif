@@ -2,7 +2,7 @@ use strict;
 use warnings;
 use lib 't/lib';
 use Path::Tiny qw/cwd/;
-use App::bif::Util;
+use App::bif::Context;
 use Test::More;
 use Test::Bif;
 
@@ -10,7 +10,9 @@ plan skip_all => 'developer-only schema extraction'
   unless -d '.git';
 
 run_in_tempdir {
-    my $db    = bif(qw/ init /);
+    bif(qw/ init /);
+    my $ctx   = App::bif::Context->new( {} );
+    my $db    = $ctx->db;
     my $items = $db->selectall_arrayref(
         "SELECT sql FROM sqlite_master
         WHERE sql IS NOT NULL

@@ -2,13 +2,13 @@ package App::bif::list::topics;
 use strict;
 use warnings;
 use utf8;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_db;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->db;
 
     require Term::ANSIColor;
     my $dark  = Term::ANSIColor::color('dark');
@@ -30,7 +30,7 @@ sub run {
         order_by => 'projects.path',
     );
 
-    return [] unless @projects;
+    return $ctx->ok('ListTopics') unless @projects;
 
     require Text::FormatTable;
     my $table = Text::FormatTable->new(' l  l  l ');
@@ -51,8 +51,8 @@ sub run {
             where      => {
                 'task_status.project_id' => $project->[0],
                 do {
-                    if ( $opts->{status} ) {
-                        ( 'task_status.status' => $opts->{status} );
+                    if ( $ctx->{status} ) {
+                        ( 'task_status.status' => $ctx->{status} );
                     }
                     else {
                         ();
@@ -73,8 +73,8 @@ sub run {
             where      => {
                 'issue_status.project_id' => $project->[0],
                 do {
-                    if ( $opts->{status} ) {
-                        ( 'issue_status.status' => $opts->{status} );
+                    if ( $ctx->{status} ) {
+                        ( 'issue_status.status' => $ctx->{status} );
                     }
                     else {
                         ();
@@ -87,7 +87,7 @@ sub run {
         next unless @$data;
 
         $table->rule(' ') if $i;
-        $table->head( $bold . 'ID', "Topic ($project->[1])",
+        $table->head( $bold . 'ID', "Topic [$project->[1]]",
             'Status' . $reset );
 
         if ($dark) {
@@ -105,14 +105,14 @@ sub run {
         }
     }
 
-    start_pager($i);
+    $ctx->start_pager($i);
 
     require Term::Size;
     print $table->render( ( Term::Size::chars() )[0] );
 
-    end_pager;
+    $ctx->end_pager;
 
-    return bif_ok( 'ListTopics', \@projects );
+    $ctx->ok( 'ListTopics', \@projects );
 }
 
 1;
@@ -165,7 +165,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

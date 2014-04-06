@@ -1,3 +1,13 @@
+* http://developercertificate.org/
+
+* Turn repo aliases into user aliases
+
+* Possibly rework all func_* tables to use AFTER INSERT
+triggers in order to get argument checking from SQLite. I'm considering
+this because errors like "updates_pending.terms may not be NULL" are a
+long way from where the real error occured. The question is perhaps
+what this costs in terms of speed.
+
 * Add internationalization support
 
 * Add an --output [human|yaml|json] option
@@ -9,9 +19,6 @@
 
 * Drop an issue seems to drop all related issues! What's the correct
 desired behaviour?
-
-* Create a local repo topic, that records various things external
-things like exports, config changes, ... I don't know what else.
 
 * Bug identification for humans:
     ID at hub?
@@ -95,15 +102,10 @@ things like exports, config changes, ... I don't know what else.
 
 * Normalize unicode on input
 
-* ALIAS not found only when there is no bif repository,
-otherwise the error should be RepoNotFound.
-
 * Simple default status types? open, stalled, closed
     - Possibly also ignored, but that could also be calculated based on
       a status value.
     - Much more common/known than 'active' and 'resolved'
-
-* Investigate use of Exporter::Tiny
 
 * Consider creating own keypair?: ~/.bifhub/id_rsa[.pub]
 
@@ -155,7 +157,6 @@ otherwise the error should be RepoNotFound.
     ------------------------------
     13  | upstream | bifhub.com/debian.org
 
-
 * Remove all defaults from the "updates" table and force calling code
 to be explicit about all values being inserted. This should make
 testing easier (currently having problems with duplicates) and is also
@@ -204,10 +205,6 @@ the following for inspiration:
 * Use MakeMaker PL_FILES to generate docs instead of
 module::install::PRIVATE..
 
-* The order of "show"'d projects is hard to test without sleeping
-between updates. Possibly need to use multiple queries in order to get
-access to updates.id
-
 * Create a release checklist, since the automation tools aren't quite
  there for me.
 
@@ -247,11 +244,6 @@ access to updates.id
 
 * Patch Sort::Versions or inline a new version to sort as humans would
  like when numbers don't contain any dots '.'.
-
-* Add the push_to update on the hub not the client (security?)?
-
-* include update_uuid in messages so we can check that both sides think
- they have the same update, otherwise it could turn into a mess.
 
 * 'depends' should be on a 'project:id:<!active|!stalled>' variable.
 
@@ -317,11 +309,6 @@ access to updates.id
 * Index and and 'find' or 'search' command
 
 * Include replied-to text as a comment inside the edit file
-
-Per-repository SHA1 has that correlates to an organisation. Then when a
-hub is pulled from (or created) the local 'hubs' table is updated with the
-remote hash and the matching name of the organisation. Is the goal to
-make the hub hash independent from the hub location?
 
 A global directory of org hashes? What if A -> B -> C. A updates. B
 knows who it was because they have a hub pointingn to A. How about

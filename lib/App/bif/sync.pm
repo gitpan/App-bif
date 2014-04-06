@@ -1,162 +1,117 @@
 package App::bif::sync;
 use strict;
 use warnings;
-use App::bif::Util;
-use Log::Any qw/$log/;
-use Path::Class;
+use App::bif::Context;
+use AnyEvent;
+use Bif::Client;
+use Coro;
 
 our $VERSION = '0.1.0';
 
-# usage: bif [options] sync [ID] [LOCATION]
-#
-#     --debug,  -d     define modules to debug
-#     --help,   -h     print this help message and exit
-#
-#     ID               the ID or project path to synchronise
-#     LOCATION         hub repository address or alias
-
-my $client;
-my $type;
-my $name;
-
-sub _connect_hub {
-    my $location = shift;
-
-    $client->on_connect(
-        sub {
-            print "connected to: $location\n";
-            $client->cv->send(1);
-        }
-    );
-
-    $client->connect($location)
-      || bif_err( 'could not connect: ' . $location );
-}
-
-sub _setup {
-
-    if ( -t STDOUT and !$log->is_debug ) {
-        $client->on_comparing_update(
-            sub {
-                line_print(
-                    sprintf(
-                        '%s %s: comparing: %s',
-                        $type, $name, $client->comparing
-                    )
-                );
-            }
-        );
-
-        my $show_update = sub {
-            line_print(
-                sprintf(
-                    '%s %s: sent: %d received: %d',
-                    $type,                 $name,
-                    $client->sent_updates, $client->recv_updates
-                )
-            );
-        };
-
-        $client->on_send_update($show_update);
-
-        $client->on_recv_update($show_update);
-    }
-
-}
-
-sub _teardown {
-    if ( $client->sent_updates or $client->recv_updates ) {
-        line_print(
-            sprintf(
-                "%s %s: sent: %d received: %d\n",
-                $type, $name, $client->sent_updates, $client->recv_updates
-            )
-        );
-    }
-    else {
-        line_print("$type $name: no changes\n");
-    }
-}
-
-sub _real_run {
-    my $db       = shift;
-    my $location = shift;
-    my $id       = shift;
-
-    if ($id) {
-
-        $type = opts_thread( { thread => $id } );
-        if ( $type eq 'project' ) {
-            $name = $id;
-            _setup();
-            _connect_hub($location);
-            $client->sync_project( { id => $id } )
-              || bif_err('sync failed');
-            _teardown();
-            $client->disconnect;
-        }
-        else {
-            not_implemented('sync based on ID');
-        }
-        return;
-    }
-    elsif ($location) {
-
-        my @topics = $db->location2topics($location);
-        if ( !@topics ) {
-            return;
-        }
-
-        _connect_hub($location);
-
-        foreach my $thread (@topics) {
-
-            $type = $thread->kind;
-            if ( $type eq 'project' ) {
-                $name = $thread->path;
-                _setup();
-                $client->sync_project( { id => $thread->id } )
-                  || bif_err('sync failed');
-                _teardown();
-            }
-            else {
-                $name = $thread->id;
-                _setup();
-                print "type $type doesn't work\n";
-            }
-        }
-
-        $client->disconnect;
-        return;
-    }
-}
-
 sub run {
     my $opts = shift;
-    set_log($opts);
+    $opts->{no_pager}++;    # causes problems with something in Coro?
+    my $ctx = App::bif::Context->new($opts);
 
-    my $db = find_db($opts);
+    # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
+    my $dbw   = $ctx->dbw;
+    my @repos = $dbw->xhashes(
+        select     => [ 'r.id', 'r.location', 't.uuid' ],
+        from       => 'repos r',
+        inner_join => 'topics t',
+        on         => 't.id = r.id',
+        where      => 'r.local IS NULL',
+    );
 
-    $client = $db->client;
+    $|++;    # no buffering
 
-    if ( $opts->{location} ) {
-        opts_thread($opts);
-        check_hub($opts);
-        _real_run( $db, $opts->{location}, $opts->{id} );
+    my $err;
+    my $status;
+    my $cv = AE::cv;
+
+    foreach my $repo (@repos) {
+        $err    = undef;
+        $status = undef;
+
+        my $client = Bif::Client->new(
+            db       => $dbw,
+            hub      => $repo->{location},
+            on_error => sub {
+                $err = shift;
+            },
+        );
+
+        my $stderr = $client->child->stderr;
+
+        my $stderr_watcher;
+        $stderr_watcher = AE::io $stderr, 0, sub {
+            my $line = $stderr->getline;
+            if ( !defined $line ) {
+                undef $stderr_watcher;
+                return;
+            }
+            print STDERR 'hub: ' . $line;
+        };
+
+        my $coro = async {
+            eval {
+                $dbw->txn(
+                    sub {
+                        my $previous = $dbw->get_max_update_id;
+
+                        $status = $client->sync_repo( $repo->{id} );
+
+                        # Catch up on errors
+                        undef $stderr_watcher;
+                        $stderr->blocking(0);
+                        while ( my $line = $stderr->getline ) {
+                            print STDERR 'hub: ' . $line;
+                        }
+
+                        return unless $status->[0];
+
+                        my $current = $dbw->get_max_update_id;
+                        my $delta   = $current - $previous;
+
+                        $dbw->update_repo(
+                            {
+                                author  => $ctx->{user}->{name},
+                                email   => $ctx->{user}->{email},
+                                message => "sync $repo->{location} [+$delta]",
+                            }
+                        );
+
+                        return;
+                    }
+                );
+            };
+
+            if ($@) {
+                $status = [ 0, 'InternalError', $@ ];
+            }
+
+            if ( $status->[0] ) {
+                print "$repo->{location}: $status->[2]\n";
+            }
+
+            $client->disconnect;
+            $cv->send;
+            return;
+        };
+
+        my $sig;
+        $sig = AE::signal 'INT', sub {
+            warn 'INT';
+            undef $sig;
+            $client->disconnect;
+            $cv->send;
+        };
+
+        $cv->recv;
     }
-    elsif ( $opts->{thread} ) {
-        opts_thread($opts);
 
-        foreach my $location ( $db->hub_locations( $opts->{id} ) ) {
-            _real_run( $db, $location, $opts->{id} );
-        }
-    }
-    else {
-        foreach my $location ( $db->hub_locations ) {
-            _real_run( $db, $location );
-        }
-    }
-
+    return $ctx->ok( $status->[1], $status->[2] ) if $status->[0];
+    return $ctx->err( $status->[1], $status->[2] );
 }
 
 1;
@@ -164,17 +119,36 @@ __END__
 
 =head1 NAME
 
-bif-sync - exchange updates with a hub
+bif-sync -  exchange updates with repos
+
+=head1 VERSION
+
+0.1.0 (yyyy-mm-dd)
+
+=head1 SYNOPSIS
+
+    bif sync [OPTIONS...]
 
 =head1 DESCRIPTION
 
-See L<bif>(1) for details.
+The C<bif sync> command connects to all remote repositories registered
+as hubs in the local repository and exchanges updates.
+
+=head1 ARGUMENTS & OPTIONS
+
+To be documented.
+
+=head1 SEE ALSO
+
+L<bif>(1)
+
+=head1 AUTHOR
 
 Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

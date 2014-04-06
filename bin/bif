@@ -34,9 +34,8 @@ Bif is a project management tool with a command-line interface. It
 tracks tasks and issues using a local database, exchanging updates with
 remote databases on demand.
 
-The underlying data model supports a couple of noteworthy features that
-make bif particularly useful for distributed teams and interdependent
-projects:
+Bif is particularly useful for distributed software teams as the
+underlying data model supports a couple of noteworthy features:
 
 =over
 
@@ -55,9 +54,25 @@ real world.
 
 This document is the bif manual and includes design background,
 terminology, general concepts and a complete usage guide.  Those who
-are impatient to get started may prefer to begin with the hands-on
-L<bif-intro>(3) or browse a list of common questions and answers in
-L<bif-faq>(3). The documentation index is in L<bif-doc>(3).
+are impatient to get started may prefer to begin with one of the
+following:
+
+=over
+
+=item L<bif-doc-intro>
+
+A very quick hands-on introduction to bif.
+
+=item L<bif-doc-faq>
+
+A list of common questions and answers.
+
+=item L<bif-doc-index>
+
+An overview of every piece of bif documententation for both users and
+developers.
+
+=back
 
 =head2 Command Structure
 
@@ -65,17 +80,19 @@ Bif commands are structured where possible the same way an English
 speaker describes actions, verb followed by subject. The entire set of
 bif commands and their arguments are listed below:
 
+    bif doc [COMMAND...]
     bif drop ID
     bif export PATH... HUB
-    bif help [COMMAND...]
     bif import PATH... HUB
     bif init [DIRECTORY]
     bif list ITEMS
         bif list hubs
         bif list issue-status PATH
+        bif list issues
         bif list project-status PATH
-        bif list projects
+        bif list projects [HUB]
         bif list task-status PATH
+        bif list tasks
         bif list topics
     bif log [ID]
     bif new ITEM
@@ -83,25 +100,29 @@ bif commands and their arguments are listed below:
         bif new project [PATH] [TITLE...]
         bif new task [TITLE...]
     bif push ID PATH [HUB]
-    bif reply UPDATE_ID
-    bif show ID
+    bif register HUB
+    bif reply ID.UID
+    bif show ID [HUB]
     bif sql [STATEMENT...]
     bif sync [ID] [HUB]
     bif update ID [STATUS]
     bif upgrade [DIRECTORY]
 
-Reference documents for bif commands have titles like
-I<bif-command-name>, which can also be displayed by running C<bif help
-command name>.
-
 In addition to the above commands a few useful aliases are created by
 default:
 
-    bif lt          # bif list topics
-    bif lts         # bif list topics --status stalled
+    bif l           # bif list topics --status open
+    bif lt          # bif list tasks --status open
+    bif lts         # bif list tasks --status stalled
+    bif li          # bif list issues --status open
+    bif lis         # bif list issues --status stalled
     bif lp          # bif list projects --status active
 
-=head3 Global Options
+Reference documents for bif commands have titles like
+I<bif-command-name>, which can also be displayed by running C<bif doc
+command name>.
+
+=head2 Global Options
 
 The following options are common to all commands:
 
@@ -124,7 +145,7 @@ Do not pipe a command's output to a pager.
 
 =back
 
-=head3 Command Interaction
+=head2 Command Interaction
 
 =over
 
@@ -142,8 +163,8 @@ are sent to I<stderr>.
 
 =item Connectivity
 
-The only commands that involve network communication are C<import>,
-C<export>, and C<sync>. Everything else is a local action.
+The only commands that involve network communication are C<register>,
+C<import>, C<export>, and C<sync>. Everything else is a local action.
 
 =item Exit Status
 
@@ -151,7 +172,7 @@ An exit value of zero indicates success.
 
 =back
 
-=head2 Design Background
+=head1 DESIGN BACKGROUND
 
 Communication is a core component of project management.  Email, a
 decentralized system, often plays a major role
@@ -186,9 +207,9 @@ standard Create, Retrieve, Update and Delete (CRUD) database
 application. The end goal is a distributed communication system that
 carries both conversations and structured meta-data. The finer details
 of the advantages and trade-offs with regards the bif design can be
-found in L<bif-design>(3).
+found in L<bif-doc-design>(3).
 
-=head2 Definitions
+=head1 TERMINOLOGY
 
 =over
 
@@ -228,6 +249,8 @@ located on a remote server and accessed through a L<ssh>(1) tunnel.
 Hubs are identified either by their location URI or by an alias.
 
 =back
+
+=head1 TUTORIAL
 
 =head2 Initialization
 
@@ -397,16 +420,11 @@ the second reason is for obtaining the list of projects in the hub.
     bif register my.org@provider.com
 
 By default the C<my.org> part of the provider address can be used as
-the hub name in other commands.  To view the list of projects we use
-the C<list remote-projects> command.
-
-    bif list remote-projects [HUB]
-
-You don't need to specifiy the C<HUB>, but it helps to cut down the
-noise when you work with multiple hubs.
+the hub name in other commands.  To view the list of projects we give
+the hub alias to the C<list projects> command:
 
     #!sh
-    bif list remote-projects my.org
+    bif list projects my.org
 
 =head2 Importing Projects
 
@@ -506,17 +524,7 @@ blocking. The C<show> command reveals the details.
 
 You probably noticed above that the C<push> command also takes a C<HUB>
 argument.  Bif makes it possible under certain conditions to push an
-issue to projects hosted on external (third-party) hubs.
-
-If two hub owners have allowed collaboration ("linking") between them,
-then the other hubs projects will show up in the C<list
-remote-projects> command locally:
-
-    #!sh
-    bif list remote-projects
-
-By using the third argument to the C<push> command we can ask our hub
-to push the issue to the remote project:
+issue to non-local projects hosted on a hub.
 
     #!sh
     bif push 16 project3 other.hub
@@ -545,7 +553,7 @@ template-style projects.
 How projects may track the outcome of a remote task with bif is still
 to be determined.
 
-=head2 Administration & Development
+=head2 Administration
 
 New versions of bif will necessarily require changes to the database
 structure, and possibly the data itself. The C<upgrade> command exists
@@ -572,7 +580,7 @@ Per-repository configuration file.
 
 Per-repository SQLite database.
 
-=item F<$HOME/.config/Perl/App-bif/config>
+=item F<$HOME/.config/bif-user/config>
 
 Global configuration file.
 
@@ -582,7 +590,10 @@ Global configuration file.
 
 L<bifhub>(1), L<bifsync>(1)
 
-=head1 SUPPORT & DEVELOPMENT
+=head1 SUPPORT
+
+Bif is community supported software, and the community expects (and
+should offer) respectful communication with all of its members.
 
 =over
 
@@ -590,9 +601,41 @@ L<bifhub>(1), L<bifsync>(1)
 
 L<http://bifax.org/bif/>
 
-=item Mailing List:
+=item User Mailing List:
 
 Doesn't exist yet.
+
+=back
+
+If you have an issue with bif please first make the effort to read the
+documentation and/or search for an answer to your issue in the
+internet. If you are still stuck send us a message as if you were
+answering the following questions:
+
+=over
+
+=item * What does C<bif show VERSION> print?
+
+=item * What are you trying to achieve?
+
+=item * What (output) did you expect (to see)?
+
+=item * What (output) actually occured?
+
+=back
+
+We will most likely need to ask for more information from you. You can
+probably speed things along by already running your commands with the
+C<--debug> flag turned on.
+
+=head1 DEVELOPMENT
+
+=over
+
+=item Development Mailing List:
+
+Subscribe via L<http://www.freelists.org/list/bif-devel> and then send
+mail to <bif-devel@freelists.org>.
 
 =item Issue Tracker:
 
@@ -610,7 +653,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

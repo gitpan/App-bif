@@ -10,20 +10,14 @@ run_in_tempdir {
     like exception { bif() }, qr/usage/, 'usage';
     ok bif(qw/init/), 'init';
 
+    like exception { bif( 'init', '--unknown-option' ) }, qr/usage/,
+      'unknown option';
+
     # Check that aliases work
-    is_deeply bif(qw/lt/),  [], 'lt';
-    is_deeply bif(qw/lts/), [], 'lts';
-    is_deeply bif(qw/lp/),  [], 'lp';
-
-    ok bif(qw/new project todo title --message m/), 'new project';
-
-    # very weak test I know.... TODO
-    isa_ok bif(qw/lp/), 'ARRAY', 'lp';
-
-    ok bif(qw/new issue todo title --message m/), 'new issue';
-
-    # very weak test I know.... TODO
-    isa_ok bif(qw/lt/), 'ARRAY', 'active with contents';
+    isa_ok bif(qw/l/),   'Bif::OK::ListTopics';
+    isa_ok bif(qw/lt/),  'Bif::OK::ListTasks';
+    isa_ok bif(qw/lts/), 'Bif::OK::ListTasks';
+    isa_ok bif(qw/lp/),  'Bif::OK::ListProjects';
 
 };
 

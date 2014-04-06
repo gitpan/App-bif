@@ -8,8 +8,13 @@ use Exporter::Tidy default => [
       debug_on
       debug_off
       new_test_update
+      new_test_repo
       new_test_project
       new_test_project_status
+      new_test_task_status
+      new_test_issue_status
+      new_test_task
+      new_test_issue
       /
 ];
 use File::chdir;
@@ -102,17 +107,69 @@ sub new_test_update {
     return $ref;
 }
 
+my $location = 0;
+
+sub new_test_repo {
+    my $dbw    = shift;
+    my $local  = shift;
+    my $update = new_test_update($dbw);
+
+    my $id  = $dbw->nextval('topics');
+    my $lid = $dbw->nextval('topics');
+
+    my $ref = {
+        id        => $id,
+        update_id => $update->{id},
+        local     => $local,
+        alias     => 'location' . $location++,
+    };
+
+    $dbw->xdo(
+        insert_into => 'func_new_repo',
+        values      => $ref,
+    );
+
+    $dbw->xdo(
+        insert_into => 'func_new_repo_location',
+        values      => {
+            update_id => $update->{id},
+            repo_id   => $id,
+            id        => $lid,
+            location  => 'location' . $location++,
+        },
+    );
+
+    $dbw->xdo(
+        insert_into => 'repo_updates',
+        values      => {
+            update_id           => $update->{id},
+            repo_id             => $id,
+            default_location_id => $lid,
+        },
+    );
+
+    $dbw->xdo(
+        insert_into => 'func_merge_updates',
+        values      => { merge => 1 },
+    );
+
+    return $ref;
+}
+
 my $project = 0;
 
 sub new_test_project {
-    $project++;
-    my $db        = shift;
+    my $db = shift;
     my $update_id = shift || $db->currval('updates');
-    my $ref       = {
+
+    $project++;
+
+    my $ref = {
         update_id => $update_id,
         id        => $db->nextval('topics'),
         name      => 'todo' . $project,
         title     => 'title' . $project,
+        local     => 1,
     };
 
     $db->xdo(
@@ -125,20 +182,124 @@ sub new_test_project {
 my $project_status = 0;
 
 sub new_test_project_status {
-    my $db         = shift;
-    my $project_id = shift;
-    my $update_id  = shift || $db->currval('updates');
+    my $db        = shift;
+    my $project   = shift;
+    my $update_id = shift || $db->currval('updates');
+
+    $project_status++;
 
     my $ref = {
         update_id  => $update_id,
         id         => $db->nextval('topics'),
-        status     => 'status' . $project,
-        rank       => $project,
-        project_id => $project_id,
+        status     => 'status' . $project_status,
+        rank       => $project_status,
+        project_id => $project->{id},
     };
 
     $db->xdo(
         insert_into => 'func_new_project_status',
+        values      => $ref,
+    );
+
+    return $ref;
+}
+
+my $task_status = 0;
+
+sub new_test_task_status {
+    my $db        = shift;
+    my $project   = shift;
+    my $update_id = shift || $db->currval('updates');
+
+    $task_status++;
+
+    my $ref = {
+        update_id  => $update_id,
+        id         => $db->nextval('topics'),
+        status     => 'status' . $task_status,
+        rank       => $task_status,
+        project_id => $project->{id},
+        def        => $task_status == 1,
+    };
+
+    $db->xdo(
+        insert_into => 'func_new_task_status',
+        values      => $ref,
+    );
+
+    return $ref;
+}
+
+my $issue_status = 0;
+
+sub new_test_issue_status {
+    my $db        = shift;
+    my $project   = shift;
+    my $update_id = shift || $db->currval('updates');
+
+    $issue_status++;
+
+    my $ref = {
+        update_id  => $update_id,
+        id         => $db->nextval('topics'),
+        status     => 'status' . $issue_status,
+        rank       => $issue_status,
+        project_id => $project->{id},
+        def        => $issue_status == 1,
+    };
+
+    $db->xdo(
+        insert_into => 'func_new_issue_status',
+        values      => $ref,
+    );
+
+    return $ref;
+}
+
+my $task = 0;
+
+sub new_test_task {
+    $task++;
+    my $db        = shift;
+    my $status    = shift;
+    my $update_id = shift || $db->currval('updates');
+
+    $task++;
+
+    my $ref = {
+        update_id => $update_id,
+        id        => $db->nextval('topics'),
+        title     => 'title' . $task,
+        status_id => $status->{id},
+    };
+
+    $db->xdo(
+        insert_into => 'func_new_task',
+        values      => $ref,
+    );
+
+    return $ref;
+}
+
+my $issue = 0;
+
+sub new_test_issue {
+    $issue++;
+    my $db        = shift;
+    my $status    = shift;
+    my $update_id = shift || $db->currval('updates');
+
+    $issue++;
+
+    my $ref = {
+        update_id => $update_id,
+        id        => $db->nextval('topics'),
+        title     => 'title' . $issue,
+        status_id => $status->{id},
+    };
+
+    $db->xdo(
+        insert_into => 'func_new_issue',
         values      => $ref,
     );
 

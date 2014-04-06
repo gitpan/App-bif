@@ -4,9 +4,8 @@ Bif Project Management Tool
     remote databases on demand. The tool runs on any system that supports
     Perl and SQLite.
 
-    The underlying data model supports a couple of noteworthy features that
-    make bif particularly useful for distributed teams and interdependent
-    projects:
+    Bif is particularly useful for distributed software teams as the
+    underlying data model supports a couple of noteworthy features:
 
     Offline Operation
         Many bif actions work offline; you can create and update tasks and
@@ -18,10 +17,10 @@ Bif Project Management Tool
         the real world.
 
     This flexibility comes with minimal additional complexity; bif commands
-    are designed for consistency and ease of use. See bif-intro for a very
-    quick hands-on introduction.
+    are designed for consistency and ease of use. See bif-doc-intro for a
+    very quick hands-on introduction.
 
-Project Status
+Software Status
     Bif is still at a very early stage of development. Much of the
     functionality is missing, documentation is incomplete (or in some cases
     ahead of the implementation) and test coverage is lacking and/or
@@ -29,12 +28,13 @@ Project Status
 
     We are actively seeking contributors. See below for how you can help.
 
-Project Organisation
+Community Organisation
     Website:
         <http://bifax.org/bif/>
 
     Mailing List:
-        Doesn't exist yet.
+        Subscribe via <http://www.freelists.org/list/bif-devel> and then
+        send mail to <bif-devel@freelists.org>.
 
     Issue Tracker:
         Doesn't exit yet.
@@ -44,52 +44,30 @@ Project Organisation
 
 Documentation
     The main entry point for reference documentation is the bif manual.
-    After installation you should be able to access it by running "bif
-    help", or "perldoc bif", or "man bif". You can also browse the
-    documentation online at <http://bifax.org/bif/doc/>.
+    After installation you should be able to access it by running "bif doc",
+    or "perldoc bif", or "man bif". You can also browse the documentation
+    online at <http://bifax.org/bif/doc/>.
 
-Build Requirements
-  C Compiler
-    You will need a C compiler to build some of the dependencies (at least
-    DBI, DBD::SQLite, Digest::SHA and Coro require one) unless your
-    distribution already contains them. Debian and its derivatives package
-    these up as "libdbi-perl", "libdbd-sqlite3-perl", "libdigest-sha-perl"
-    and "libcoro-perl".
-
-  Cpanminus (cpanm)
+Installing
     As a Perl wrapper around an SQLite database, bif depends on several
     packages from the Comprehensive Perl Archive Network (CPAN
-    <http://cpan.org>). It is recommended that you install bif using the
-    "cpanm" client, which can build and install the dependencies for you.
+    <http://cpan.org>). Some of the packages require a C compiler to build.
 
-    If you do not have a prepackaged "cpanminus" package in your operating
-    system distribution, then it can be installed directly using "curl" and
-    "perl" as shown below.
+    Installing bif and its dependencies is easiest with the "cpanm" client
+    which can be installed using "curl" and "perl" as shown below.
 
         #!sh
         curl -L http://cpanmin.us | perl - --sudo App::cpanminus
 
-Installing
-    To build and install a bif release system-wide simply point "cpanm" at
-    the appropriate tarball, using the "--sudo" option.
+    To build and install bif system-wide simply point "cpanm" at the
+    appropriate release, using the "--sudo" option.
 
         #!sh
         cpanm --sudo http://bifax.org/download/bif-stable.tar.gz
 
-Test Builds
-    You can test a release without having to install it. The following
-    commands for example would download the latest development release and
-    build a local "bif" command (in t/bif) with local dependencies (in
-    extlib/) without affecting the rest of your system.
-
-        #!sh
-        curl http://bifax.org/download/bif-devel.tar.gz
-        tar zxf bif-devel.tar.gz
-
-        cd App-bif-VERSION  # replace VERSION as appropriate
-        cpanm --installdeps --local-lib extlib .
-
-        t/bif  # run the in-tree bif command
+    NOTE: There has not yet been a stable bif release! The above command
+    will fail until that occurs. Interested developers should read the
+    development section below.
 
 Contributing
     You do not have to be a developer to contribute to bif! It is arguable
@@ -102,34 +80,74 @@ Contributing
     unexplained things. Therefore feedback from first-time users, both
     positive and negative, is extremely valuable. Please get in touch!
 
-    Otherwise help would be appreciated for practically anything: reference
-    documentation, tutorials, translation, user-interface consistency,
-    website copywriting & design, blogging & advocacy, not to mention Perl /
-    SQLite coders, testers, operating system distribution integrators, etc.
-    Software architect? The overall design could use a big dose of
-    third-party analysis. Big-picture thinker? How could the bif model of
-    information distribution be applied to addressbooks, slow-changing
-    datasets (e.g. country lists, currencies), business transactions, etc.
-    Financial sponsorship would also be more than welcome.
+    For the currently planned activities see the bif-doc-roadmap. Otherwise
+    help would be appreciated for practically anything:
+
+    *   Editing the reference documentation
+
+    *   User-interface consistency checks
+
+    *   Website design
+
+    *   Blogging & advocacy
+
+    *   Translation - no framework in place yet though
+
+    *   Operating system distribution integrators
+
+    *   Perl / SQLite test writers (many tests needed!)
+
+    *   Software architect? The overall design could use a big dose of
+        third-party analysis.
+
+    *   Security Analyst? Feel like starting a bif-doc-security document or
+        otherwise letting us know which vectors are most vunerable? I find
+        it important to put some effort in here before bif becomes (if ever)
+        widely used.
+
+    *   Big-picture thinker? How could the bif model of information
+        distribution be applied to addressbooks, slow-changing datasets
+        (e.g. country lists, currencies), business transactions, etc.
+
+    *   Financial sponsorship would also be more than welcome.
 
 Development
     For those comfortable with git, development takes place on the "devel"
-    branch of the git repository, with communication via the mailing list.
-    All Perl and POD content is expected to be "tidy" according to the
-    .perltidyrc and .podtidy-opts files in the source tree. The easiest way
-    to ensure this happens on commit is to install "githook-perltidy":
+    branch of the git repository, with communication via the development
+    mailing list.
 
         #!sh
-        cpanm App::githook_perltidy
+        git clone git://bifax.org/bif.git --branch devel
+        cd bif
 
-        # cd into your git repository and then:
-        githook-perltidy install
+    Make sure that you have a recent "cpanm" that has the "--with-develop"
+    option. [The cpanminus packages in the current stable versions of Ubuntu
+    and Debian do not work]. Development dependencies can be installed in a
+    local extlib/ directory without polluting the rest of your system:
 
-    We encourage personal development branches in the repository on
-    bifax.org. Send a request to the mailing list with your public ssh key
-    (something like $HOME/.ssh/id_rsa.pub) and your desired *username*. Once
-    the permissions are configured on the server then you can do something
-    like the following:
+        #!sh
+
+        cpanm \
+            --local-lib-contained extlib \
+            --installdeps \
+            --with-develop \
+            --notest \
+            $PWD
+
+    A test bif script is created in the t/ directory when you run
+    Makefile.PL, which you can easily access afterwards by modifying your
+    PATH:
+
+        #!sh
+        perl -I extlib/lib/perl5 Makefile.PL
+        export PATH=$PWD/t:$PATH
+        which bif   # t/bif
+
+    We encourage personal development branches in the git repository. Send a
+    request to the mailing list with your public ssh key (something like
+    $HOME/.ssh/id_rsa.pub) and your desired *username*. Once the permissions
+    are configured on the server then you can do something like the
+    following:
 
         #!sh
         # Tell git to use ssh authentication
@@ -144,13 +162,23 @@ Development
         # Rebase your tree against most recent devel
         git fetch
         git rebase origin/devel
-        git push origin u/USERNAME/feature
 
-        # tell the mailing list what you have done
+        # Upload and tell the mailing list what you have done
+        git push origin u/USERNAME/feature
 
     This allows anyone who clones the repository to see, modify and merge
     your work from the command line, without having to visit a website to
     find where all the forks are.
+
+    All Perl and POD content is expected to be "tidy" according to the
+    .perltidyrc and .podtidy-opts files in the source tree. The easiest way
+    to ensure this happens on commit is to install "githook-perltidy":
+
+        #!sh
+        cpanm App::githook_perltidy
+
+        # cd into your git repository and then:
+        githook-perltidy install
 
 License
     Bif is free software: you can redistribute it and/or modify it under the
@@ -164,5 +192,6 @@ License
     See the GNU General Public License for more details.
 
 Credits
-    Bif was started by Mark Lawrence <nomad@null.net>.
+    Bif was started by Mark Lawrence <nomad@null.net>. Other contributions
+    are listed in bif-doc-changelog.
 

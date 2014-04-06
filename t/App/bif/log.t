@@ -11,22 +11,25 @@ run_in_tempdir {
 
     bif(qw/init/);
 
-    is bif(qw/log/), 'Log', 'log nothing';
+    isa_ok bif(qw/log/), 'Bif::OK::LogRepo', 'log nothing gives repo';
 
     isa_ok exception { bif(qw/ log unknown /) }, 'Bif::Error::TopicNotFound';
 
-    my $p1 = bif(qw/ new project todo --message message title /);
+    my $p1     = bif(qw/ new project todo --message message title /);
+    my $update = bif(qw/update todo -m meh/);
 
-    # ID number 2 should be a project_status
-    isa_ok exception { bif(qw/ log 2 /) }, 'Bif::Error::LogUnimplemented';
+    # ID number 7 should be a project_status
+    isa_ok exception { bif(qw/ log 7 /) }, 'Bif::Error::LogUnimplemented';
 
-    is bif(qw/log todo/), 'LogProject', 'log project';
+    isa_ok bif(qw/log todo/), 'Bif::OK::LogProject';
 
     my $t = bif(qw/ new task todo --message message title /);
-    is bif( qw/log/, $t->{id} ), 'LogTask', 'log task';
+    $update = bif( qw/update/, $t->{id}, qw/-m taskmeh/ );
+    isa_ok bif( qw/log/, $t->{id} ), 'Bif::OK::LogTask';
 
     my $i = bif(qw/ new issue todo --message message title /);
-    is bif( qw/log/, $i->{id} ), 'LogIssue', 'log issue';
+    $update = bif( qw/update/, $i->{id}, qw/-m issuemeh/ );
+    isa_ok bif( qw/log/, $i->{id} ), 'Bif::OK::LogIssue';
 };
 
 done_testing();

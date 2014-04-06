@@ -1,38 +1,40 @@
 package App::bif::list::hubs;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_db;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->db;
 
     DBIx::ThinSQL->import(qw/ count /);
 
     my $data = $db->xarrays(
         select => [
-            'hubs.id',       'hubs.alias',
-            'hubs.location', count('links.topic_id')->as('link_count'),
+            'r.id',        'COALESCE(r.alias,"")',
+            'rl.location', 'COUNT(rp.project_id)',
         ],
-        from      => 'hubs',
-        left_join => 'links',
-        on        => 'links.hub_id == hubs.id',
-        group_by  => [ 'hubs.alias', 'hubs.location' ],
-        order_by  => 'hubs.alias',
+        from       => 'repo_locations rl',
+        inner_join => 'repos r',
+        on         => 'r.id = rl.repo_id AND r.local IS NULL',
+        left_join  => 'repo_projects rp',
+        on         => 'rp.repo_id = r.id',
+        group_by   => [ 'r.alias', 'rl.location' ],
+        order_by   => 'r.alias',
     );
 
-    return [] unless @$data;
+    return $ctx->ok('ListHubs') unless @$data;
 
-    start_pager( scalar @$data );
+    $ctx->start_pager( scalar @$data );
 
-    print render_table( ' r  l  l  r ', [ 'ID', 'Alias', 'Location', 'Links' ],
-        $data );
+    print $ctx->render_table( ' r  l  l  r ',
+        [ 'ID', 'Alias', 'Location', 'Projects' ], $data );
 
-    end_pager;
+    $ctx->end_pager;
 
-    return $data;
+    return $ctx->ok('ListHubs');
 }
 
 1;
@@ -40,7 +42,7 @@ __END__
 
 =head1 NAME
 
-bif-list-hubs - list hubs associated with a repository
+bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
@@ -48,11 +50,11 @@ bif-list-hubs - list hubs associated with a repository
 
 =head1 SYNOPSIS
 
-    bif list hubs [OPTIONS...]
+    bif list hubs
 
 =head1 DESCRIPTION
 
-Lists the hubs associated with a repository.
+Lists the hubs associated with the current repository.
 
 =head1 SEE ALSO
 
@@ -64,7 +66,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

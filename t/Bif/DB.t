@@ -2,17 +2,58 @@ use strict;
 use warnings;
 use lib 't/lib';
 use Bif::DB;
+use Bif::DB::RW;
 use Test::Bif;
 use Test::More;
 
 run_in_tempdir {
 
-    bif('init');
+    my $dbw = Bif::DB::RW->connect('dbi:SQLite:dbname=db.sqlite3');
 
-    my $project = bif(qw/ new project x title -m message /);
-    my $task    = bif(qw/ new task -p x title2 -m message2 /);
-    my $issue   = bif(qw/ new issue -p x title3 -m message3 /);
-    my $db      = Bif::DB->connect('dbi:SQLite:dbname=.bif/db.sqlite3');
+    my ( $repo, $update, $project, $ps, $ts, $is, $task, $issue );
+    $dbw->txn(
+        sub {
+            $dbw->deploy;
+
+            $repo = new_test_repo( $dbw, 1 );
+
+            $dbw->xdo(
+                insert_into => 'func_merge_updates',
+                values      => { merge => 1 },
+            );
+
+            $update  = new_test_update($dbw);
+            $project = new_test_project($dbw);
+
+            $ps = new_test_project_status( $dbw, $project );
+            $ts = new_test_task_status( $dbw, $project );
+            $is = new_test_issue_status( $dbw, $project );
+            $task = new_test_task( $dbw, $ts );
+            $issue = new_test_issue( $dbw, $is );
+            $dbw->xdo(
+                insert_into => 'func_update_project',
+                values      => {
+                    id        => $project->{id},
+                    status_id => $ps->{id},
+                },
+            );
+
+            $dbw->xdo(
+                insert_into => 'func_merge_updates',
+                values      => { merge => 1 },
+            );
+
+            $dbw->xdo(
+                insert_into => 'repo_projects',
+                values      => {
+                    project_id => $project->{id},
+                    repo_id    => $repo->{id},
+                },
+            );
+        }
+    );
+
+    my $db = Bif::DB->connect('dbi:SQLite:dbname=db.sqlite3');
     isa_ok $db, 'Bif::DB::db';
 
     # path2project
@@ -25,10 +66,10 @@ run_in_tempdir {
         is_deeply $ref = $db->get_topic(-1), undef, 'get_topic unknown ID';
 
         is_deeply $ref = $db->get_topic( $project->{id} ), {
-            id               => $project->{id},
-            first_update_id  => 1,
-            kind             => 'project',
-            uuid             => $ref->{uuid},     # hard to know this in advance
+            id              => $project->{id},
+            first_update_id => $project->{update_id},
+            kind            => 'project',
+            uuid             => $ref->{uuid},    # hard to know this in advance
             project_issue_id => undef,
             project_id       => undef,
           },
@@ -119,6 +160,11 @@ run_in_tempdir {
         }
     };
 
+    # get_local_repo_id
+    subtest 'get_local_repo_id', sub {
+        is $db->get_local_repo_id, $repo->{id}, 'get_local_repo_id';
+    };
+
     # get_project
     subtest 'get_project', sub {
         my $ref;
@@ -131,15 +177,18 @@ run_in_tempdir {
         is_deeply $ref = $db->get_project('unknown'), undef,
           'get_project unknown project';
 
-        is_deeply $ref = $db->get_project('x'), {
+        is_deeply $ref = $db->get_project( $project->{name} ), {
             id              => $project->{id},
-            first_update_id => 1,
+            first_update_id => $project->{update_id},
             kind            => 'project',
-            uuid            => $ref->{uuid},     # hard to know this in advance
-            parent_id       => undef,
-            path            => 'x',
+            uuid      => $ref->{uuid},       # hard to know this in advance
+            parent_id => undef,
+            path      => $project->{name},
+            local     => 1,
           },
           'get_project known project';
+
+        # TODO get project with repo
     };
 
     # status_ids
@@ -156,25 +205,40 @@ run_in_tempdir {
         is_deeply $invalid, [], 'invalid undefined args';
 
         ( $ids, $invalid ) =
-          $db->status_ids( $project->{id}, 'project', 'run', 'eval' );
-        like $ids->[0], qr/^\d+$/, "ids @$ids";
-        like $ids->[1], qr/^\d+$/, "ids @$ids";
+          $db->status_ids( $project->{id}, 'project', $ps->{status} );
+        is $ids->[0], $ps->{id}, "ids @$ids";
         is_deeply $invalid, [], "invalid @$invalid";
 
         ( $ids, $invalid ) =
-          $db->status_ids( $project->{id}, 'project', 'run', 'junky', 'eval' );
-        like $ids->[0], qr/^\d+$/, "ids @$ids";
-        like $ids->[1], qr/^\d+$/, "ids @$ids";
+          $db->status_ids( $project->{id}, 'project', $ps->{status}, 'junky' );
+
+        is $ids->[0], $ps->{id}, "ids @$ids";
         is_deeply $invalid, ['junky'], "invalid @$invalid";
 
         ( $ids, $invalid ) =
-          $db->status_ids( $project->{id}, 'project', 'more', 'junky', 'eval' );
-        like $ids->[0], qr/^\d+$/, "ids @$ids";
+          $db->status_ids( $project->{id}, 'project', 'more', 'junky',
+            $ps->{status}, $ps->{status} );
+        is_deeply $ids, [ $ps->{id} ], "ids @$ids";    # Multiples get reduced
+        is_deeply $invalid, [ 'junky', 'more' ], "invalid @$invalid";
+
+        ( $ids, $invalid ) =
+          $db->status_ids( $project->{id}, 'task', 'more', $ts->{status},
+            'junky' );
+        is_deeply $ids, [ $ts->{id} ], "ids @$ids";
+        is_deeply $invalid, [ 'junky', 'more' ], "invalid @$invalid";
+
+        is_deeply $invalid, [ 'junky', 'more' ], "invalid @$invalid";
+        ( $ids, $invalid ) =
+          $db->status_ids( $project->{id}, 'issue', 'more', $is->{status},
+            'junky' );
+        is_deeply $ids, [ $is->{id} ], "ids @$ids";
         is_deeply $invalid, [ 'junky', 'more' ], "invalid @$invalid";
     };
 
-    subtest 'hub_info', sub {
-        is $db->hub_info, undef, 'hub_info(undef)';
+    subtest 'get_repo_locations', sub {
+        is_deeply [ $db->get_repo_locations ], [], 'get_repo_locations(undef)';
+        is_deeply [ $db->get_repo_locations('noalias') ], [],
+          'get_repo_locations(q{noalias})';
     };
 };
 

@@ -1,82 +1,79 @@
 package App::bif::new::project;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts   = bif_init(shift);
-    my $config = bif_conf($opts);
-    my $db     = bif_dbw;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->dbw;
 
     DBIx::ThinSQL->import(qw/ qv /);
 
-    $opts->{path} ||= prompt( 'Path:', '' )
-      || bif_err( 'ProjectPathRequired', 'project path is required' );
+    $ctx->{path} ||= prompt( 'Path:', '' )
+      || return $ctx->err( 'ProjectPathRequired', 'project path is required' );
 
-    my $path = $opts->{path};
+    my $path = $ctx->{path};
 
-    bif_err( 'ProjectExists', 'project already exists: ' . $opts->{path} )
-      if $db->path2project_id( $opts->{path} );
+    return $ctx->err( 'ProjectExists',
+        'project already exists: ' . $ctx->{path} )
+      if $db->path2project_id( $ctx->{path} );
 
-    if ( $opts->{path} =~ m/\// ) {
+    if ( $ctx->{path} =~ m/\// ) {
         my @parts = split( '/', $path );
-        $opts->{path} = pop @parts;
+        $ctx->{path} = pop @parts;
 
         my $parent_path = join( '/', @parts );
 
-        $opts->{parent_id} = $db->path2project_id($parent_path)
-          || bif_err( 'ParentProjectNotFound',
+        $ctx->{parent_id} = $db->path2project_id($parent_path)
+          || return $ctx->err( 'ParentProjectNotFound',
             'parent project not found: ' . $parent_path );
     }
 
     my $where;
-    if ( $opts->{status} ) {
-        bif_err( 'InvalidStatus', 'unknown status: ' . $opts->{status} )
+    if ( $ctx->{status} ) {
+        return $ctx->err( 'InvalidStatus', 'unknown status: ' . $ctx->{status} )
           unless $db->xarray(
             select => 'count(*)',
             from   => 'default_status',
             where  => {
                 kind   => 'project',
-                status => $opts->{status},
+                status => $ctx->{status},
             }
           );
     }
 
-    $opts->{title} ||= prompt( 'Title:', '' )
-      || bif_err( 'ProjectNameRequired', 'project title is required' );
+    $ctx->{title} ||= prompt( 'Title:', '' )
+      || return $ctx->err( 'ProjectNameRequired', 'project title is required' );
 
-    $opts->{lang}   ||= 'en';
-    $opts->{email}  ||= $config->{user}->{email};
-    $opts->{author} ||= $config->{user}->{name};
-
-    $opts->{message} ||= prompt_edit( opts => $opts );
-
-    $opts->{id}        = $db->nextval('topics');
-    $opts->{update_id} = $db->nextval('updates');
+    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    $ctx->{lang} ||= 'en';
+    $ctx->{id}        = $db->nextval('topics');
+    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
-                    id      => $opts->{update_id},
-                    email   => $opts->{email},
-                    author  => $opts->{author},
-                    message => $opts->{message},
+                    id      => $ctx->{update_id},
+                    email   => $ctx->{user}->{email},
+                    author  => $ctx->{user}->{name},
+                    message => $ctx->{message},
                 },
             );
 
             $db->xdo(
                 insert_into => 'func_new_project',
                 values      => {
-                    id        => $opts->{id},
-                    update_id => $opts->{update_id},
-                    parent_id => $opts->{parent_id},
-                    name      => $opts->{path},
-                    title     => $opts->{title},
+                    id        => $ctx->{id},
+                    update_id => $ctx->{update_id},
+                    parent_id => $ctx->{parent_id},
+                    name      => $ctx->{path},
+                    title     => $ctx->{title},
+                    local     => 1,
                 },
             );
 
@@ -85,7 +82,7 @@ sub run {
                     'func_new_project_status',
                     qw/project_id status status rank/
                 ],
-                select => [ qv( $opts->{id} ), qw/status status rank/, ],
+                select => [ qv( $ctx->{id} ), qw/status status rank/, ],
                 from   => 'default_status',
                 where    => { kind => 'project' },
                 order_by => 'rank',
@@ -95,21 +92,21 @@ sub run {
                 insert_into =>
                   [ 'project_updates', qw/update_id project_id status_id/, ],
                 select => [
-                    qv( $opts->{update_id} ),
-                    qv( $opts->{id} ),
+                    qv( $ctx->{update_id} ),
+                    qv( $ctx->{id} ),
                     'project_status.id',
                 ],
                 from       => 'default_status',
                 inner_join => 'project_status',
                 on         => {
-                    project_id              => $opts->{id},
+                    project_id              => $ctx->{id},
                     'default_status.status' => \'project_status.status',
                 },
                 where => do {
-                    if ( $opts->{status} ) {
+                    if ( $ctx->{status} ) {
                         {
                             'default_status.kind'   => 'project',
-                            'default_status.status' => $opts->{status},
+                            'default_status.status' => $ctx->{status},
                         };
                     }
                     else {
@@ -124,7 +121,7 @@ sub run {
             $db->xdo(
                 insert_into =>
                   [ 'func_new_task_status', qw/project_id status rank def/ ],
-                select => [ qv( $opts->{id} ), qw/status rank def/, ],
+                select => [ qv( $ctx->{id} ), qw/status rank def/, ],
                 from   => 'default_status',
                 where    => { kind => 'task' },
                 order_by => 'rank',
@@ -135,7 +132,7 @@ sub run {
                     'func_new_issue_status',
                     qw/project_id status status rank def/
                 ],
-                select => [ qv( $opts->{id} ), qw/status status rank def/, ],
+                select => [ qv( $ctx->{id} ), qw/status status rank def/, ],
                 from   => 'default_status',
                 where    => { kind => 'issue' },
                 order_by => 'rank',
@@ -146,11 +143,20 @@ sub run {
                 values      => { merge => 1 },
             );
 
+            $db->update_repo(
+                {
+                    author     => $ctx->{user}->{name},
+                    email      => $ctx->{user}->{email},
+                    message    => "new project $ctx->{id} [$ctx->{path}]",
+                    project_id => $ctx->{id},
+                }
+            );
+
         }
     );
 
     printf( "Project created: %s\n", $path );
-    return bif_ok( 'NewProject', $opts );
+    return $ctx->ok('NewProject');
 }
 
 1;
@@ -210,7 +216,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

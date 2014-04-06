@@ -1,7 +1,7 @@
 package App::bif::log;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
@@ -15,8 +15,8 @@ my $reset;
 my $white;
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_db();
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->db();
 
     $NOW = time;
 
@@ -31,17 +31,21 @@ sub run {
     $reset  = Term::ANSIColor::color('reset');
     $white  = Term::ANSIColor::color('white');
 
-    if ( $opts->{id} ) {
+    if ( $ctx->{id} ) {
         my $info =
-             $db->get_topic( $opts->{id} )
-          || $db->get_project( $opts->{id} )
-          || bif_err( 'TopicNotFound', 'topic not found: ' . $opts->{id} );
+             $db->get_topic( $ctx->{id} )
+          || $db->get_project( $ctx->{id} )
+          || return $ctx->err( 'TopicNotFound',
+            'topic not found: ' . $ctx->{id} );
 
         my $func = __PACKAGE__->can( '_log_' . $info->{kind} )
-          || bif_err( 'LogUnimplemented',
+          || return $ctx->err( 'LogUnimplemented',
             'cannnot log type: ' . $info->{kind} );
 
-        return $func->( $db, $info );
+        return $func->( $ctx, $info );
+    }
+    else {
+        return _log_repo( $ctx, $db->get_topic( $db->get_local_repo_id ) );
     }
 
     my $sth = $db->xprepare(
@@ -66,8 +70,18 @@ sub run {
                     COALESCE(project_updates.title, projects.title)
                 )
             , '\n') AS title",
+            'COALESCE(
+            issue_updates.id,
+            task_updates.id,
+            project_updates.id,
+            repo_updates.id
+            ) AS update_order',
         ],
         from      => 'updates',
+        left_join => 'repo_updates',
+        on        => 'repo_updates.update_id = updates.id',
+        left_join => 'repos',
+        on        => 'repos.id = repo_updates.repo_id',
         left_join => 'project_updates',
         on        => 'project_updates.update_id = updates.id AND
                       project_updates.new IS NULL',
@@ -82,13 +96,14 @@ sub run {
         left_join => 'issues',
         on        => 'issues.id = issue_updates.issue_id',
         left_join => 'topics',
-        on        => 'topics.id = project_updates.project_id OR
+        on        => 'topics.id = repo_updates.repo_id OR
+                       topics.id = project_updates.project_id OR
                        topics.id = task_updates.task_id OR
                        topics.id = issue_updates.issue_id',
         do {
             my $where_cond = '';
 
-            foreach my $filter ( @{ $opts->{filter} } ) {
+            foreach my $filter ( @{ $ctx->{filter} } ) {
 
                 # This could be much more efficently done with a
                 # completely different query that inner joins
@@ -105,7 +120,7 @@ sub run {
                       . 'OR issue_updates.status_id IS NOT NULL)';
                 }
                 else {
-                    bif_err( 'InvalidFilter',
+                    return $ctx->err( 'InvalidFilter',
                         'not a valid --filter: ' . $filter );
                 }
             }
@@ -123,12 +138,13 @@ sub run {
             'updates.author',  'updates.email',
             'updates.message', 'updates.id = topics.first_update_id',
         ],
-        order_by => [ 'updates.mtime desc', 'updates.uuid', ],
+        order_by =>
+          [ 'updates.mtime desc', 'update_order DESC', 'updates.uuid', ],
     );
 
     $sth->execute;
 
-    start_pager;
+    $ctx->start_pager;
 
     while ( my $row = $sth->hash ) {
         my @data;
@@ -170,11 +186,11 @@ sub run {
                 ( $row->{new_item} ? '' : "Re: [$row->{kind}] " )
                   . $row->{title},
             )
-        );
+        ) if $row->{title};
 
         #        }
 
-        print render_table( 'l  l', undef, \@data ) . "\n";
+        print $ctx->render_table( 'l  l', undef, \@data ) . "\n";
 
         if ( $row->{push_to} ) {
             print "[Pushed to " . $row->{push_to} . "]\n\n\n";
@@ -185,8 +201,8 @@ sub run {
         next;
 
     }
-    end_pager;
-    return 'Log';
+    $ctx->end_pager;
+    return $ctx->ok('Log');
 }
 
 sub _header {
@@ -239,6 +255,7 @@ my $title;
 my $path;
 
 sub _log_item {
+    my $ctx  = shift;
     my $row  = shift;
     my $type = shift;
 
@@ -248,22 +265,34 @@ sub _log_item {
     my @data = (
         _header( $yellow . $type, $yellow . $row->{id}, $row->{update_uuid} ),
         _header( 'From',          $row->{author},       $row->{email} ),
-        _header( 'When',    _new_ago( $row->{mtime}, $row->{mtimetz} ) ),
-        _header( 'Subject', "[$row->{path}] $row->{title}" )
+        _header( 'When', _new_ago( $row->{mtime}, $row->{mtimetz} ) ),
     );
+
+    if ( $row->{status} ) {
+        push(
+            @data,
+            _header(
+                'Subject', "[$row->{path}][$row->{status}] $row->{title}"
+            )
+        );
+    }
+    else {
+        push( @data, _header( 'Subject', "[$row->{path}] $row->{title}" ) );
+    }
 
     foreach my $field (@_) {
         next unless defined $field->[1];
         push( @data, _header(@$field) );
     }
 
-    print render_table( 'l  l', undef, \@data ) . "\n";
+    print $ctx->render_table( 'l  l', undef, \@data ) . "\n";
     print _reformat( $row->{message} ), "\n";
 
     return;
 }
 
 sub _log_comment {
+    my $ctx = shift;
     my $row = shift;
     my @data;
 
@@ -284,8 +313,12 @@ sub _log_comment {
         $title = $row->{title} if $row->{title};
         push( @data, _header( 'Subject', "[$path] $title" ) );
     }
+    elsif ( $row->{status} ) {
+        push( @data,
+            _header( 'Subject', "[$path][$row->{status}] Re: $title" ) );
+    }
     else {
-        push( @data, _header( 'Subject', "Re: [$path] $title" ) );
+        push( @data, _header( 'Subject', "[$path] Re: $title" ) );
     }
 
     foreach my $field (@_) {
@@ -293,7 +326,7 @@ sub _log_comment {
         push( @data, _header(@$field) );
     }
 
-    print render_table( 'l  l', undef, \@data, 4 * ( $row->{depth} - 1 ) )
+    print $ctx->render_table( 'l  l', undef, \@data, 4 * ( $row->{depth} - 1 ) )
       . "\n";
 
     if ( $row->{push_to} ) {
@@ -304,8 +337,59 @@ sub _log_comment {
     }
 }
 
+sub _log_repo {
+    my $ctx  = shift;
+    my $db   = $ctx->db;
+    my $info = shift;
+
+    my $sth = $db->xprepare(
+        select => [
+            q{strftime('%w',u.mtime,'unixepoch','localtime') AS weekday},
+            q{strftime('%Y-%m-%d',u.mtime,'unixepoch','localtime') AS mdate},
+            q{strftime('%H:%M:%S',u.mtime,'unixepoch','localtime') AS mtime},
+            'u.message',
+        ],
+        from       => 'repo_updates ru',
+        inner_join => 'updates u',
+        on         => 'u.id = ru.update_id',
+        where      => { 'ru.repo_id' => $info->{id} },
+        group_by   => [qw/weekday mdate mtime/],
+        order_by   => 'u.id DESC',
+    );
+
+    $sth->execute;
+
+    $ctx->start_pager;
+
+    my @days = (
+        qw/Sunday Monday Tuesday Wednesday Thursday Friday
+          Saturday/
+    );
+
+    my $first   = $sth->array;
+    my $weekday = $first->[0];
+
+    print " $dark$first->[1] ($days[$weekday]) $reset \n";
+    print '-' x 80, "\n";
+    print " $first->[2]  $first->[3]\n";
+
+    while ( my $n = $sth->array ) {
+        if ( $n->[0] != $weekday ) {
+            print "\n $dark$n->[1] ($days[ $n->[0] ])$reset\n";
+            print '-' x 80, "\n";
+        }
+
+        print " $n->[2]  $n->[3]\n";
+        $weekday = $n->[0];
+    }
+
+    $ctx->end_pager;
+    return $ctx->ok('LogRepo');
+}
+
 sub _log_task {
-    my $db   = shift;
+    my $ctx  = shift;
+    my $db   = $ctx->db;
     my $info = shift;
 
     my $sth = $db->xprepare(
@@ -343,17 +427,18 @@ sub _log_task {
 
     $sth->execute;
 
-    start_pager;
+    $ctx->start_pager;
 
-    _log_item( scalar $sth->hash, 'task' );
-    _log_comment($_) for $sth->hashes;
+    _log_item( $ctx, scalar $sth->hash, 'task' );
+    _log_comment( $ctx, $_ ) for $sth->hashes;
 
-    end_pager;
-    return 'LogTask';
+    $ctx->end_pager;
+    return $ctx->ok('LogTask');
 }
 
 sub _log_issue {
-    my $db   = shift;
+    my $ctx  = shift;
+    my $db   = $ctx->db;
     my $info = shift;
 
     DBIx::ThinSQL->import(qw/concat case qv/);
@@ -399,17 +484,18 @@ sub _log_issue {
 
     $sth->execute;
 
-    start_pager;
+    $ctx->start_pager;
 
-    _log_item( scalar $sth->hash, 'issue' );
-    _log_comment($_) for $sth->hashes;
+    _log_item( $ctx, scalar $sth->hash, 'issue' );
+    _log_comment( $ctx, $_ ) for $sth->hashes;
 
-    end_pager;
-    return 'LogIssue';
+    $ctx->end_pager;
+    return $ctx->ok('LogIssue');
 }
 
 sub _log_project {
-    my $db   = shift;
+    my $ctx  = shift;
+    my $db   = $ctx->db;
     my $info = shift;
 
     my $sth = $db->xprepare(
@@ -443,21 +529,22 @@ sub _log_project {
         on         => 'project_status.id = project_updates.status_id',
         where      => {
             'project_updates.project_id' => $info->{id},
-            'project_updates.new'        => undef,
+
+            #            'project_updates.new'        => undef,
         },
         order_by => 'updates.path asc',
     );
 
     $sth->execute;
 
-    start_pager;
+    $ctx->start_pager;
 
     my $first = $sth->hash;
-    _log_item( $first, 'project', [ 'Phase', $first->{status} ] );
-    _log_comment( $_, [ 'Phase', $_->{status} ] ) for $sth->hashes;
+    _log_item( $ctx, $first, 'project', [ 'Phase', $first->{status} ] );
+    _log_comment( $ctx, $_ ) for $sth->hashes;
 
-    end_pager;
-    return 'LogProject';
+    $ctx->end_pager;
+    return $ctx->ok('LogProject');
 }
 
 1;
@@ -564,7 +651,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

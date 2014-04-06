@@ -42,7 +42,7 @@ sub install_docs {
         next if @names == 1;    # ignore App::bif and App::bifsync
 
         my $dest = path( 'tmpdocs', join( '-', @names ) );
-        next if $dest =~ m/[A-Z]/;    # ignore App::bif::Util
+        next if $dest =~ m/[A-Z]/;    # ignore App::bif::Context
 
         $dest =~ s/_/-/g;
         $dest =~ s/\.pm/\.pod/;

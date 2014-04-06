@@ -1,66 +1,63 @@
 package App::bif::update;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts   = bif_init(shift);
-    my $config = bif_conf;
-    my $db     = bif_dbw;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->dbw;
 
     my $info =
-         $db->get_topic( $opts->{id} )
-      || $db->get_project( $opts->{id} )
-      || bif_err( 'TopicNotFound', 'topic not found: ' . $opts->{id} );
+         $db->get_topic( $ctx->{id} )
+      || $db->get_project( $ctx->{id} )
+      || return $ctx->err( 'TopicNotFound', 'topic not found: ' . $ctx->{id} );
 
     $info->{update_id} = $info->{first_update_id};
 
     my $func = __PACKAGE__->can( '_update_' . $info->{kind} )
-      || bif_err(
+      || return $ctx->err(
         'Update' . ucfirst( $info->{kind} ) . 'Unimplemented',
-        'cannnot update on type: ' . $info->{kind}
+        "cannnot update topics of type \"$info->{kind}\""
       );
 
-    $opts->{lang}   ||= 'en';
-    $opts->{email}  ||= $config->{user}->{email};
-    $opts->{author} ||= $config->{user}->{name};
+    $ctx->{lang} ||= 'en';
 
     # TODO calculate parent_update_id
 
-    return $func->( $opts, $db, $info );
+    return $func->( $ctx, $db, $info );
 }
 
 sub _update_project {
-    my $opts = shift;
+    my $ctx  = shift;
     my $db   = shift;
     my $info = shift;
 
     my ( $status_ids, $invalid );
-    if ( $opts->{status} ) {
+    if ( $ctx->{status} ) {
 
         ( $status_ids, $invalid ) =
-          $db->status_ids( $info->{id}, 'project', $opts->{status} );
+          $db->status_ids( $info->{id}, 'project', $ctx->{status} );
 
-        bif_err( 'InvalidStatus',
+        return $ctx->err( 'InvalidStatus',
             'unknown status(s): ' . join( ', ', @$invalid ) )
           if @$invalid;
     }
 
-    $opts->{message} ||= prompt_edit( opts => $opts );
-    $opts->{update_id} = $db->nextval('updates');
+    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
-                    id        => $opts->{update_id},
+                    id        => $ctx->{update_id},
                     parent_id => $info->{update_id},
-                    author    => $opts->{author},
-                    email     => $opts->{email},
-                    message   => $opts->{message},
+                    author    => $ctx->{user}->{name},
+                    email     => $ctx->{user}->{email},
+                    message   => $ctx->{message},
                 },
             );
 
@@ -68,9 +65,9 @@ sub _update_project {
                 insert_into => 'func_update_project',
                 values      => {
                     id        => $info->{id},
-                    update_id => $opts->{update_id},
-                    $opts->{title} ? ( title     => $opts->{title} )   : (),
-                    $status_ids    ? ( status_id => $status_ids->[0] ) : (),
+                    update_id => $ctx->{update_id},
+                    $ctx->{title} ? ( title     => $ctx->{title} )    : (),
+                    $status_ids   ? ( status_id => $status_ids->[0] ) : (),
                 },
             );
 
@@ -78,19 +75,30 @@ sub _update_project {
                 insert_into => 'func_merge_updates',
                 values      => { merge => 1 },
             );
+
+            $db->update_repo(
+                {
+                    author            => $ctx->{user}->{name},
+                    email             => $ctx->{user}->{email},
+                    related_update_id => $ctx->{update_id},
+                    message           => 'update project '
+                      . "$info->{id} [$ctx->{id}]"
+                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
+                }
+            );
         }
     );
 
-    print "Project updated: $info->{id}.$opts->{update_id}\n";
+    print "Project updated: $ctx->{id}.$ctx->{update_id}\n";
 
     # For testing
-    $opts->{id}     = $info->{id};
-    $opts->{status} = $status_ids;
-    return bif_ok( 'UpdateProject', $opts );
+    $ctx->{id}     = $info->{id};
+    $ctx->{status} = $status_ids;
+    return $ctx->ok('UpdateProject');
 }
 
 sub _update_issue {
-    my $opts = shift;
+    my $ctx  = shift;
     my $db   = shift;
     my $info = shift;
 
@@ -101,24 +109,25 @@ sub _update_issue {
     );
 
     my ( $status_ids, $invalid ) =
-      $db->status_ids( $info->{project_id}, 'issue', $opts->{status} );
+      $db->status_ids( $info->{project_id}, 'issue', $ctx->{status} );
 
-    bif_err( 'InvalidStatus', 'unknown status(s): ' . join( ', ', @$invalid ) )
+    return $ctx->err( 'InvalidStatus',
+        'unknown status(s): ' . join( ', ', @$invalid ) )
       if @$invalid;
 
-    $opts->{message} ||= prompt_edit( opts => $opts );
-    $opts->{update_id} = $db->nextval('updates');
+    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
-                    id        => $opts->{update_id},
+                    id        => $ctx->{update_id},
                     parent_id => $info->{update_id},
-                    author    => $opts->{author},
-                    email     => $opts->{email},
-                    message   => $opts->{message},
+                    author    => $ctx->{user}->{name},
+                    email     => $ctx->{user}->{email},
+                    message   => $ctx->{message},
                 },
             );
 
@@ -126,10 +135,10 @@ sub _update_issue {
                 insert_into => 'func_update_issue',
                 values      => {
                     id         => $info->{id},
-                    update_id  => $opts->{update_id},
+                    update_id  => $ctx->{update_id},
                     project_id => $info->{project_id},
-                    $opts->{title} ? ( title     => $opts->{title} )   : (),
-                    @$status_ids   ? ( status_id => $status_ids->[0] ) : (),
+                    $ctx->{title} ? ( title     => $ctx->{title} )    : (),
+                    @$status_ids  ? ( status_id => $status_ids->[0] ) : (),
                 },
             );
 
@@ -137,25 +146,43 @@ sub _update_issue {
                 insert_into => 'func_merge_updates',
                 values      => { merge => 1 },
             );
+
+            my ($path) = $db->xarray(
+                select => 'p.path',
+                from   => 'projects p',
+                where  => { 'p.id' => $info->{project_id} },
+            );
+
+            $db->update_repo(
+                {
+                    author            => $ctx->{user}->{name},
+                    email             => $ctx->{user}->{email},
+                    related_update_id => $ctx->{update_id},
+                    message           => 'update issue '
+                      . $info->{project_issue_id}
+                      . " [$path]"
+                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
+                }
+            );
         }
     );
 
-    print "Issue updated: $info->{project_issue_id}.$opts->{update_id}\n";
+    print "Issue updated: $info->{project_issue_id}.$ctx->{update_id}\n";
 
     # For testing
-    $opts->{id}               = $info->{id};
-    $opts->{parent_update_id} = $info->{update_id};
-    $opts->{status}           = $status_ids;
-    return bif_ok( 'UpdateIssue', $opts );
+    $ctx->{id}               = $info->{id};
+    $ctx->{parent_update_id} = $info->{update_id};
+    $ctx->{status}           = $status_ids;
+    return $ctx->ok('UpdateIssue');
 }
 
 sub _update_task {
-    my $opts = shift;
+    my $ctx  = shift;
     my $db   = shift;
     my $info = shift;
 
     my ( $status_ids, $invalid );
-    if ( $opts->{status} ) {
+    if ( $ctx->{status} ) {
         my ($project_id) = $db->xarray(
             select     => 'task_status.project_id',
             from       => 'tasks',
@@ -165,26 +192,26 @@ sub _update_task {
         );
 
         ( $status_ids, $invalid ) =
-          $db->status_ids( $project_id, 'task', $opts->{status} );
+          $db->status_ids( $project_id, 'task', $ctx->{status} );
 
-        bif_err( 'InvalidStatus',
+        return $ctx->err( 'InvalidStatus',
             'unknown status(s): ' . join( ', ', @$invalid ) )
           if @$invalid;
     }
 
-    $opts->{message} ||= prompt_edit( opts => $opts );
-    $opts->{update_id} = $db->nextval('updates');
+    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
-                    id        => $opts->{update_id},
+                    id        => $ctx->{update_id},
                     parent_id => $info->{update_id},
-                    author    => $opts->{author},
-                    email     => $opts->{email},
-                    message   => $opts->{message},
+                    author    => $ctx->{user}->{name},
+                    email     => $ctx->{user}->{email},
+                    message   => $ctx->{message},
                 },
             );
 
@@ -192,9 +219,9 @@ sub _update_task {
                 insert_into => 'func_update_task',
                 values      => {
                     id        => $info->{id},
-                    update_id => $opts->{update_id},
-                    $opts->{title} ? ( title     => $opts->{title} )   : (),
-                    $status_ids    ? ( status_id => $status_ids->[0] ) : (),
+                    update_id => $ctx->{update_id},
+                    $ctx->{title} ? ( title     => $ctx->{title} )    : (),
+                    $status_ids   ? ( status_id => $status_ids->[0] ) : (),
                 },
             );
 
@@ -202,16 +229,38 @@ sub _update_task {
                 insert_into => 'func_merge_updates',
                 values      => { merge => 1 },
             );
+
+            my ($path) = $db->xarray(
+                select     => 'p.path',
+                from       => 'tasks t',
+                inner_join => 'task_status ts',
+                on         => 'ts.id = t.status_id',
+                inner_join => 'projects p',
+                on         => 'p.id = ts.project_id',
+                where      => { 't.id' => $ctx->{id} },
+            );
+
+            $db->update_repo(
+                {
+                    author            => $ctx->{user}->{name},
+                    email             => $ctx->{user}->{email},
+                    related_update_id => $ctx->{update_id},
+                    message           => 'update task '
+                      . $ctx->{id}
+                      . " [$path]"
+                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
+                }
+            );
         }
     );
 
-    print "Task updated: $info->{id}.$opts->{update_id}\n";
+    print "Task updated: $info->{id}.$ctx->{update_id}\n";
 
     # For testing
-    $opts->{id}               = $info->{id};
-    $opts->{parent_update_id} = $info->{update_id};
-    $opts->{status}           = $status_ids;
-    return bif_ok( 'UpdateTask', $opts );
+    $ctx->{id}               = $info->{id};
+    $ctx->{parent_update_id} = $info->{update_id};
+    $ctx->{status}           = $status_ids;
+    return $ctx->ok('UpdateTask');
 }
 
 1;
@@ -277,7 +326,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

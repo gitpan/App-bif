@@ -1,8 +1,9 @@
 package App::bif::list::projects;
 use strict;
 use warnings;
-use App::bif::Util;
-use Term::ANSIColor;
+use utf8;
+use App::bif::Context;
+use DBIx::ThinSQL qw/ qv sq case concat /;
 
 our $VERSION = '0.1.0';
 
@@ -25,12 +26,10 @@ sub _invalid_status {
 }
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_db;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->db;
 
-    DBIx::ThinSQL->import(qw/ qv sq /);
-
-    my @invalid = _invalid_status( $db, 'project', $opts->{status} );
+    my @invalid = _invalid_status( $db, 'project', $ctx->{status} );
 
     if (@invalid) {
         my ($pcount) = $db->xarray(
@@ -38,81 +37,158 @@ sub run {
             from   => 'projects',
         );
         if ($pcount) {
-            bif_err( 'InvalidStatus', "invalid status: @invalid" )
+            return $ctx->err( 'InvalidStatus', "invalid status: @invalid" )
               if @invalid;
         }
         else {
-            return [];
+            return $ctx->ok('ListProjects');
         }
     }
 
-    do {
-        if ( $opts->{all} ) {
+    if ( $ctx->{hub} ) {
+        require Path::Tiny;
+        my $dir = Path::Tiny::path( $ctx->{hub} )->absolute if -d $ctx->{hub};
+        ( $ctx->{repo_id} ) = $db->xarray(
+            select       => 'r.id',
+            from         => 'repos r',
+            where        => { 'r.alias' => $ctx->{hub} },
+            union_select => 'r.id',
+            from         => 'repo_locations rl',
+            inner_join   => 'repos r',
+            on           => 'r.id = rl.repo_id',
+            where        => { 'rl.location' => $ctx->{hub} },
+            union_select => 'r.id',
+            from         => 'repo_locations rl',
+            inner_join   => 'repos r',
+            on           => 'r.id = rl.repo_id',
+            where        => { 'rl.location' => $dir },
+            limit        => 1,
+        );
+
+        return $ctx->err( 'HubNotFound',
+            'hub location/alias not registered: ' . $ctx->{hub} )
+          unless $ctx->{repo_id};
+
+    }
+
+    my $data = _get_data($ctx);
+    return $ctx->ok('ListProjects') unless @$data;
+
+    require Term::ANSIColor;
+    my $dark  = Term::ANSIColor::color('dark');
+    my $reset = Term::ANSIColor::color('reset');
+
+    # TODO do this as a sub-select?
+    foreach my $i ( 0 .. $#$data ) {
+        my $row = $data->[$i];
+        if ( !$row->[6] ) {
+            $row->[3] = $row->[4] = $row->[5] = '*';
         }
         else {
+            if ( $row->[5] ) {
+                $row->[5] =
+                  int( 100 * $row->[5] / ( $row->[5] + $row->[3] + $row->[4] ) )
+                  . '%';
+            }
+            else {
+                $row->[5] = '0%';
+            }
         }
-      },
 
-      my $data = $db->xarrays(
+        $row->[6] = '';
+    }
+
+    $ctx->start_pager( scalar @$data );
+
+    print $ctx->render_table( ' l  l  l  r r rl',
+        [ 'Project', 'Title', 'Phase', 'Open', 'Stalled', 'Progress', '' ],
+        $data );
+
+    $ctx->end_pager;
+
+    return $ctx->ok('ListProjects');
+}
+
+sub _get_data {
+    my $ctx = shift;
+    return $ctx->db->xarrays(
         select => [
-            'projects.path',         'projects.title',
-            'project_status.status', 'sum(total.open)',
-            'sum(total.stalled)',    'sum(total.closed)',
+            case (
+                when => 'r.id IS NOT NULL',
+                then => "p.path || '\@' || r.alias",
+                else => 'p.path',
+              )->as('path'),
+            'p.title',
+            'project_status.status',
+            'sum( coalesce( total.open, 0 ) )',
+            'sum( coalesce( total.stalled, 0 ) )',
+            'sum( coalesce( total.closed, 0 ) )',
+            'coalesce( p.local, 0 )',
         ],
-        from       => 'projects',
+        from       => 'projects p',
+        left_join  => 'repos r',
+        on         => 'r.id = p.repo_id',
         inner_join => 'project_status',
         on         => do {
-            if ( $opts->{status} ) {
+            if ( $ctx->{status} ) {
                 [
-                    'project_status.id = projects.status_id AND ',
+                    'project_status.id = p.status_id AND ',
                     'project_status.status = ',
-                    qv( $opts->{status} )
+                    qv( $ctx->{status} )
                 ];
             }
             else {
-                'project_status.id = projects.status_id';
+                'project_status.id = p.status_id';
             }
         },
         left_join => sq(
             select => [
-                'projects.id',
+                'p.id',
                 "sum(task_status.status = 'open') as open",
                 "sum(task_status.status = 'stalled') as stalled",
                 "sum(task_status.status = 'closed') as closed",
             ],
-            from => 'projects',
+            from => 'projects p',
             do {
-                if ( $opts->{status} ) {
+                if ( $ctx->{status} ) {
                     inner_join => 'project_status',
                       on       => [
-                        'project_status.id = projects.status_id AND ',
+                        'project_status.id = p.status_id AND ',
                         'project_status.status = ',
-                        qv( $opts->{status} )
+                        qv( $ctx->{status} )
                       ];
                 }
                 else {
                     ();
                 }
             },
-            inner_join       => 'task_status',
-            on               => 'task_status.project_id = projects.id',
-            inner_join       => 'tasks',
-            on               => 'tasks.status_id = task_status.id',
-            group_by         => 'projects.id',
+            inner_join => 'task_status',
+            on         => 'task_status.project_id = p.id',
+            inner_join => 'tasks',
+            on         => 'tasks.status_id = task_status.id',
+            where      => do {
+                if ( $ctx->{repo_id} ) {
+                    { 'p.repo_id' => $ctx->{repo_id} };
+                }
+                else {
+                    'p.local = 1';
+                }
+            },
+            group_by         => 'p.id',
             union_all_select => [
-                'projects.id',
+                'p.id',
                 "sum(issue_status.status = 'open') as open",
                 "sum(issue_status.status = 'stalled') as stalled",
                 "sum(issue_status.status = 'closed') as closed",
             ],
-            from => 'projects',
+            from => 'projects p',
             do {
-                if ( $opts->{status} ) {
+                if ( $ctx->{status} ) {
                     inner_join => 'project_status',
                       on       => [
-                        'project_status.id = projects.status_id AND ',
+                        'project_status.id = p.status_id AND ',
                         'project_status.status = ',
-                        qv( $opts->{status} )
+                        qv( $ctx->{status} )
                       ],
                       ;
                 }
@@ -121,46 +197,31 @@ sub run {
                 }
             },
             inner_join => 'issue_status',
-            on         => 'issue_status.project_id = projects.id',
+            on         => 'issue_status.project_id = p.id',
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
-            group_by   => 'projects.id',
+            where      => do {
+                if ( $ctx->{repo_id} ) {
+                    { 'p.repo_id' => $ctx->{repo_id} };
+                }
+                else {
+                    'p.local = 1';
+                }
+            },
+            group_by => 'p.id',
           )->as('total'),
-        on => 'projects.id = total.id',
-        group_by =>
-          [ 'projects.path', 'projects.title', 'project_status.status', ],
-        order_by => 'projects.path',
-      );
-
-    return [] unless @$data;
-
-    my $dark  = Term::ANSIColor::color('dark');
-    my $reset = Term::ANSIColor::color('reset');
-
-    # TODO do this as a sub-select?
-    foreach my $i ( 0 .. $#$data ) {
-        my $row = $data->[$i];
-        if ( $row->[5] ) {
-            $row->[5] =
-              int( 100 * $row->[5] / ( $row->[5] + $row->[3] + $row->[4] ) )
-              . '%';
-        }
-        else {
-            $row->[5] = '0%';
-        }
-
-        $row->[3] = $dark . '-' . $reset unless $row->[3];
-        $row->[4] = $dark . '-' . $reset unless $row->[4];
-    }
-
-    start_pager( scalar @$data );
-
-    print render_table( ' l  l  l  r r r ',
-        [ 'Project', 'Title', 'Phase', 'Open', 'Stalled', 'Progress' ], $data );
-
-    end_pager;
-
-    return $data;
+        on    => 'p.id = total.id',
+        where => do {
+            if ( $ctx->{repo_id} ) {
+                { 'p.repo_id' => $ctx->{repo_id} };
+            }
+            else {
+                'p.local = 1';
+            }
+        },
+        group_by => [ 'p.path', 'p.title', 'project_status.status', ],
+        order_by => 'p.path',
+    );
 }
 
 1;
@@ -169,7 +230,7 @@ __END__
 
 =head1 NAME
 
-bif-list-projects - list projects with thread counts and progress
+bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
@@ -177,16 +238,24 @@ bif-list-projects - list projects with thread counts and progress
 
 =head1 SYNOPSIS
 
-    bif list projects [OPTIONS...]
+    bif list projects [HUB] [OPTIONS...]
 
 =head1 DESCRIPTION
 
-Lists the projects in the repository, showing counts of the open and
-stalled topics, and a calculated progress percentage.
+The C<bif list projects> command lists the projects in the local
+repository, showing counts of the open and stalled topics, and a
+calculated progress percentage.
 
-=head1 OPTIONS
+=head1 ARGUMENTS & OPTIONS
 
 =over
+
+=item HUB
+
+If a hub alias or location is provided then projects hosted by that hub
+will be listed instead of only listing local projects. A '*' character
+in the statistics columns (topic counts, completion %) is shown for
+remote-only projects where the information is not known locally.
 
 =item --status, -s STATUS
 
@@ -204,7 +273,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

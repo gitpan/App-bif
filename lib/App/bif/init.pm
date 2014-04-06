@@ -1,82 +1,108 @@
 package App::bif::init;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 use Config::Tiny;
+use Bif::DB::RW;
 use Log::Any '$log';
 use Path::Tiny qw/path cwd tempdir/;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts   = bif_init(shift);
-    my $parent = path( $opts->{directory} || cwd )->absolute;
-    my $bifdir = $parent->child('.bif');
+    my $ctx = App::bif::Context->new(shift);
 
-    bif_err( 'DirExists', 'directory exists: ' . $bifdir ) if -e $bifdir;
+    $ctx->{directory} = path( $ctx->{directory} || cwd )->absolute;
 
-    mkdir $parent;    # don't care if this already exists
-    my $tempdir = tempdir( DIR => $parent, CLEANUP => !$opts->{debug} );
-    $log->debug( 'working in ' . $tempdir );
-
-    my $config = Config::Tiny->new;
-    $config->{alias}->{lt}  = 'list topics --status open';
-    $config->{alias}->{lts} = 'list topics --status stalled';
-    $config->{alias}->{ltc} = 'list projects --status closed';
-    $config->{alias}->{lp}  = 'list projects --status run';
-    $config->write( $tempdir->child('config') );
-
-    my $db = bif_dbw($tempdir);
-
-    require DBIx::ThinSQL::SQLite;
-    DBIx::ThinSQL::SQLite::create_sqlite_sequence($db);
-
-    require DBIx::ThinSQL::Deploy;
-    my ( $old, $version );
-
-    if ( defined &static::find ) {
-        $db->txn(
-            sub {
-                my $src =
-                  'auto/share/dist/App-bif/' . $db->{Driver}->{Name} . '.sql';
-
-                my $sql = static::find($src)
-                  or bif_err( 'DBUnsupported',
-                    'unsupported database type: ' . $db->{Driver}->{Name} );
-
-                ( $old, $version ) = $db->deploy_sql($sql);
-            }
-        );
+    my $bifdir;
+    if ( $ctx->{bare} ) {
+        $bifdir = $ctx->{directory};
     }
     else {
-        require File::ShareDir;
-
-        my $share_dir = $main::BIF_SHARE_DIR
-          || File::ShareDir::dist_dir('App-bif');
-
-        my $deploy_dir = path( $share_dir, $db->{Driver}->{Name} );
-
-        if ( !-d $deploy_dir ) {
-            bif_err( 'DBUnsupported',
-                'unsupported database type: ' . $db->{Driver}->{Name} );
-        }
-
-        $db->txn(
-            sub {
-                DBIx::ThinSQL::SQLite::create_sqlite_sequence($db);
-                ( $old, $version ) = $db->deploy_dir($deploy_dir);
-            }
-        );
-
+        $bifdir = $ctx->{directory}->child('.bif');
     }
 
+    return $ctx->err( 'DirExists', 'directory exists: ' . $bifdir )
+      if -e $bifdir;
+
+    $bifdir->parent->mkpath;
+
+    my $tempdir = tempdir( DIR => $bifdir->parent, CLEANUP => !$ctx->{debug} );
+    $log->debug( 'init: tmpdir ' . $tempdir );
+
+    my $config = Config::Tiny->new;
+    $config->write( $tempdir->child('config') );
+
+    my $dbfile = $tempdir->child('db.sqlite3');
+    my $dbw    = Bif::DB::RW->connect( 'dbi:SQLite:dbname=' . $dbfile,
+        undef, undef, undef, $ctx->{debug} );
+
+    $log->debug( 'init: SQLite version: ' . $dbw->{sqlite_version} );
+
+    my ( $old, $new );
+    $dbw->txn(
+        sub {
+            ( $old, $new ) = $dbw->deploy;
+
+            my $uid = $dbw->nextval('updates');
+            $dbw->xdo(
+                insert_into => 'updates',
+                values      => {
+                    author  => $ctx->{user}->{name},
+                    email   => $ctx->{user}->{email},
+                    message => 'init '
+                      . $ctx->{directory}
+                      . ( $ctx->{bare} ? ' --bare' : '' ),
+                    id => $uid,
+                },
+            );
+
+            my $rid = $dbw->nextval('topics');
+            $dbw->xdo(
+                insert_into => 'func_new_repo',
+                values      => {
+                    id        => $rid,
+                    update_id => $uid,
+                    local     => 1,
+                    alias     => 'local',
+                },
+            );
+
+            my $rlid = $dbw->nextval('topics');
+            $dbw->xdo(
+                insert_into => 'func_new_repo_location',
+                values      => {
+                    id        => $rlid,
+                    repo_id   => $rid,
+                    update_id => $uid,
+                    location  => $bifdir,
+                },
+            );
+
+            $dbw->xdo(
+                insert_into => 'repo_updates',
+                values      => {
+                    update_id           => $uid,
+                    repo_id             => $rid,
+                    default_location_id => $rlid,
+                },
+            );
+
+            $dbw->xdo(
+                insert_into => 'func_merge_updates',
+                values      => { merge => 1 },
+            );
+        }
+    );
+
+    symlink( '.', $tempdir->child('.bif') ) if $ctx->{bare};
+
     rename( $tempdir, $bifdir )
-      || bif_err( 'Rename', "rename $tempdir $bifdir: $!" );
+      || return $ctx->err( 'Rename', "rename $tempdir $bifdir: $!" );
 
-    printf "Database initialised (v%s) in %s/\n", $version, $bifdir;
+    printf "Database initialised (v%s) in %s/\n", $new, $bifdir;
 
-    # Need call bif_dbw again because $tempdir has disappeared
-    return bif_dbw($bifdir);
+    return $ctx->ok('Init');
 }
 
 1;
@@ -96,20 +122,52 @@ bif-init -  create new bif repository
 
 =head1 DESCRIPTION
 
-This command creates an empty bif repository - basically a .bif
-directory with an SQLite database, a configuration file and maybe some
-alias files.
+The C<bif init> command initializes a new bif repository. The
+repository is usually a directory named F<.bif> containing the
+following files:
 
-Running bif init where a repository already exists results in an error.
+=over
 
-=head1 ARGUMENTS
+=item F<config>:
+
+Configuration information in INI format
+
+=item F<db.sqlite3>:
+
+repository data in an SQLite database
+
+=back
+
+By default F<.bif> is created underneath the current working directory.
+
+    bif init
+
+You can initialize a repository under a different location by giving a
+DIRECTORY as the first argument, which will be created if it doesn't
+already exist.
+
+    bif init elsewhere
+
+If you are creating a repository for use as a hub then the C<--bare>
+option can be used to skip the creation of the F<.bif> directory.
+
+    bif init my-hub --bare
+
+Attempting to initialize an existing repository is considered an error.
+
+=head1 ARGUMENTS & OPTIONS
 
 =over
 
 =item DIRECTORY
 
-Use DIRECTORY as the start location for the repository instead of the
-current working directory (C<$PWD>).
+The parent location of the respository directory. Defaults to the
+current working directory (F<.> or F<$PWD>).
+
+=item --bare
+
+Initialize the repository in F<DIRECTORY> directly instead of
+F<DIRECTORY/.bif>.
 
 =back
 
@@ -123,7 +181,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

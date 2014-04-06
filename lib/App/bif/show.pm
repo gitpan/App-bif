@@ -1,7 +1,7 @@
 package App::bif::show;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
@@ -13,18 +13,36 @@ my $reset;
 my $white;
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_db();
+    my $ctx = App::bif::Context->new(shift);
 
-    my $info =
-         $db->get_topic( $opts->{id} )
-      || $db->get_project( $opts->{id} )
-      || bif_err( 'TopicNotFound', 'topic not found: ' . $opts->{id} );
+    if ( $ctx->{id} eq 'VERSION' ) {
+        require App::bif::Version;
+        print "$App::bif::Version::VERSION "
+          . "($App::bif::Version::BRANCH) "
+          . "$App::bif::Version::COMMIT "
+          . "($App::bif::Version::DATE)\n";
+        return $ctx->ok('ShowVersion');
+    }
+
+    my $db   = $ctx->db();
+    my $info = $db->get_topic( $ctx->{id} )
+      || $db->get_project( $ctx->{id} );
+
+    if ( !$info && defined $info && $info < 0 ) {
+        return $ctx->err(
+            'AmbiguousID', "non-specific identifier:
+      $ctx->{id}"
+        );
+    }
+
+    return $ctx->err( 'TopicNotFound', 'topic not found: ' . $ctx->{id} )
+      unless $info;
 
     my $func = __PACKAGE__->can( '_show_' . $info->{kind} )
-      || bif_err( 'ShowUnimplemented', 'cannnot show type: ' . $info->{kind} );
+      || return $ctx->err( 'ShowUnimplemented',
+        'cannnot show type: ' . $info->{kind} );
 
-    bif_err( 'ShowNoUpdates', 'cannot show an update ID' )
+    return $ctx->err( 'ShowNoUpdates', 'cannot show an update ID' )
       if exists $info->{update_id};
 
     $NOW = time;
@@ -39,7 +57,7 @@ sub run {
     $reset  = Term::ANSIColor::color('reset');
     $white  = Term::ANSIColor::color('white');
 
-    return $func->( $opts, $db, $info );
+    return $func->( $ctx, $db, $info );
 }
 
 sub _header {
@@ -65,22 +83,35 @@ sub _new_ago {
 }
 
 sub _show_project {
-    my $opts = shift;
+    my $ctx  = shift;
     my $db   = shift;
     my $info = shift;
     my @data;
 
-    DBIx::ThinSQL->import(qw/sum case coalesce/);
+    DBIx::ThinSQL->import(qw/sum case coalesce concat qv/);
 
     my $ref = $db->xhash(
         select => [
-            'topics.id',       'topics.uuid',
-            'projects.path',   'projects.title',
-            'topics.ctime',    'topics.ctimetz',
-            'topics.mtime',    'topics.mtimetz',
-            'updates.author',  'updates.email',
-            'updates.message', 'project_status.status',
+            'topics.id',
+            'topics.uuid',
+            'projects.path',
+            'projects.title',
+            'topics.ctime',
+            'topics.ctimetz',
+            'topics.mtime',
+            'topics.mtimetz',
+            'updates.author',
+            'updates.email',
+            'updates.message',
             'project_status.status',
+            'project_status.status',
+            case (
+                when => 'rp.repo_id IS NOT NULL',
+                then => 1,
+                else => qv(undef),
+              )->as('local'),
+            'r2.alias AS hub',
+            't2.uuid AS hub_uuid',
         ],
         from       => 'projects',
         inner_join => 'topics',
@@ -89,6 +120,14 @@ sub _show_project {
         on         => 'updates.id = topics.first_update_id',
         inner_join => 'project_status',
         on         => 'project_status.id = projects.status_id',
+        inner_join => 'repos r',
+        on         => 'r.local = 1',
+        left_join  => 'repo_projects rp',
+        on         => 'rp.repo_id = r.id AND rp.project_id = projects.id',
+        left_join  => 'repos r2',
+        on         => 'r2.id = projects.repo_id',
+        left_join  => 'topics t2',
+        on         => 't2.id = r2.id',
         where      => { 'projects.id' => $info->{id} },
     );
 
@@ -96,13 +135,17 @@ sub _show_project {
         @data,
         _header(
             $yellow . 'Project',
-            $yellow . '[' . $ref->{path} . '] ' . $ref->{title}
+            $yellow . $ref->{title}
         ),
 
-        #        _header( '  Title',           $ref->{title} ),
+        _header( '  ID',   $ref->{id}, $ref->{uuid} ),
+        _header( '  Path', $ref->{path} ),
     );
 
-    if ( $opts->{full} ) {
+    push( @data, _header( '  Hub', $ref->{hub}, $ref->{hub_uuid} ), )
+      if $ref->{hub};
+
+    if ( $ctx->{full} ) {
         my @phases = $db->xarrays(
             select => [
                 case (
@@ -123,55 +166,59 @@ sub _show_project {
         );
     }
     else {
-        push( @data, _header( 'Phase', $ref->{status} ), );
+        push( @data, _header( '  Phase', $ref->{status} ), );
     }
 
-    my ( $ai, $si, $ri, $ii ) = $db->xarray(
-        select => [
-            coalesce( sum( { status => 'open' } ),    0 )->as('open'),
-            coalesce( sum( { status => 'stalled' } ), 0 )->as('stalled'),
-            coalesce( sum( { status => 'closed' } ),  0 )->as('closed'),
-            coalesce( sum( { status => 'ignored' } ), 0 )->as('ignored'),
-        ],
-        from       => 'project_issues',
-        inner_join => 'issue_status',
-        on         => 'issue_status.id = project_issues.status_id',
-        where      => { 'project_issues.project_id' => $info->{id} },
-    );
+    if ( $ref->{local} ) {
+        my ( $ai, $si, $ri, $ii ) = $db->xarray(
+            select => [
+                coalesce( sum( { status => 'open' } ),    0 )->as('open'),
+                coalesce( sum( { status => 'stalled' } ), 0 )->as('stalled'),
+                coalesce( sum( { status => 'closed' } ),  0 )->as('closed'),
+                coalesce( sum( { status => 'ignored' } ), 0 )->as('ignored'),
+            ],
+            from       => 'project_issues',
+            inner_join => 'issue_status',
+            on         => 'issue_status.id = project_issues.status_id',
+            where      => { 'project_issues.project_id' => $info->{id} },
+        );
 
-    my ( $at, $st, $rt, $it ) = $db->xarray(
-        select => [
-            coalesce( sum( { status => 'open' } ),    0 )->as('open'),
-            coalesce( sum( { status => 'stalled' } ), 0 )->as('stalled'),
-            coalesce( sum( { status => 'closed' } ),  0 )->as('closed'),
-            coalesce( sum( { status => 'ignored' } ), 0 )->as('ignored'),
-        ],
-        from       => 'task_status',
-        inner_join => 'tasks',
-        on         => 'tasks.status_id = task_status.id',
-        where      => { 'task_status.project_id' => $info->{id} },
-    );
+        my ( $at, $st, $rt, $it ) = $db->xarray(
+            select => [
+                coalesce( sum( { status => 'open' } ),    0 )->as('open'),
+                coalesce( sum( { status => 'stalled' } ), 0 )->as('stalled'),
+                coalesce( sum( { status => 'closed' } ),  0 )->as('closed'),
+                coalesce( sum( { status => 'ignored' } ), 0 )->as('ignored'),
+            ],
+            from       => 'task_status',
+            inner_join => 'tasks',
+            on         => 'tasks.status_id = task_status.id',
+            where      => { 'task_status.project_id' => $info->{id} },
+        );
 
-    my $total_issues = $ai + $si + $ri;
-    my $total_tasks  = $at + $st + $rt;
-    my $total        = $total_issues + $total_tasks;
-    my $progress     = $total ? int( ( ( $ri + $rt ) / $total ) * 100 ) : 0;
+        my $total_issues = $ai + $si + $ri;
+        my $total_tasks  = $at + $st + $rt;
+        my $total        = $total_issues + $total_tasks;
+        my $progress     = $total ? int( ( ( $ri + $rt ) / $total ) * 100 ) : 0;
 
-    push(
-        @data,
-        _header( 'Progress', $progress . '%' ),
-        _header(
-            'Tasks', "$at open, $st stalled, $rt closed, $it ignored"
-        ),
+        push(
+            @data,
+            _header( '  Progress', $progress . '%' ),
+            _header(
+                '  Tasks', "$at open, $st stalled, $rt closed, $it ignored"
+            ),
 
-        # TODO "Updated:..."
-        _header( 'Issues', "$ai open, $si stalled, $ri closed, $ii ignored" ),
+            # TODO "Updated:..."
+            _header(
+                '  Issues', "$ai open, $si stalled, $ri closed, $ii ignored"
+            ),
 
-        # TODO "Updated:..."
-        _header( 'Updated', _new_ago( $ref->{mtime}, $ref->{mtimetz} ) ),
-    );
+            # TODO "Updated:..."
+            _header( '  Updated', _new_ago( $ref->{mtime}, $ref->{mtimetz} ) ),
+        );
+    }
 
-    if ( $opts->{full} ) {
+    if ( $ctx->{full} ) {
         require Text::Autoformat;
         push(
             @data,
@@ -187,15 +234,15 @@ sub _show_project {
             ),
         );
     }
-    start_pager;
-    print render_table( 'l  l', undef, \@data );
-    end_pager;
+    $ctx->start_pager;
+    print $ctx->render_table( 'l  l', undef, \@data );
+    $ctx->end_pager;
 
-    return bif_ok( 'ShowProject', \@data );
+    $ctx->ok( 'ShowProject', \@data );
 }
 
 sub _show_task {
-    my $opts = shift;
+    my $ctx  = shift;
     my $db   = shift;
     my $info = shift;
     my @data;
@@ -206,7 +253,7 @@ sub _show_task {
         select => [
             'topics.id AS id',
             'topics.uuid',
-            'projects.path AS path',
+            concat( 'projects.path', qv('@'), 'r.alias' )->as('path'),
             'topics2.uuid AS project_uuid',
             'tasks.title AS title',
             'topics.mtime AS mtime',
@@ -216,7 +263,7 @@ sub _show_task {
             'updates.author AS author',
             'updates.email AS email',
             'updates.message AS message',
-q{task_status.status || ' (' || task_status.status || ')' AS status},
+            'task_status.status AS status',
             'updates2.mtime AS smtime',
         ],
         from       => 'topics',
@@ -228,6 +275,10 @@ q{task_status.status || ' (' || task_status.status || ')' AS status},
         on         => 'task_status.id = tasks.status_id',
         inner_join => 'projects',
         on         => 'projects.id = task_status.project_id',
+        inner_join => 'repo_projects rp',
+        on         => 'rp.project_id = projects.id',
+        inner_join => 'repos r',
+        on         => 'r.id = rp.repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'updates AS updates2',
@@ -235,25 +286,16 @@ q{task_status.status || ' (' || task_status.status || ')' AS status},
         where      => [ 'topics.id = ', qv( $info->{id} ) ],
     );
 
-    push( @data,
-        _header( $yellow . 'task', $yellow . $ref->{id},    $ref->{uuid} ),
-        _header( 'From',           $ref->{author},          $ref->{email} ),
-        _header( 'When',           _new_ago( $ref->{ctime}, $ref->{ctimetz} ) ),
-        _header( 'Subject',        $ref->{title} . "\n" ),
-    );
-
     my @ago = _new_ago( $ref->{smtime}, $ref->{mtimetz} );
-    push(
-        @data,
-        _header(
-            $dark . $yellow . 'project',
-            $dark . $yellow . $ref->{path},
-            $ref->{project_uuid}
-        ),
-        _header( 'Status', $ref->{status} . ' ' . $ago[0], $ago[1] ),
+
+    push( @data,
+        _header( $yellow . 'Task', $yellow . $ref->{title} ),
+        _header( '  ID',      "$ref->{id}", $ref->{uuid} ),
+        _header( '  Project', $ref->{path}, $ref->{project_uuid} ),
+        _header( '  Status', "$ref->{status} (" . $ago[0] . ')', $ago[1] ),
     );
 
-    if ( $opts->{full} ) {
+    if ( $ctx->{full} ) {
         require Text::Autoformat;
         push(
             @data,
@@ -271,18 +313,18 @@ q{task_status.status || ' (' || task_status.status || ')' AS status},
     }
 
     push( @data,
-        _header( 'Updated', _new_ago( $ref->{mtime}, $ref->{mtimetz} ) ),
+        _header( '  Updated', _new_ago( $ref->{mtime}, $ref->{mtimetz} ) ),
     );
 
-    start_pager;
-    print render_table( 'l  l', undef, \@data );
-    end_pager;
+    $ctx->start_pager;
+    print $ctx->render_table( 'l  l', undef, \@data );
+    $ctx->end_pager;
 
-    return bif_ok( 'ShowTask', \@data );
+    $ctx->ok( 'ShowTask', \@data );
 }
 
 sub _show_issue {
-    my $opts = shift;
+    my $ctx  = shift;
     my $db   = shift;
     my $info = shift;
     my @data;
@@ -293,7 +335,8 @@ sub _show_issue {
         select => [
             'project_issues.id AS id',
             'topics.uuid',
-            'projects.path AS path',
+            concat( 'projects.path', qv('@'), 'r.alias' )->as('path'),
+            'projects.title AS project_title',
             'topics2.uuid AS project_uuid',
             'issues.title AS title',
             'topics.mtime AS mtime',
@@ -319,6 +362,10 @@ sub _show_issue {
         on         => 'project_issues.issue_id = topics.id',
         inner_join => 'projects',
         on         => 'projects.id = project_issues.project_id',
+        inner_join => 'repo_projects rp',
+        on         => 'rp.project_id = projects.id',
+        inner_join => 'repos r',
+        on         => 'r.id = rp.repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'issue_status',
@@ -326,88 +373,45 @@ sub _show_issue {
         inner_join => 'updates AS updates2',
         on         => 'updates2.id = project_issues.update_id',
         where      => { 'topics.id' => $info->{id} },
-        order_by   => "project_issues.id = $info->{project_issue_id}
-        DESC, updates2.mtime ASC",    #' =>
-
-        #        $info->{project_issue_id}}, 'updates2.mtime ASC' ],
+        order_by   => [
+            "project_issues.id = $info->{project_issue_id} DESC",
+            "r.local ASC",
+            "updates2.mtime ASC",
+        ],
     );
 
-    push(
-        @data,
-        _header(
-            $yellow . 'Issue',
-            $yellow
+    push( @data, _header( $yellow . 'Issue', $yellow . $refs[0]->{title} ), );
 
-              #              . $refs[0]->{id} . ' - ['
-              #              . $refs[0]->{path} . '] '
-              #              . $refs[0]->{title}
-              #              . $refs[0]->{id}
-              #              . '['
-              #              . $refs[0]->{path}
-              #              . '] '
-              . $refs[0]->{id} . ' - '
-              . $refs[0]->{title}
-        ),
-    );
-
-    my $ref = $refs[0];
-
-    my @ago = _new_ago( $refs[0]->{smtime}, $refs[0]->{mtimetz} );
-    push(
-        @data,
-        _header(
-            '  Status', "$ref->{status} [$ref->{path}] (" . $ago[0] . ')',
-            $ago[1]
-        ),
-    );
-
-    my $first = shift @refs;
-
+    my %seen;
     my $count = @refs;
+    my $i     = 1;
     foreach my $ref (@refs) {
-        my @ago = _new_ago( $ref->{smtime}, $ref->{mtimetz} );
-        push(
-            @data,
-
-#            _header( 'Issue', '[' . $ref->{id} . '] '.$ref->{title}),
-#            _header( $dark.'Status',$dark. $ref->{status} . ' ' . $ago[0], $ago[1] ),
-#        _header( '  Status', "[$ref->{path}] $ref->{status} (".  $ago[0].')', $ago[1] ),
-            _header(
-                '  Status', "$ref->{status} [$ref->{path}] (" . $ago[0] . ')',
-                $ago[1]
-            ),
-        );
+        if ( !$seen{ $ref->{id} }++ ) {
+            my @ago = _new_ago( $ref->{smtime}, $ref->{mtimetz} );
+            push(
+                @data,
+                _header( '  Project', $ref->{path}, $ref->{project_uuid} ),
+                _header( '  ID',      $ref->{id},   $ref->{uuid} ),
+                _header(
+                    '  Status', "$ref->{status} (" . $ago[0] . ')',
+                    $ago[1]
+                ),
+                _header(
+                    '  Updated',
+                    _new_ago( $refs[0]->{mtime}, $refs[0]->{mtimetz} )
+                ),
+            );
+        }
+        push( @data, [ '  .', ' ' ] ) if $i++ < $count,;
     }
 
-    push(
-        @data,
+    $ctx->start_pager;
+    print $ctx->render_table( 'l  l', undef, \@data );
+    print "\n" . $refs[0]->{message} if ( $ctx->{full} );
 
-     #        _header( 'From', $first->{author},          $first->{email} ),
-     #        _header( 'When', _new_ago( $first->{ctime}, $first->{ctimetz} ) ),
+    $ctx->end_pager;
 
-        _header(
-            '  Updated', _new_ago( $refs[0]->{mtime}, $refs[0]->{mtimetz} )
-        ),
-
-        #        _header( 'Subject', $refs[0]->{title} . "\n" ),
-    );
-
-    start_pager;
-    print render_table( 'l  l', undef, \@data );
-    print "\n" . $refs[0]->{message} if ( $opts->{full} );
-
-  #    print #"\n"
-  #       render_table(
-  #        'l  l', undef,
-  #        [
-  #            _header(
-  #                'Updated', _new_ago( $refs[0]->{mtime}, $refs[0]->{mtimetz} )
-  #            )
-  #        ]
-  #      );
-    end_pager;
-
-    return bif_ok( 'ShowIssue', \@data );
+    $ctx->ok( 'ShowIssue', \@data );
 }
 
 1;
@@ -427,8 +431,12 @@ bif-show - display a item's current status
 
 =head1 DESCRIPTION
 
-Display a summary of a topic's current status. The output varies
-depending on the type of topic.
+The C<bif show> command displays a summary of a topic's current status.
+The output varies depending on the type of topic.
+
+When the uppercase string "VERSION" is given as the ID then this
+command will print the bif version string plus the Git branch and Git
+commit from which bif was built.
 
 =head1 ARGUMENTS
 
@@ -460,7 +468,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

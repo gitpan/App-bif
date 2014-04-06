@@ -1,6 +1,6 @@
 package Bif::Mo;
 
-# use Mo qw/build default builder coerce is required/;
+# use Mo qw/build default is required import/;
 #   The following line of code was produced from the previous line by
 #   Mo::Inline version 0.38
 no warnings;
@@ -64,36 +64,13 @@ my $M = __PACKAGE__ . '::';
           }
       }
 };
-*{ $M . 'builder::e' } = sub {
-    my ( $P, $e, $o ) = @_;
-    $o->{builder} = sub {
-        my ( $m, $n, %a ) = @_;
-        my $b = $a{builder} or return $m;
-        my $i = exists $a{lazy} ? $a{lazy} : !${ $P . ':N' };
-        $i or ${ $P . ':E' }{$n} = \&{ $P . $b } and return $m;
-        sub {
-            $#_ ? $m->(@_) : !exists $_[0]{$n} ? $_[0]{$n} =
-              $_[0]->$b : $m->(@_);
-          }
-      }
-};
-*{ $M . 'coerce::e' } = sub {
-    my ( $P, $e, $o ) = @_;
-    $o->{coerce} = sub {
-        my ( $m, $n, %a ) = @_;
-        $a{coerce} or return $m;
-        sub { $#_ ? $m->( $_[0], $a{coerce}->( $_[1] ) ) : $m->(@_) }
-    };
-    my $C = $e->{new} || *{ $M . Object::new }{CODE};
-    $e->{new} = sub { my $s = $C->(@_); $s->$_( $s->{$_} ) for keys %$s; $s }
-};
 *{ $M . 'is::e' } = sub {
     my ( $P, $e, $o ) = @_;
     $o->{is} = sub {
         my ( $m, $n, %a ) = @_;
         $a{is} or return $m;
         sub {
-                 $#_
+            $#_
               && $a{is} eq 'ro'
               && caller ne 'Mo::coerce' ? die $n . ' is ro' : $m->(@_);
           }
@@ -116,7 +93,12 @@ my $M = __PACKAGE__ . '::';
         $m;
       }
 };
-@f = qw[build default builder coerce is required];
+my $i = \&import;
+*{ $M . import } = sub {
+    ( @_ == 2 and not $_[1] ) ? pop @_ : @_ == 1 ? push @_, grep !/import/,
+      @f : ();
+    goto &$i;
+};
+@f = qw[build default is required import];
 use strict;
 use warnings;
-1;

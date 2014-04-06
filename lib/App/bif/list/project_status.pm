@@ -1,16 +1,17 @@
 package App::bif::list::project_status;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_db;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->db;
 
-    my $id = $db->path2project_id( $opts->{path} )
-      || bif_err( 'PathNotFound', 'project not found: ' . $opts->{path} );
+    my $id = $db->path2project_id( $ctx->{path} )
+      || return $ctx->err( 'PathNotFound',
+        'project not found: ' . $ctx->{path} );
 
     DBIx::ThinSQL->import(qw/ qv case /);
 
@@ -22,12 +23,12 @@ sub run {
 
     );
 
-    start_pager( scalar @$data );
+    $ctx->start_pager( scalar @$data );
 
-    print render_table( ' l  l  l  r ',
+    print $ctx->render_table( ' l  l  l  r ',
         [ 'ID', 'State', 'Status', 'Rank' ], $data );
 
-    end_pager;
+    $ctx->end_pager;
 
     return $data;
 }
@@ -71,7 +72,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

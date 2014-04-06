@@ -1,10 +1,10 @@
 package App::bifsync;
 use strict;
 use warnings;
-use App::bif::Util 'bif_ok';
+use App::bif::Context;
 use AnyEvent;
 use Bif::DB::RW;
-use Bif::Sync::Server;
+use Bif::Server;
 use Coro;
 use Log::Any '$log';
 use Log::Any::Adapter;
@@ -33,9 +33,10 @@ sub run {
     my $dir    = path( $opts->{directory} );
     my $sqlite = $dir->child($f);
 
-    if ( !$sqlite->exists ) {
-        $dir    = $dir->child('.bif');
-        $sqlite = $dir->child($f);
+    if ( !-f $sqlite ) {
+        $log->error( 'file not found: ' . $sqlite );
+        die Bif::Error->new( $opts, 'FileNotFound',
+            "file not found: $sqlite\n" );
     }
 
     $opts->{debug} = $dir->child('debug')->exists;
@@ -43,7 +44,7 @@ sub run {
     if ( $opts->{debug} ) {
         Log::Any::Adapter->set('Stderr');
 
-        #        Log::Any::Adapter->set('File', '/home/mark/src/bif/log.txt');
+        Log::Any::Adapter->set( 'File', '/home/mark/src/bif/log.txt' );
     }
     else {
         # TODO use Syslog (when development is stable)
@@ -55,11 +56,10 @@ sub run {
 
     my $err;
     my $cv = AnyEvent->condvar;
-    my $db = Bif::DB::RW->connect( 'dbi:SQLite:dbname=' . $sqlite );
+    my $db = Bif::DB::RW->connect( 'dbi:SQLite:dbname=' . $sqlite,
+        undef, undef, undef, $opts->{debug} );
 
-    $db->sqlite_trace( sub { $log->debug(@_) } ) if $opts->{debug};
-
-    my $server = Bif::Sync::Server->new(
+    my $server = Bif::Server->new(
         db       => $db,
         debug    => $opts->{debug},
         on_error => sub {
@@ -81,8 +81,8 @@ sub run {
 
     $cv->recv;
 
-    bif_err( 'BifSync', $err ) if $err;
-    return bif_ok('BifSync');
+    return Bif::Error->new( $opts, 'Bifsync', $err ) if $err;
+    return Bif::OK->new( $opts, 'BifSync' );
 }
 
 1;
@@ -106,7 +106,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

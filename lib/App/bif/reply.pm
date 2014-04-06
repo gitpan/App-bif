@@ -1,32 +1,30 @@
 package App::bif::reply;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 require App::bif::update;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts   = bif_init(shift);
-    my $config = bif_conf;
-    my $db     = bif_dbw;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->dbw;
 
-    my $info = $db->get_update( $opts->{update_id} )
-      || bif_err( 'UpdateNotFound', 'update not found: ' . $opts->{update_id} );
+    my $info = $db->get_update( $ctx->{'id.uid'} )
+      || return $ctx->err( 'UpdateNotFound',
+        'update not found: ' . $ctx->{'id.uid'} );
 
     my $func = App::bif::update->can( '_update_' . $info->{kind} )
-      || bif_err(
+      || return $ctx->err(
         'Reply' . ucfirst( $info->{kind} ) . 'Unimplemented',
         'cannnot reply to type: ' . $info->{kind}
       );
 
-    $opts->{lang}   ||= 'en';
-    $opts->{email}  ||= $config->{user}->{email};
-    $opts->{author} ||= $config->{user}->{name};
+    $ctx->{lang} ||= 'en';
 
     # TODO calculate parent_update_id
 
-    return $func->( $opts, $db, $info );
+    return $func->( $ctx, $db, $info );
 }
 
 1;
@@ -42,7 +40,7 @@ bif-reply - reply to a previous update or comment
 
 =head1 SYNOPSIS
 
-    bif reply UPDATE_ID [OPTIONS...]
+    bif reply ID.UID [OPTIONS...]
 
 =head1 DESCRIPTION
 
@@ -52,9 +50,9 @@ Add a comment in reply to an existing update or comment.
 
 =over
 
-=item UPDATE_ID
+=item ID.UID
 
-A topic ID.UPDATE_ID. Required.
+A topic ID plus update ID. Required.
 
 =back
 
@@ -79,7 +77,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

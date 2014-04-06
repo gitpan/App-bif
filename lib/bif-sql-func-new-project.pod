@@ -1,0 +1,76 @@
+=head1 NAME
+
+bif-sql-func-new-project - add a new project to an update
+
+=head1 VERSION
+
+0.1.0 (yyyy-mm-dd)
+
+=head1 SYNOPSIS
+
+    #!sqlite
+    BEGIN;
+
+    INSERT INTO updates(...);
+
+    INSERT INTO func_new_project(
+        update_id,  -- integer NOT NULL DEFAULT (currval('updates')),
+        id,         -- integer NOT NULL DEFAULT (nextval('topics')),
+        parent_id,  -- integer,
+        name,       -- varchar(40),
+        title       -- varchar(1024) NOT NULL DEFAULT ''
+    ) VALUES (...);
+
+    INSERT INTO func_new_project_status(...);
+
+    INSERT INTO func_update_project(...);
+
+    INSERT INTO func_merge_updates(...);
+
+    COMMIT;
+
+=head1 DESCRIPTION
+
+func_new_project() adds a new project to an in-progress update by
+inserting a row into each of the L<topics|bif-sql-table-topics> and
+L<projects|bif-sql-table-projects> tables.
+
+The transaction will fail with a foreign key violation unless at least
+one call to
+L<func_new_project_status()|bif-sql-func-new-project-status> is also
+made and a row is inserted into
+L<project_updates|bif-sql-table-project-updates> resulting in
+C<projects.status_id> having a valid value.
+
+=head1 AFFECTED TABLES
+
+A successful call to func_new_project directly affects the following
+tables:
+
+=over
+
+=item * L<topics|bif-sql-table-topics>
+
+=item * L<projects|bif-sql-table-projects>
+
+=back
+
+=head1 SEE ALSO
+
+L<bif-sql-table-updates>, L<bif-sql-table-topics>,
+L<bif-sql-table-projects>, L<bif-sql-func-new-project-status>,
+L<bif-sql-table-project-updates>, L<bif-sql-func-merge-updates>
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

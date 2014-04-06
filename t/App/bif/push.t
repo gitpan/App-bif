@@ -11,7 +11,7 @@ run_in_tempdir {
     like exception { bif(qw/ push 1 /) }, qr/usage:/, 'usage';
     isa_ok exception { bif(qw/ push 1 todo2/) }, 'Bif::Error::RepoNotFound';
 
-    my $db = bif(qw/init/);
+    bif(qw/init/);
 
     my $p1 = bif(qw/ new project todo --message message title /);
 
@@ -32,19 +32,8 @@ run_in_tempdir {
         my $p2 = bif(qw/ new project todo2 --message message title /);
 
         my $res = bif( 'push', $i1->{id}, qw/todo2 --message message/ );
-        ok $res->{update_id}, 'have update_id ' . $res->{update_id};
+        isa_ok $res, 'Bif::OK::PushIssue';
 
-        is_deeply [
-            $db->xarrays(
-                select     => 'projects.path',
-                from       => 'project_issues',
-                inner_join => 'projects',
-                on         => 'projects.id = project_issues.project_id',
-                where      => { 'project_issues.issue_id' => $i1->{id} },
-                order_by   => 'path',
-            )
-          ],
-          [ ['todo'], ['todo2'] ], 'in two projects';
     };
 
     # TODO what happens with tasks?!? Copy? Move? Copy + Depend?

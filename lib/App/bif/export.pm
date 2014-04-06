@@ -1,52 +1,61 @@
 package App::bif::export;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 use AnyEvent;
-use Bif::Sync::Client;
+use Bif::Client;
 use Coro;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = shift;
-    $opts->{no_pager}++;    # causes problems with something in Coro?
-    $opts = bif_init($opts);
+    my $ctx = shift;
+    $ctx->{no_pager}++;    # causes problems with something in Coro?
+    $ctx = App::bif::Context->new($ctx);
 
-    # Consider upping PRAGMA cache_size? Or handle that in Bif::Sync?
-    my $db = bif_dbw;
+    # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
+    my $db = $ctx->dbw;
 
     my @pinfo;
-    foreach my $path ( @{ $opts->{path} } ) {
+    foreach my $path ( @{ $ctx->{path} } ) {
         my $pinfo = $db->get_project($path);
 
-        bif_err( 'ProjectNotFound', 'project not found: %s', $path )
+        return $ctx->err( 'ProjectNotFound', 'project not found: %s', $path )
           unless $pinfo;
 
-        $pinfo->{path} = $path;
-        $pinfo->{status} = [ 0, 'Not Exported' ];
         push( @pinfo, $pinfo );
     }
 
-    my $hub = $db->hub_info( $opts->{hub} )
-      || { location => $opts->{hub} };
+    my @locations = $db->get_repo_locations( $ctx->{hub} );
+    $ctx->err( 'HubNotFound', 'hub not found: %s', $ctx->{hub} )
+      unless @locations;
 
-    if ( $hub->{location} =~ m!^bif://! ) {
-    }
-    elsif ( !-d $hub->{location} ) {
-        bif_err( 'HubNotFound', 'hub not found: %s', $opts->{hub} );
+    my $hub = $locations[0];
+
+    foreach my $pinfo (@pinfo) {
+        my $exists = $db->get_project( $pinfo->{path} . '@' . $hub->{alias} );
+
+        if ($exists) {
+            if ( $exists->{uuid} eq $pinfo->{uuid} ) {
+            }
+            else {
+                return $ctx->err( 'PathExists',
+                    'path exists at destination: %s',
+                    $pinfo->{path} );
+            }
+        }
     }
 
     $|++;    # no buffering
-    my $err;
-    my $status;
+    my $error;
     my $cv = AE::cv;
 
-    my $client = Bif::Sync::Client->new(
+    my $client = Bif::Client->new(
         db       => $db,
         hub      => $hub->{location},
         on_error => sub {
-            $err = shift;
+            $error = shift;
+            $cv->send;
         },
     );
 
@@ -59,66 +68,89 @@ sub run {
             undef $stderr_watcher;
             return;
         }
-        print STDERR 'hub: ' . $line;
+        print STDERR "$hub->{alias}: $line";
     };
 
     my $coro = async {
-        foreach my $pinfo (@pinfo) {
-            $status = eval { $client->export_project($pinfo) };
+        eval {
+            $db->txn(
+                sub {
+                    $db->update_repo(
+                        {
+                            author            => $ctx->{user}->{name},
+                            email             => $ctx->{user}->{email},
+                            related_update_id => $ctx->{update_id},
+                            message =>
+                              "export @{$ctx->{path}} $hub->{location}",
+                        }
+                    );
 
-            if ($@) {
-                $err = $@;
-                last;
-            }
+                    foreach my $pinfo (@pinfo) {
+                        $ctx->{update_id} = $db->nextval('updates');
+                        my $msg = "[Exported to $hub->{location}]";
+                        if ( $ctx->{message} ) {
+                            $msg .= "\n\n$ctx->{message}\n";
+                        }
 
-            if ( !$status ) {
-                $err ||= 'unknown error';
-                last;
-            }
+                        $db->xdo(
+                            insert_into => 'updates',
+                            values      => {
+                                id        => $ctx->{update_id},
+                                parent_id => $pinfo->{first_update_id},
+                                author    => $ctx->{user}->{name},
+                                email     => $ctx->{user}->{email},
+                                message   => $msg,
+                            },
+                        );
 
-            print "$pinfo->{path}: $status->[1] [$status->[0]]\n";
-            last unless ( $status->[0] == 201 or $status->[0] == 308 );
-        }
+                        $db->xdo(
+                            insert_into => 'func_update_project',
+                            values      => {
+                                id        => $pinfo->{id},
+                                update_id => $ctx->{update_id},
+                                repo_uuid => $hub->{uuid},
+                            },
+                        );
 
-        # Catch up on errors
-        undef $stderr_watcher;
-        $stderr->blocking(0);
-        while ( my $line = $stderr->getline ) {
-            print STDERR 'hub: ' . $line;
-        }
+                        $db->xdo(
+                            insert_into => 'func_merge_updates',
+                            values      => { merge => 1 },
+                        );
 
+                        my $status = $client->export_project($pinfo);
+
+                        if ( $status eq 'ProjectExported' ) {
+                            print "Project exported: $pinfo->{path}\n";
+                        }
+                        elsif ( $status eq 'ProjectFound' ) {
+                            print "Project already exported: $pinfo->{path}\n";
+                        }
+                        else {
+                            $db->rollback;
+                            $error = $status;
+                            last;
+                        }
+                    }
+
+                    # Catch up on errors
+                    undef $stderr_watcher;
+                    $stderr->blocking(0);
+                    while ( my $line = $stderr->getline ) {
+                        print STDERR "$hub->{alias}: $line";
+                    }
+
+                    return;
+                }
+            );
+        };
+
+        $error .= $@ if $@;
         $client->disconnect;
-        $cv->send;
-        return;
+        return $cv->send( !$error );
     };
 
-    my $sig;
-    $sig = AE::signal 'INT', sub {
-        warn 'INT';
-        undef $sig;
-        $client->disconnect;
-        $cv->send;
-    };
-
-    $cv->recv;
-
-    bif_err( 'Export', $err ) if $err;
-    bif_err( 'Unknown', 'unknown error' ) unless $status;
-
-    if ( $status->[0] == 201 ) {
-        return bif_ok('Created');
-    }
-    elsif ( $status->[0] == 308 ) {
-        return bif_ok('Found');
-    }
-    elsif ( $status->[0] == 409 ) {
-        bif_err( 'PathExists', 'hub: project path exists with different uuid' );
-    }
-    elsif ( $status->[0] == 500 ) {
-        bif_err( 'InternalServerError', 'hub: internal server error' );
-    }
-
-    bif_err( 'Export', "@$status" );
+    return $ctx->ok('Export') if $cv->recv;
+    return $ctx->err( 'Unknown', $error );
 }
 
 1;
@@ -140,7 +172,7 @@ bif-export -  export a project to a remote hub
 
 Export a project to a hub.
 
-=head1 ARGUMENTS
+=head1 ARGUMENTS & OPTIONS
 
 =over
 
@@ -153,17 +185,9 @@ project with the same path exists at the remote HUB.
 
 The location of a remote hub or a previously defined hub alias.
 
-=back
+=item --message, -m MESSAGE
 
-=head1 OPTIONS
-
-=over
-
-=item --alias
-
-Create an alias for C<HUB> which can be used in future calls to
-C<import> or C<export>. Typically this would be the name of the
-organisation that owns or manages the hub.
+Add the optional MESSAGE to the update created for this action.
 
 =back
 
@@ -177,7 +201,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

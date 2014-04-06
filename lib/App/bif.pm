@@ -41,11 +41,17 @@ opt no_pager => (
     hidden  => 1,
 );
 
+opt no_color => (
+    isa     => 'Bool',
+    comment => 'do not colorize output',
+    hidden  => 1,
+);
+
 # ------------------------------------------------------------------------
 # bif help
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => 'help',
+    cmd     => 'doc',
     comment => 'access command documentation',
 );
 
@@ -61,23 +67,38 @@ arg command => (
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => 'init',
-    comment => 'initialize a new repository',
+    comment => 'initialize a new repository in .bif',
 );
 
 arg directory => (
     isa     => 'Str',
-    comment => 'location of the database or hub',
+    comment => 'parent location of .bif directory',
 );
 
-opt prompt => (
+opt bare => (
     isa     => 'Bool',
-    alias   => 'p',
-    comment => 'Prompt for configuration parameters',
+    comment => 'use DIRECTORY directly (no .bif)',
 );
 
-opt hub => (
-    isa     => 'Bool',
-    comment => 'Initialize database as a hub',
+# ------------------------------------------------------------------------
+# bif register
+# ------------------------------------------------------------------------
+
+subcmd(
+    cmd     => [qw/register/],
+    comment => 'register with a remote repository',
+);
+
+arg hub => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'location of a remote repository',
+);
+
+opt alias => (
+    isa     => 'Str',
+    alias   => 'a',
+    comment => 'alias for future references to HUB',
 );
 
 # ------------------------------------------------------------------------
@@ -87,7 +108,6 @@ opt hub => (
 subcmd(
     cmd     => [qw/import/],
     comment => 'import projects from a remote hub',
-    hidden  => 1,
 );
 
 arg path => (
@@ -241,7 +261,6 @@ opt status => (
 subcmd(
     cmd     => [qw/export/],
     comment => 'export a project to a hub',
-    hidden  => 1,
 );
 
 arg path => (
@@ -257,9 +276,11 @@ arg hub => (
     comment  => 'destination hub address or alias',
 );
 
-opt alias => (
+opt message => (
     isa     => 'Str',
-    comment => 'alias for future references to HUB',
+    alias   => 'm',
+    default => '',
+    comment => 'optional comment for the associated update',
 );
 
 # ------------------------------------------------------------------------
@@ -274,6 +295,46 @@ arg items => (
     isa      => 'SubCmd',
     comment  => '',
     required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif list tasks
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list tasks/],
+    comment => 'list tasks grouped by project',
+);
+
+opt status => (
+    isa     => 'Str',
+    alias   => 's',
+    comment => 'limit tasks to a specific status',
+);
+
+opt project_status => (
+    isa     => 'Str',
+    alias   => 'P',
+    comment => 'limit projects by a particular project status',
+);
+
+# ------------------------------------------------------------------------
+# bif list issues
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list issues/],
+    comment => 'list issues grouped by project',
+);
+
+opt status => (
+    isa     => 'Str',
+    alias   => 's',
+    comment => 'limit issues to a specific status',
+);
+
+opt project_status => (
+    isa     => 'Str',
+    alias   => 'P',
+    comment => 'limit projects by a particular project status',
 );
 
 # ------------------------------------------------------------------------
@@ -302,6 +363,11 @@ opt project_status => (
 subcmd(
     cmd     => [qw/list projects/],
     comment => 'list projects with topic counts and progress',
+);
+
+arg hub => (
+    isa     => 'Str',
+    comment => 'hub to list projects from instead of local',
 );
 
 opt status => (
@@ -372,6 +438,11 @@ arg id => (
     isa      => 'Str',
     comment  => 'topic ID or project PATH',
     required => 1,
+);
+
+arg hub => (
+    isa     => 'Str',
+    comment => 'search for PATH in a hub',
 );
 
 opt full => (
@@ -457,10 +528,10 @@ subcmd(
     comment => 'reply to a previous update or comment',
 );
 
-arg update_id => (
+arg 'id.uid' => (
     isa      => 'Str',
     required => 1,
-    comment  => 'ID.UPDATE_ID of an existing comment',
+    comment  => 'topic and update ID of previous comment',
 );
 
 opt author => (
@@ -605,18 +676,21 @@ opt write => (
 
 # Run user defined aliases
 sub run {
-    require App::bif::Util;
-    my $opts  = App::bif::Util::bif_init(shift);
-    my @cmd   = @{ delete $opts->{alias} };
+    my $opts = shift;
+    my @cmd  = @{ delete $opts->{alias} };
+
+    require App::bif::Context;
+    my $ctx = App::bif::Context->new($opts);
+
     my $alias = shift @cmd;
 
-    my $config = App::bif::Util::bif_conf($opts);
-    my $str    = $config->{alias}->{$alias}
+    my $str = $ctx->{'user.alias'}->{$alias}
       or die usage(qq{unknown COMMAND or ALIAS "$alias"});
 
     # Make sure these options are correctly passed through (or not)
     $opts->{debug}    = undef if exists $opts->{debug};
     $opts->{no_pager} = undef if exists $opts->{no_pager};
+    $opts->{no_color} = undef if exists $opts->{no_color};
 
     unshift( @cmd, split( ' ', $str ) );
 
@@ -657,7 +731,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

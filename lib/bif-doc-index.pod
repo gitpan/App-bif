@@ -1,0 +1,261 @@
+=head1 Bif Documentation Index
+
+=head2 User Documentation
+
+=head3 Introduction & General Information
+
+=over
+
+=item * L<bif> - the bif manual
+
+=item * L<bif-doc> - display bif documentation
+
+=item * L<bif-doc-intro> - a hands-on quickstart introduction
+
+=item * L<bif-doc-changelog> - what has changed in each release
+
+=item * L<bif-doc-index> - documentation index (this document)
+
+=item * L<bif-doc-faq> - frequently asked questions
+
+=back
+
+=head3 Initialisation And Configuration
+
+=over
+
+=item * L<bif-init> - initialise a bif repository
+
+=item * L<bif-config> - initialise a bif repository
+
+=back
+
+=head3 Topic Creation
+
+=over
+
+=item * L<bif-new-project> - initialise a bif repository
+
+=item * L<bif-new-task> - initialise a bif repository
+
+=item * L<bif-new-issue> - initialise a bif repository
+
+=back
+
+=head3 Information Retrieval
+
+=over
+
+=item * L<bif-list-projects> - initialise a bif repository
+
+=item * L<bif-list-project-status> - initialise a bif repository
+
+=item * L<bif-list-topics> - initialise a bif repository
+
+=item * L<bif-log> - review the repository or topic history
+
+=item * L<bif-show> - display a topics current status
+
+=back
+
+=head3 Topic Modification & Collaboration
+
+=over
+
+=item * L<bif-reply> - reply to a comment
+
+=item * L<bif-drop> - delete a topic or topic update
+
+=item * L<bif-push> - push a topic to another project
+
+=item * L<bif-update> - comment on or update a topic
+
+=back
+
+=head3 Project Mirroring & Synchronisation
+
+=over
+
+=item * L<bif-export> - initialise a bif repository
+
+=item * L<bif-import> - initialise a bif repository
+
+=item * L<bif-register> - register with a hub
+
+=item * L<bif-sync> - initialise a bif repository
+
+=back
+
+=head3 Repository & Hub Management
+
+=over
+
+=item * L<bif-upgrade> - upgrade a repository
+
+=item * L<bif-sql> - run an SQLite command against the database
+
+=item * L<bifhub> - bif hub management
+
+=item * L<bifsync> - bif synchronization server
+
+=back
+
+
+=head2 Developer Documentation
+
+=over
+
+=item * L<bif-doc-design> - how and why bif does what it does
+
+=item * L<bif-doc-roadmap> - where development is focused
+
+=back
+
+=head3 Perl Modules
+
+=over
+
+=item * L<App::bif> - initialise a bif repository
+
+=item * L<App::bif::Context> - Context class for bif commands
+
+=item * L<Bif::DB> - initialise a bif repository
+
+=item * L<Bif::DB::RW> - initialise a bif repository
+
+=item * L<Bif::Role::Sync> - initialise a bif repository
+
+=item * L<Bif::Client> - initialise a bif repository
+
+=item * L<Bif::Server> - initialise a bif repository
+
+=back
+
+=head3 Database Tables & Their Triggers
+
+The documentation pages for database tables have titles like
+bif-sql-table-TABLE-NAME.
+
+=over
+
+=item * L<bif-sql-table-default-status>
+
+=item * L<bif-sql-table-hubs>
+
+=item * L<bif-sql-table-issues-tomerge>
+
+=item * L<bif-sql-table-issues-tomerge-status>
+
+=item * L<bif-sql-table-issues>
+
+=item * L<bif-sql-table-issue-status-tomerge>
+
+=item * L<bif-sql-table-issue-status>
+
+=item * L<bif-sql-table-issue-status-updates>
+
+=item * L<bif-sql-table-issue-updates>
+
+=item * L<bif-sql-table-project-issues>
+
+=item * L<bif-sql-table-projects-tomerge>
+
+=item * L<bif-sql-table-project-related-updates>
+
+=item * L<bif-sql-table-projects> - project current meta data
+
+=item * L<bif-sql-table-projects-merkle>
+
+=item * L<bif-sql-table-project-status-tomerge>
+
+=item * L<bif-sql-table-project-status>
+
+=item * L<bif-sql-table-project-status-updates>
+
+=item * L<bif-sql-table-projects-tree>
+
+=item * L<bif-sql-table-project-updates>
+
+=item * L<bif-sql-table-tasks-tomerge>
+
+=item * L<bif-sql-table-tasks>
+
+=item * L<bif-sql-table-task-status-tomerge>
+
+=item * L<bif-sql-table-task-status>
+
+=item * L<bif-sql-table-task-status-updates>
+
+=item * L<bif-sql-table-task-updates>
+
+=item * L<bif-sql-table-topics>
+
+=item * L<bif-sql-table-updates>
+
+=item * L<bif-sql-table-updates-pending>
+
+=item * L<bif-sql-table-updates-tree>
+
+=back
+
+=head3 Database Functions
+
+The documentation pages for database functions have titles like
+bif-sql-func-TABLE-NAME.
+
+
+=over
+
+=item * L<bif-sql-func-import-update>
+
+=item * L<bif-sql-func-import-project>
+
+=item * L<bif-sql-func-import-project-update>
+
+=item * L<bif-sql-func-import-project-status>
+
+=item * L<bif-sql-func-import-project-status-update>
+
+=item * L<bif-sql-func-import-task-status>
+
+=item * L<bif-sql-func-import-task-status-update>
+
+=item * L<bif-sql-func-import-issue-status>
+
+=item * L<bif-sql-func-import-issue-status-update>
+
+=item * L<bif-sql-func-import-task>
+
+=item * L<bif-sql-func-import-task-update>
+
+=item * L<bif-sql-func-import-issue>
+
+=item * L<bif-sql-func-import-issue-update>
+
+=item * L<bif-sql-func-merge-updates>
+
+=item * L<bif-sql-func-new-issue>
+
+=item * L<bif-sql-func-new-issue-status>
+
+=item * L<bif-sql-func-new-project> - add a new project to an update
+
+=item * L<bif-sql-func-new-project-status>
+
+=item * L<bif-sql-func-new-task>
+
+=item * L<bif-sql-func-new-task-status>
+
+=item * L<bif-sql-func-update-issue>
+
+=item * L<bif-sql-func-update-issue-status>
+
+=item * L<bif-sql-func-update-project>
+
+=item * L<bif-sql-func-update-project-status>
+
+=item * L<bif-sql-func-update-task>
+
+=item * L<bif-sql-func-update-task-status>
+
+=back

@@ -18,7 +18,7 @@ bifsync - synchronization server for bif hubs
 
 =head1 SYNOPSIS
 
-  bifsync [DIRECTORY]
+  bifsync DIRECTORY
 
 =head1 DESCRIPTION
 
@@ -41,7 +41,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

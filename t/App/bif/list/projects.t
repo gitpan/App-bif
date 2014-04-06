@@ -9,7 +9,8 @@ run_in_tempdir {
 
     bif(qw/ init /);
 
-    is_deeply bif(qw/list projects/), [], 'NoEntries';
+    my $list = bif(qw/list projects/);
+    isa_ok $list, 'Bif::OK::ListProjects';
 
     # TODO return the id
     isa_ok bif(qw/ new project todo --message message title /),
@@ -21,15 +22,11 @@ run_in_tempdir {
     isa_ok bif(qw/ new project todo2 --message message title2 --status eval/),
       'Bif::OK::NewProject';
 
-    is_deeply bif(qw/list projects /),
-      [
-        [ 'todo',  'title',  'run',  '-', '-', '0%' ],
-        [ 'todo2', 'title2', 'eval', '-', '-', '0%' ],
-      ],
-      'ListAllProjects';
+    $list = bif(qw/list projects /);
+    isa_ok $list, 'Bif::OK::ListProjects';
 
-    is_deeply bif(qw/list projects --status run/),
-      [ [ 'todo', 'title', 'run', '-', '-', '0%' ] ], 'ListProjects';
+    $list = bif(qw/list projects --status run/);
+    isa_ok $list, 'Bif::OK::ListProjects';
 
 };
 

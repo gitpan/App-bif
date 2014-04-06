@@ -1,77 +1,87 @@
 package App::bif::new::issue;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts   = bif_init(shift);
-    my $config = bif_conf;
-    my $db     = bif_dbw;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->dbw;
 
-    $opts->{title} ||= prompt( 'Title:', '' )
-      || bif_err( 'TitleRequired', 'title is required' );
+    $ctx->{title} ||= prompt( 'Title:', '' )
+      || return $ctx->err( 'TitleRequired', 'title is required' );
 
-    $opts->{path} ||= do {
+    if ( !$ctx->{path} ) {
 
-        # just grab the first one
-        my ($project) = $db->xarray(
-            select   => "coalesce(path,'')",
-            from     => 'projects',
-            order_by => 'path',
-            limit    => 1,
+        my ( $path, $count ) = $db->xarray(
+            select     => [ "coalesce(p.path,'')", 'count(p.id)' ],
+            from       => 'repos r',
+            inner_join => 'repo_projects rp',
+            on         => 'rp.repo_id = r.id',
+            inner_join => 'projects p',
+            on         => 'p.id = rp.project_id',
+            where      => 'r.local = 1',
+            order_by   => 'p.path',
         );
-        prompt( 'Project:', $project );
-      }
-      || bif_err( 'ProjectRequired', 'project is required' );
 
-    bif_err( 'ProjectNotFound', 'project not found: ' . $opts->{path} )
-      unless $opts->{project_id} = $db->path2project_id( $opts->{path} );
+        if ( 0 == $count ) {
+            return $ctx->err( 'NoProjectInRepo', 'task needs a project' );
+        }
+        elsif ( 1 == $count ) {
+            $ctx->{path} = $path;
+        }
+        else {
+            $ctx->{path} = prompt( 'Project:', $path )
+              || return $ctx->err( 'ProjectRequired', 'project is required' );
+        }
+    }
 
-    if ( $opts->{status} ) {
+    return $ctx->err( 'ProjectNotFound', 'project not found: ' . $ctx->{path} )
+      unless my $pinfo = $db->get_project( $ctx->{path} );
+
+    if ( $ctx->{status} ) {
         my ( $status_ids, $invalid ) =
-          $db->status_ids( $opts->{project_id}, 'issue', $opts->{status} );
+          $db->status_ids( $pinfo->{id}, 'issue', $ctx->{status} );
 
-        bif_err( 'InvalidStatus', 'unknown status: ' . join( ', ', @$invalid ) )
+        return $ctx->err( 'InvalidStatus',
+            'unknown status: ' . join( ', ', @$invalid ) )
           if @$invalid;
 
-        $opts->{status_id} = $status_ids->[0];
+        $ctx->{status_id} = $status_ids->[0];
     }
     else {
-        ( $opts->{status_id} ) = $db->xarray(
+        ( $ctx->{status_id} ) = $db->xarray(
             select => 'id',
             from   => 'issue_status',
-            where  => { project_id => $opts->{project_id}, def => 1 },
+            where  => { project_id => $pinfo->{id}, def => 1 },
         );
     }
 
-    $opts->{author}  ||= $config->{user}->{name};
-    $opts->{email}   ||= $config->{user}->{email};
-    $opts->{message} ||= prompt_edit( opts => $opts );
-    $opts->{id}        = $db->nextval('topics');
-    $opts->{update_id} = $db->nextval('updates');
+    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    $ctx->{id}        = $db->nextval('topics');
+    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
-                    id      => $opts->{update_id},
-                    email   => $opts->{email},
-                    author  => $opts->{author},
-                    message => $opts->{message},
+                    id      => $ctx->{update_id},
+                    email   => $ctx->{user}->{email},
+                    author  => $ctx->{user}->{name},
+                    message => $ctx->{message},
                 },
             );
 
             $db->xdo(
                 insert_into => 'func_new_issue',
                 values      => {
-                    id        => $opts->{id},
-                    update_id => $opts->{update_id},
-                    status_id => $opts->{status_id},
-                    title     => $opts->{title},
+                    id        => $ctx->{id},
+                    update_id => $ctx->{update_id},
+                    status_id => $ctx->{status_id},
+                    title     => $ctx->{title},
                 },
             );
 
@@ -80,11 +90,18 @@ sub run {
                 values      => { merge => 1 },
             );
 
+            $db->update_repo(
+                {
+                    author  => $ctx->{user}->{name},
+                    email   => $ctx->{user}->{email},
+                    message => "new issue $ctx->{id} [$pinfo->{path}]",
+                }
+            );
         }
     );
 
-    printf( "Issue created: %d\n", $opts->{id} );
-    return bif_ok( 'NewIssue', $opts );
+    printf( "Issue created: %d\n", $ctx->{id} );
+    return $ctx->ok('NewIssue');
 }
 
 1;
@@ -147,7 +164,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

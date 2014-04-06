@@ -7,12 +7,12 @@ use Test::More;
 
 run_in_tempdir {
 
-    my $db = bif(qw/init/);
+    bif(qw/init/);
 
     isa_ok exception { bif(qw/ new task/) }, 'Bif::Error::TitleRequired';
 
     isa_ok exception { bif(qw/ new task title/) },
-      'Bif::Error::ProjectRequired';
+      'Bif::Error::NoProjectInRepo';
 
     isa_ok exception { bif(qw/ new task -p todo title/) },
       'Bif::Error::ProjectNotFound';
@@ -23,34 +23,16 @@ run_in_tempdir {
       'Bif::Error::EmptyContent';
 
     my $i = bif(qw/new task -p todo title -m message/);
+    isa_ok $i, 'Bif::OK::NewTask';
     ok $i->{id}, 'task created ' . $i->{id};
 
-    is_deeply [
-        $db->xarray(
-            select     => [qw/task_status.def task_status.project_id/],
-            from       => 'tasks',
-            inner_join => 'task_status',
-            on         => 'task_status.id = tasks.status_id',
-            where      => { 'tasks.id' => $i->{id} },
-        )
-      ],
-      [ 1, $p->{id} ], 'task default status and project ok';
+    # TODO: check that list tasks shows this task
 
     isa_ok exception { bif(qw/ new task -p todo title -s unknown/) },
       'Bif::Error::InvalidStatus';
 
     my $i2 = bif(qw/new task -p todo title -m message2 -s stalled/);
-
-    is_deeply [
-        $db->xarray(
-            select     => [qw/task_status.status task_status.project_id/],
-            from       => 'tasks',
-            inner_join => 'task_status',
-            on         => 'task_status.id = tasks.status_id',
-            where      => { 'tasks.id' => $i2->{id} },
-        )
-      ],
-      [ 'stalled', $p->{id} ], 'task status and project ok';
+    isa_ok $i2, 'Bif::OK::NewTask';
 
 };
 

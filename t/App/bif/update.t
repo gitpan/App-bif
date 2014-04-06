@@ -30,74 +30,44 @@ run_in_tempdir {
         $update = bif(qw/update todo eval --message message2/);
         ok $update->{status}->[0], 'update project status';
 
-        my $data = bif(qw/list projects/);
-        is $data->[0]->[2], 'eval', 'check project update status';
+        my $res = bif(qw/list projects/);
+        isa_ok $res, 'Bif::OK::ListProjects';
+
+        # TODO actually check the update effect?
 
     };
 
     subtest 'task', sub {
 
-        my $task = bif(qw/new task todo title --message message/);
+        my $task = bif(qw/new task todo title --message message3/);
         ok $task->{id}, 'create task ' . $task->{id};
 
-        my $update = bif( qw/update/, $task->{id}, qw/ --message message2/ );
+        my $update = bif( qw/update/, $task->{id}, qw/ --message message4/ );
         isa_ok $update, 'Bif::OK::UpdateTask';
-        ok $update->{update_id}, 'update task';
 
         $update =
-          bif( qw/update /, $task->{id}, qw/closed --message message3/ );
-
-        ok $update->{status}->[0], 'update project status';
-
-        my ($status) = $db->xarray(
-            select     => 'task_status.status',
-            from       => 'tasks',
-            inner_join => 'task_status',
-            on         => 'task_status.id = tasks.status_id',
-            where      => { 'tasks.id' => $task->{id} },
-        );
-
-        is $status, 'closed', 'check task update status';
+          bif( qw/update /, $task->{id}, qw/closed --message message5/ );
+        isa_ok $update, 'Bif::OK::UpdateTask';
 
         $update =
-          bif( qw/update /, $task->{id}, qw/--title title2 -m message/ );
-        my $show = bif( 'show', $task->{id} );
-        like $show->[3][1], qr/title2/, 'task title updated';
+          bif( qw/update /, $task->{id}, qw/--title title2 -m message6/ );
 
+        isa_ok $update, 'Bif::OK::UpdateTask';
     };
 
     subtest 'issue', sub {
 
-        my $issue = bif(qw/new issue todo title --message message/);
-        ok $issue->{id}, 'create issue ' . $issue->{id};
-
-        my $update = bif( qw/update/, $issue->{id}, qw/ --message message2/ );
-
+        my $issue = bif(qw/new issue todo title --message message7/);
+        my $update = bif( qw/update/, $issue->{id}, qw/ --message message8/ );
         isa_ok $update, 'Bif::OK::UpdateIssue';
-        ok $update->{update_id}, 'update issue';
 
         $update =
-          bif( qw/update /, $issue->{id}, qw/closed --message message3/ );
-        ok $update->{status}->[0], 'update issue status';
-
-        my ( $status, $path ) = $db->xarray(
-            select     => [ 'issue_status.status', 'projects.path' ],
-            from       => 'project_issues',
-            inner_join => 'issue_status',
-            on         => 'issue_status.id = project_issues.status_id',
-            inner_join => 'projects',
-            on         => 'projects.id = project_issues.project_id',
-            where      => { 'project_issues.id' => $issue->{id} },
-        );
-
-        is $status, 'closed', 'check issue update status';
-        is $path,   'todo',   'check issue update project';
+          bif( qw/update /, $issue->{id}, qw/closed --message message9/ );
+        isa_ok $update, 'Bif::OK::UpdateIssue';
 
         $update =
-          bif( qw/update /, $issue->{id}, qw/--title title2 -m message/ );
-        my $show = bif( 'show', $issue->{id} );
-
-        like $show->[0][1], qr/title2/, 'issue title updated';
+          bif( qw/update /, $issue->{id}, qw/--title title2 -m message10/ );
+        isa_ok $update, 'Bif::OK::UpdateIssue';
     };
 
 };

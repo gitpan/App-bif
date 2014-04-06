@@ -1,47 +1,47 @@
 package App::bif::push;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_dbw;
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->dbw;
 
-    bif_err( 'NotImplemented', '--copy not implemented yet' )
-      if $opts->{copy};
+    return $ctx->err( 'NotImplemented', '--copy not implemented yet' )
+      if $ctx->{copy};
 
-    my $info = $db->get_topic( $opts->{id} )
-      || bif_err( 'TopicNotFound', 'topic not found: ' . $opts->{id} );
+    my $info = $db->get_topic( $ctx->{id} )
+      || return $ctx->err( 'TopicNotFound', 'topic not found: ' . $ctx->{id} );
 
-    if ( $opts->{hub} ) {
+    if ( $ctx->{hub} ) {
     }
     else {
         if ( $info->{kind} eq 'issue' ) {
 
-            my $pinfo = $db->get_project( $opts->{path} )
-              || bif_err( 'ProjectNotFound',
-                'project not found: ' . $opts->{path} );
+            my $pinfo = $db->get_project( $ctx->{path} )
+              || return $ctx->err( 'ProjectNotFound',
+                'project not found: ' . $ctx->{path} );
 
-            return _push_issue( $opts, $db, $info, $pinfo );
+            return _push_issue( $ctx, $db, $info, $pinfo );
         }
         elsif ( $info->{kind} eq 'task' ) {
-            bif_err( 'NotImplemented',
+            return $ctx->err( 'NotImplemented',
                 'push not implemented: ' . $info->{kind} );
         }
 
     }
 
-    bif_err( 'PushInvalid', 'cannot push thread type: ' . $info->{kind} );
+    return $ctx->err( 'PushInvalid',
+        'cannot push thread type: ' . $info->{kind} );
 }
 
 sub _push_issue {
-    my $opts   = shift;
-    my $db     = shift;
-    my $info   = shift;
-    my $pinfo  = shift;
-    my $config = bif_conf;
+    my $ctx   = shift;
+    my $db    = shift;
+    my $info  = shift;
+    my $pinfo = shift;
 
     my ($existing) = $db->xarray(
         select     => 'issue_status.status',
@@ -58,26 +58,24 @@ sub _push_issue {
         },
     );
 
-    bif_err( 'AlreadyPushed',
-        "$opts->{id} already has status $opts->{path}:$existing" )
+    return $ctx->err( 'AlreadyPushed',
+        "$ctx->{id} already has status $ctx->{path}:$existing" )
       if $existing;
 
-    $opts->{update_id} = $db->nextval('updates');
-    $opts->{email}   ||= $config->{user}->{email};
-    $opts->{author}  ||= $config->{user}->{name};
-    $opts->{message} ||= prompt_edit(
-        txt => "[pushed from <WHERE> to $opts->{path}<STATUS>]\n\n" );
+    $ctx->{update_id} = $db->nextval('updates');
+    $ctx->{message} ||= $ctx->prompt_edit(
+        txt => "[pushed from <WHERE> to $ctx->{path}<STATUS>]\n\n" );
 
     $db->txn(
         sub {
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
-                    id        => $opts->{update_id},
+                    id        => $ctx->{update_id},
                     parent_id => $info->{first_update_id},
-                    email     => $opts->{email},
-                    author    => $opts->{author},
-                    message   => $opts->{message},
+                    email     => $ctx->{user}->{email},
+                    author    => $ctx->{user}->{name},
+                    message   => $ctx->{message},
                 },
             );
 
@@ -95,7 +93,7 @@ sub _push_issue {
                 values      => {
                     id         => $info->{id},
                     project_id => $pinfo->{id},
-                    update_id  => $opts->{update_id},
+                    update_id  => $ctx->{update_id},
                     status_id  => $status_id,
                 },
             );
@@ -105,11 +103,21 @@ sub _push_issue {
                 values      => { merge => 1 },
             );
 
+            $db->update_repo(
+                {
+                    author  => $ctx->{user}->{name},
+                    email   => $ctx->{user}->{email},
+                    message => 'push '
+                      . $info->{kind} . ' '
+                      . $info->{id} . ' '
+                      . $ctx->{path},
+                }
+            );
         }
     );
 
-    printf( "Issue updated: %d.%d\n", $opts->{id}, $opts->{update_id} );
-    return $opts;
+    printf( "Issue updated: %d.%d\n", $ctx->{id}, $ctx->{update_id} );
+    return $ctx->ok('PushIssue');
 }
 
 1;
@@ -175,7 +183,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the

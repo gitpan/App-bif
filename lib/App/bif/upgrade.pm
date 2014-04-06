@@ -1,45 +1,16 @@
 package App::bif::upgrade;
 use strict;
 use warnings;
-use App::bif::Util;
+use App::bif::Context;
 use Path::Tiny qw/path/;
 
 our $VERSION = '0.1.0';
 
 sub run {
-    my $opts = bif_init(shift);
-    my $db   = bif_dbw( $opts->{directory} );
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->dbw( $ctx->{directory} );
 
-    require File::ShareDir;
-    my $share_dir = $main::BIF_SHARE_DIR
-      || File::ShareDir::dist_dir('App-bif');
-
-    my $deploy_dir = path( $share_dir, $db->{Driver}->{Name} );
-
-    if ( !-d $deploy_dir ) {
-        bif_err( 'DBUnsupported',
-            'unsupported database type: ' . $db->{Driver}->{Name} );
-    }
-
-    require DBIx::ThinSQL::Deploy;
-
-    my ( $old, $new ) = $db->txn(
-        sub {
-            my ( $old, $new ) = $db->deploy_dir($deploy_dir);
-
-            bif_err( 'NotInitialized',
-                'last update id was zero; repo not initialized' )
-              unless $old;
-
-            if ( $new < $old ) {
-                bif_err( 'DBUpgradeBackward',
-                    "Database TRAVELLED BACKWARD! (v%s-v%s)\n",
-                    $old, $new );
-            }
-
-            return $old, $new;
-        }
-    );
+    my ( $old, $new ) = $db->txn( sub { $db->deploy } );
 
     if ( $new > $old ) {
         printf( "Database upgraded (v%s-v%s)\n", $old, $new );
@@ -47,8 +18,8 @@ sub run {
     else {
         printf( "Database remains at v%s\n", $new );
     }
-    return [ $new, $old ];
 
+    return $ctx->ok('Upgrade');
 }
 
 1;
@@ -96,7 +67,7 @@ Mark Lawrence E<lt>nomad@null.netE<gt>
 
 =head1 COPYRIGHT AND LICENSE
 
-Copyright 2013 Mark Lawrence <nomad@null.net>
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
 
 This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
