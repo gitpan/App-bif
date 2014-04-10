@@ -3,14 +3,14 @@
 # be ignored, and shouldn't have any effect on target machines
 use lib 'devel/lib';
 
-# extlib/lib/perl5 is is added for in-tree execution with a local::lib
-use lib 'extlib/lib/perl5';
+# libext/lib/perl5 is is added for in-tree execution with a local::lib
+use lib 'libext/lib/perl5';
 use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
 
-my $VERSION = '0.1.0_3';
+my $VERSION = '0.1.0_4';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -43,7 +43,54 @@ no_index package => 'Bif::Error';
 
 WriteAll;
 
-# Create the test scripts if we are a developer
+# Create a t/bif script for testing
+{
+    open( FH, '>', 't/bif' ) or die "open: $!";
+    print FH <<"END";
+#!$^X
+use strict;
+use lib "$Bin/libext/lib/perl5";
+use lib "$Bin/lib";
+use OptArgs qw/dispatch/;
+
+# Make sure that any subcommands that call bifsync locally find the
+# local testing version in t/bifsync
+\$ENV{PATH} = "$Bin/t" .':'.\$ENV{PATH};
+
+\$main::BIF_SHARE_DIR = "$Bin/share";
+
+dispatch(qw/run App::bif/);
+END
+    close FH;
+    chmod 0755, 't/bif' or warn "chmod: $!";
+
+    use Path::Tiny;
+    my $pod = path('bin/bif')->slurp_utf8;
+    $pod =~ s/.*__END__//sm;
+    path('t/bif')->append_utf8($pod);
+}
+
+# Create a t/bifsync script for testing
+{
+    open( FH, '>', 't/bifsync' ) or die "open: $!";
+    print FH <<"END";
+#!$^X
+use strict;
+use lib "$Bin/libext/lib/perl5";
+use lib "$Bin/lib";
+use OptArgs qw/dispatch/;
+
+dispatch(qw/run App::bifsync/);
+END
+    close FH;
+    chmod 0755, 't/bifsync' or warn "chmod: $!";
+
+    my $pod = path('bin/bifsync')->slurp_utf8;
+    $pod =~ s/.*__END__//sm;
+    path('t/bifsync')->append_utf8($pod);
+}
+
+# Set App::bif::Version if we are a developer
 exit unless -d '.git';
 
 my $commit = qx/git rev-parse HEAD/;
@@ -63,46 +110,4 @@ package App::bif::Version;
 \$App::bif::Version::DATE = '$when';
 1;
 END
-
-my $dir = Cwd::abs_path;
-open( FH, '>', 't/bif' ) or die "open: $!";
-print FH <<"END";
-#!$^X
-use strict;
-use lib "$Bin/extlib/lib/perl5";
-use lib "$Bin/lib";
-use OptArgs qw/dispatch/;
-
-# Make sure that any subcommands that call bifsync locally find the
-# local testing version in t/bifsync
-\$ENV{PATH} = "$Bin/t" .':'.\$ENV{PATH};
-
-\$main::BIF_SHARE_DIR = "$Bin/share";
-
-dispatch(qw/run App::bif/);
-END
-close FH;
-chmod 0755, 't/bif' or warn "chmod: $!";
-
-use Path::Tiny;
-my $pod = path('bin/bif')->slurp_utf8;
-$pod =~ s/.*__END__//sm;
-path('t/bif')->append_utf8($pod);
-
-open( FH, '>', 't/bifsync' ) or die "open: $!";
-print FH <<"END";
-#!$^X
-use strict;
-use lib "$Bin/extlib/lib/perl5";
-use lib "$Bin/lib";
-use OptArgs qw/dispatch/;
-
-dispatch(qw/run App::bifsync/);
-END
-close FH;
-chmod 0755, 't/bifsync' or warn "chmod: $!";
-
-$pod = path('bin/bifsync')->slurp_utf8;
-$pod =~ s/.*__END__//sm;
-path('t/bifsync')->append_utf8($pod);
 

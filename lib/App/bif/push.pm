@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0';
+our $VERSION = '0.1.0_4';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -129,7 +129,7 @@ bif-push - push a thread to another project
 
 =head1 VERSION
 
-0.1.0 (yyyy-mm-dd)
+0.1.0_4 (yyyy-mm-dd)
 
 =head1 SYNOPSIS
 

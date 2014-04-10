@@ -60,14 +60,10 @@ Installing
         curl -L http://cpanmin.us | perl - --sudo App::cpanminus
 
     To build and install bif system-wide simply point "cpanm" at the
-    appropriate release, using the "--sudo" option.
+    appropriate release.
 
         #!sh
-        cpanm --sudo http://bifax.org/download/bif-stable.tar.gz
-
-    NOTE: There has not yet been a stable bif release! The above command
-    will fail until that occurs. Interested developers should read the
-    development section below.
+        cpanm --sudo App::bif
 
 Contributing
     You do not have to be a developer to contribute to bif! It is arguable
@@ -122,13 +118,13 @@ Development
 
     Make sure that you have a recent "cpanm" that has the "--with-develop"
     option. [The cpanminus packages in the current stable versions of Ubuntu
-    and Debian do not work]. Development dependencies can be installed in a
-    local extlib/ directory without polluting the rest of your system:
+    and Debian do not]. Development dependencies can be installed in a local
+    libext/ directory without polluting the rest of your system:
 
         #!sh
 
         cpanm \
-            --local-lib-contained extlib \
+            --local-lib-contained libext \
             --installdeps \
             --with-develop \
             --notest \
@@ -139,7 +135,7 @@ Development
     PATH:
 
         #!sh
-        perl -I extlib/lib/perl5 Makefile.PL
+        perl Makefile.PL
         export PATH=$PWD/t:$PATH
         which bif   # t/bif
 

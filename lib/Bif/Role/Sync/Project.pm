@@ -4,7 +4,7 @@ use warnings;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0';
+our $VERSION = '0.1.0_4';
 
 my %import_functions = (
     NEW => {

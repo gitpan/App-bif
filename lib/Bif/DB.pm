@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0';
+our $VERSION = '0.1.0_4';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
