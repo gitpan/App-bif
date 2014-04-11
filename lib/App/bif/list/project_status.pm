@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_5';
+our $VERSION = '0.1.0_6';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -42,7 +42,7 @@ bif-list-project-status - list valid project status/status values
 
 =head1 VERSION
 
-0.1.0_5 (2014-04-11)
+0.1.0_6 (2014-04-11)
 
 =head1 SYNOPSIS
 

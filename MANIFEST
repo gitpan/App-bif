@@ -50,12 +50,12 @@ lib/App/bifsync.pm
 lib/bif-doc-changelog.pod
 lib/bif-doc-design.pod
 lib/bif-doc-faq.pod
+lib/bif-doc-func-new-project.pod
+lib/bif-doc-func-update-task.pod
 lib/bif-doc-index.pod
 lib/bif-doc-intro.pod
 lib/bif-doc-roadmap.pod
-lib/bif-sql-func-new-project.pod
-lib/bif-sql-func-update-task.pod
-lib/bif-sql-table-projects.pod
+lib/bif-doc-table-projects.pod
 lib/Bif/Client.pm
 lib/Bif/DB.pm
 lib/Bif/DB.pod

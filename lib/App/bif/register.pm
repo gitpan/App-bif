@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_5';
+our $VERSION = '0.1.0_6';
 
 sub run {
     my $opts = shift;
@@ -137,7 +137,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_5 (2014-04-11)
+0.1.0_6 (2014-04-11)
 
 =head1 SYNOPSIS
 

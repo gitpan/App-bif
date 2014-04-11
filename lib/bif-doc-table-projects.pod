@@ -1,10 +1,10 @@
 =head1 NAME
 
-bif-sql-table-projects - project current meta data
+bif-doc-table-projects - project current meta data
 
 =head1 VERSION
 
-0.1.0_5 (2014-04-11)
+0.1.0_6 (2014-04-11)
 
 =head1 DEFINITION
 
@@ -28,23 +28,23 @@ bif-sql-table-projects - project current meta data
 
 Table C<projects> contains the project-specific meta data for a topic.
 Rows should only be inserted into this table by
-L<func_new_project()|bif-sql-func-new-project> and only updated by
-triggers on the L<projects_tomerge|bif-sql-table-projects-tomerge>
+L<func_new_project()|bif-doc-func-new-project> and only updated by
+triggers on the L<projects_tomerge|bif-doc-table-projects-tomerge>
 table. Deleting directly from this table is fine.
 
 =head1 AFFECTED TABLES
 
 =over
 
-=item * L<projects_tree|bif-sql-table-projects-tree>
+=item * L<projects_tree|bif-doc-table-projects-tree>
 
 Modified on INSERT, UPDATE, and DELETE.
 
-=item * L<projects_tomerge|bif-sql-table-projects-tomerge>
+=item * L<projects_tomerge|bif-doc-table-projects-tomerge>
 
 Cascading DELETEs.
 
-=item * L<updates|bif-sql-table-updates>
+=item * L<updates|bif-doc-table-updates>
 
 Cascading DELETEs.
 
@@ -52,9 +52,9 @@ Cascading DELETEs.
 
 =head1 SEE ALSO
 
-L<bif-sql-func-new-project>,  L<bif-sql-table-topics>,
-L<bif-sql-table-projects-tomerge>, L<bif-sql-table-project-status>,
-L<bif-sql-table-projects-tree>, L<bif-sql-table-updates>
+L<bif-doc-func-new-project>,  L<bif-doc-table-topics>,
+L<bif-doc-table-projects-tomerge>, L<bif-doc-table-project-status>,
+L<bif-doc-table-projects-tree>, L<bif-doc-table-updates>
 
 =head1 AUTHOR
 

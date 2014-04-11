@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_5';
+our $VERSION = '0.1.0_6';
 
 sub run {
     my $ctx = shift;
@@ -164,7 +164,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_5 (2014-04-11)
+0.1.0_6 (2014-04-11)
 
 =head1 SYNOPSIS
 

@@ -1,10 +1,10 @@
 =head1 NAME
 
-bif-sql-func-new-project - add a new project to an update
+bif-doc-func-new-project - add a new project to an update
 
 =head1 VERSION
 
-0.1.0_5 (2014-04-11)
+0.1.0_6 (2014-04-11)
 
 =head1 SYNOPSIS
 
@@ -32,14 +32,14 @@ bif-sql-func-new-project - add a new project to an update
 =head1 DESCRIPTION
 
 func_new_project() adds a new project to an in-progress update by
-inserting a row into each of the L<topics|bif-sql-table-topics> and
-L<projects|bif-sql-table-projects> tables.
+inserting a row into each of the L<topics|bif-doc-table-topics> and
+L<projects|bif-doc-table-projects> tables.
 
 The transaction will fail with a foreign key violation unless at least
 one call to
-L<func_new_project_status()|bif-sql-func-new-project-status> is also
+L<func_new_project_status()|bif-doc-func-new-project-status> is also
 made and a row is inserted into
-L<project_updates|bif-sql-table-project-updates> resulting in
+L<project_updates|bif-doc-table-project-updates> resulting in
 C<projects.status_id> having a valid value.
 
 =head1 AFFECTED TABLES
@@ -49,17 +49,17 @@ tables:
 
 =over
 
-=item * L<topics|bif-sql-table-topics>
+=item * L<topics|bif-doc-table-topics>
 
-=item * L<projects|bif-sql-table-projects>
+=item * L<projects|bif-doc-table-projects>
 
 =back
 
 =head1 SEE ALSO
 
-L<bif-sql-table-updates>, L<bif-sql-table-topics>,
-L<bif-sql-table-projects>, L<bif-sql-func-new-project-status>,
-L<bif-sql-table-project-updates>, L<bif-sql-func-merge-updates>
+L<bif-doc-table-updates>, L<bif-doc-table-topics>,
+L<bif-doc-table-projects>, L<bif-doc-func-new-project-status>,
+L<bif-doc-table-project-updates>, L<bif-doc-func-merge-updates>
 
 =head1 AUTHOR
 

@@ -5,7 +5,7 @@ use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
-our $VERSION = '0.1.0_5';
+our $VERSION = '0.1.0_6';
 
 my $NOW;
 my $bold;
@@ -556,7 +556,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_5 (2014-04-11)
+0.1.0_6 (2014-04-11)
 
 =head1 SYNOPSIS
 

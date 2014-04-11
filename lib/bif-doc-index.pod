@@ -134,128 +134,128 @@
 =head3 Database Tables & Their Triggers
 
 The documentation pages for database tables have titles like
-bif-sql-table-TABLE-NAME.
+bif-doc-table-TABLE-NAME.
 
 =over
 
-=item * L<bif-sql-table-default-status>
+=item * L<bif-doc-table-default-status>
 
-=item * L<bif-sql-table-hubs>
+=item * L<bif-doc-table-hubs>
 
-=item * L<bif-sql-table-issues-tomerge>
+=item * L<bif-doc-table-issues-tomerge>
 
-=item * L<bif-sql-table-issues-tomerge-status>
+=item * L<bif-doc-table-issues-tomerge-status>
 
-=item * L<bif-sql-table-issues>
+=item * L<bif-doc-table-issues>
 
-=item * L<bif-sql-table-issue-status-tomerge>
+=item * L<bif-doc-table-issue-status-tomerge>
 
-=item * L<bif-sql-table-issue-status>
+=item * L<bif-doc-table-issue-status>
 
-=item * L<bif-sql-table-issue-status-updates>
+=item * L<bif-doc-table-issue-status-updates>
 
-=item * L<bif-sql-table-issue-updates>
+=item * L<bif-doc-table-issue-updates>
 
-=item * L<bif-sql-table-project-issues>
+=item * L<bif-doc-table-project-issues>
 
-=item * L<bif-sql-table-projects-tomerge>
+=item * L<bif-doc-table-projects-tomerge>
 
-=item * L<bif-sql-table-project-related-updates>
+=item * L<bif-doc-table-project-related-updates>
 
-=item * L<bif-sql-table-projects> - project current meta data
+=item * L<bif-doc-table-projects> - project current meta data
 
-=item * L<bif-sql-table-projects-merkle>
+=item * L<bif-doc-table-projects-merkle>
 
-=item * L<bif-sql-table-project-status-tomerge>
+=item * L<bif-doc-table-project-status-tomerge>
 
-=item * L<bif-sql-table-project-status>
+=item * L<bif-doc-table-project-status>
 
-=item * L<bif-sql-table-project-status-updates>
+=item * L<bif-doc-table-project-status-updates>
 
-=item * L<bif-sql-table-projects-tree>
+=item * L<bif-doc-table-projects-tree>
 
-=item * L<bif-sql-table-project-updates>
+=item * L<bif-doc-table-project-updates>
 
-=item * L<bif-sql-table-tasks-tomerge>
+=item * L<bif-doc-table-tasks-tomerge>
 
-=item * L<bif-sql-table-tasks>
+=item * L<bif-doc-table-tasks>
 
-=item * L<bif-sql-table-task-status-tomerge>
+=item * L<bif-doc-table-task-status-tomerge>
 
-=item * L<bif-sql-table-task-status>
+=item * L<bif-doc-table-task-status>
 
-=item * L<bif-sql-table-task-status-updates>
+=item * L<bif-doc-table-task-status-updates>
 
-=item * L<bif-sql-table-task-updates>
+=item * L<bif-doc-table-task-updates>
 
-=item * L<bif-sql-table-topics>
+=item * L<bif-doc-table-topics>
 
-=item * L<bif-sql-table-updates>
+=item * L<bif-doc-table-updates>
 
-=item * L<bif-sql-table-updates-pending>
+=item * L<bif-doc-table-updates-pending>
 
-=item * L<bif-sql-table-updates-tree>
+=item * L<bif-doc-table-updates-tree>
 
 =back
 
 =head3 Database Functions
 
 The documentation pages for database functions have titles like
-bif-sql-func-TABLE-NAME.
+bif-doc-func-TABLE-NAME.
 
 
 =over
 
-=item * L<bif-sql-func-import-update>
+=item * L<bif-doc-func-import-update>
 
-=item * L<bif-sql-func-import-project>
+=item * L<bif-doc-func-import-project>
 
-=item * L<bif-sql-func-import-project-update>
+=item * L<bif-doc-func-import-project-update>
 
-=item * L<bif-sql-func-import-project-status>
+=item * L<bif-doc-func-import-project-status>
 
-=item * L<bif-sql-func-import-project-status-update>
+=item * L<bif-doc-func-import-project-status-update>
 
-=item * L<bif-sql-func-import-task-status>
+=item * L<bif-doc-func-import-task-status>
 
-=item * L<bif-sql-func-import-task-status-update>
+=item * L<bif-doc-func-import-task-status-update>
 
-=item * L<bif-sql-func-import-issue-status>
+=item * L<bif-doc-func-import-issue-status>
 
-=item * L<bif-sql-func-import-issue-status-update>
+=item * L<bif-doc-func-import-issue-status-update>
 
-=item * L<bif-sql-func-import-task>
+=item * L<bif-doc-func-import-task>
 
-=item * L<bif-sql-func-import-task-update>
+=item * L<bif-doc-func-import-task-update>
 
-=item * L<bif-sql-func-import-issue>
+=item * L<bif-doc-func-import-issue>
 
-=item * L<bif-sql-func-import-issue-update>
+=item * L<bif-doc-func-import-issue-update>
 
-=item * L<bif-sql-func-merge-updates>
+=item * L<bif-doc-func-merge-updates>
 
-=item * L<bif-sql-func-new-issue>
+=item * L<bif-doc-func-new-issue>
 
-=item * L<bif-sql-func-new-issue-status>
+=item * L<bif-doc-func-new-issue-status>
 
-=item * L<bif-sql-func-new-project> - add a new project to an update
+=item * L<bif-doc-func-new-project> - add a new project to an update
 
-=item * L<bif-sql-func-new-project-status>
+=item * L<bif-doc-func-new-project-status>
 
-=item * L<bif-sql-func-new-task>
+=item * L<bif-doc-func-new-task>
 
-=item * L<bif-sql-func-new-task-status>
+=item * L<bif-doc-func-new-task-status>
 
-=item * L<bif-sql-func-update-issue>
+=item * L<bif-doc-func-update-issue>
 
-=item * L<bif-sql-func-update-issue-status>
+=item * L<bif-doc-func-update-issue-status>
 
-=item * L<bif-sql-func-update-project>
+=item * L<bif-doc-func-update-project>
 
-=item * L<bif-sql-func-update-project-status>
+=item * L<bif-doc-func-update-project-status>
 
-=item * L<bif-sql-func-update-task>
+=item * L<bif-doc-func-update-task>
 
-=item * L<bif-sql-func-update-task-status>
+=item * L<bif-doc-func-update-task-status>
 
 =back

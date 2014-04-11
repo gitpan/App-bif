@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_5';
+our $VERSION = '0.1.0_6';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);

@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_5';
+our $VERSION = '0.1.0_6';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
