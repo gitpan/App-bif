@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 my $NOW;
 my $bold;
@@ -23,10 +23,15 @@ sub run {
           . "($App::bif::Version::DATE)\n";
         return $ctx->ok('ShowVersion');
     }
+    elsif ( $ctx->{uuid} ) {
+        my $uuid = $ctx->{id};
+        $ctx->{id} = $ctx->db->uuid2id( $ctx->{id} )
+          || return $ctx->err( 'UuidNotFound', "uuid not found: $uuid" );
+    }
 
     my $db   = $ctx->db();
     my $info = $db->get_topic( $ctx->{id} )
-      || $db->get_project( $ctx->{id} );
+      || $db->get_project( $ctx->{id}, $ctx->{hub} );
 
     if ( !$info && defined $info && $info < 0 ) {
         return $ctx->err(
@@ -423,7 +428,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 
@@ -455,6 +460,10 @@ A topic ID or a project PATH. Required.
 =item --full, -f
 
 Display a more verbose version of the current status.
+
+=item --uuid, -u
+
+Lookup the topic using ID as a UUID string instead of a topic integer.
 
 =back
 

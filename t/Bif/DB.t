@@ -75,6 +75,9 @@ run_in_tempdir {
           },
           'get_topic project ID';
 
+        my ($id) = $db->uuid2id( $ref->{uuid} );
+        is $id, $project->{id}, 'uuid2id()';
+
         is_deeply $ref = $db->get_topic( $task->{id} ), {
             id              => $task->{id},
             first_update_id => $task->{update_id},

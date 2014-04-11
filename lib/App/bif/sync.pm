@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 sub run {
     my $opts = shift;
@@ -36,6 +36,8 @@ sub run {
         my $client = Bif::Client->new(
             db       => $dbw,
             hub      => $repo->{location},
+            debug    => $ctx->{debug},
+            debug_bs => $ctx->{debug_bs},
             on_error => sub {
                 $err = shift;
             },
@@ -123,7 +125,7 @@ bif-sync -  exchange updates with repos
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 

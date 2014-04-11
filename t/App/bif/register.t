@@ -55,7 +55,7 @@ run_in_tempdir {
     isa_ok exception { bif(qw/show todo/) }, 'Bif::Error::TopicNotFound';
 
     # TODO   isa_ok bif(qw/show todo hub/), 'Bif::OK::ShowProject';
-    isa_ok bif(qw/show todo@hub/), 'Bif::OK::ShowProject';
+    isa_ok bif(qw/show todo hub/), 'Bif::OK::ShowProject';
 
 };
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -101,6 +101,13 @@ opt alias => (
     comment => 'alias for future references to HUB',
 );
 
+opt debug_bs => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
+);
+
 # ------------------------------------------------------------------------
 # bif import
 # ------------------------------------------------------------------------
@@ -126,6 +133,13 @@ arg hub => (
 opt alias => (
     isa     => 'Str',
     comment => 'alias for future references to HUB',
+);
+
+opt debug_bs => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -281,6 +295,13 @@ opt message => (
     alias   => 'm',
     default => '',
     comment => 'optional comment for the associated update',
+);
+
+opt debug_bs => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -443,6 +464,12 @@ arg id => (
 arg hub => (
     isa     => 'Str',
     comment => 'search for PATH in a hub',
+);
+
+opt uuid => (
+    isa     => 'Bool',
+    alias   => 'u',
+    comment => 'treat ID as a UUID',
 );
 
 opt full => (
@@ -639,6 +666,13 @@ arg hub => (
     comment => 'hub repository address or alias',
 );
 
+opt debug_bs => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
+);
+
 # ------------------------------------------------------------------------
 # bif upgrade
 # ------------------------------------------------------------------------
@@ -666,6 +700,12 @@ arg statement => (
     isa     => 'Str',
     comment => 'SQL statement text',
     greedy  => 1,
+);
+
+opt noprint => (
+    isa     => 'Bool',
+    comment => 'do not print output but return a data structure',
+    alias   => 'n',
 );
 
 opt write => (
@@ -710,7 +750,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 

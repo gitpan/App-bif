@@ -12,12 +12,17 @@ use Log::Any::Plugin;
 use OptArgs;
 use Path::Tiny;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 arg directory => (
     isa      => 'Str',
     comment  => 'location of bif repository',
     required => 1,
+);
+
+opt debug => (
+    isa     => 'Bool',
+    comment => 'add debugging statements to stderr',
 );
 
 sub run {
@@ -38,13 +43,8 @@ sub run {
         die Bif::Error->new( $opts, 'FileNotFound',
             "file not found: $sqlite\n" );
     }
-
-    $opts->{debug} = $dir->child('debug')->exists;
-
     if ( $opts->{debug} ) {
         Log::Any::Adapter->set('Stderr');
-
-        Log::Any::Adapter->set( 'File', '/home/mark/src/bif/log.txt' );
     }
     else {
         # TODO use Syslog (when development is stable)

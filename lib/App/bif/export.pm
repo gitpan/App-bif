@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 sub run {
     my $ctx = shift;
@@ -33,7 +33,7 @@ sub run {
     my $hub = $locations[0];
 
     foreach my $pinfo (@pinfo) {
-        my $exists = $db->get_project( $pinfo->{path} . '@' . $hub->{alias} );
+        my $exists = $db->get_project( $pinfo->{path}, $hub->{alias} );
 
         if ($exists) {
             if ( $exists->{uuid} eq $pinfo->{uuid} ) {
@@ -53,6 +53,8 @@ sub run {
     my $client = Bif::Client->new(
         db       => $db,
         hub      => $hub->{location},
+        debug    => $ctx->{debug},
+        debug_bs => $ctx->{debug_bs},
         on_error => sub {
             $error = shift;
             $cv->send;
@@ -162,7 +164,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 

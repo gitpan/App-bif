@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -17,6 +17,10 @@ sub run {
     if ( $ctx->{statement} =~ m/^(select)|(pragma)|(explain)/i ) {
         my $sth = $db->prepare( $ctx->{statement} );
         $sth->execute(@_);
+
+        if ( $ctx->{noprint} ) {
+            return $sth->fetchall_arrayref;
+        }
 
         my $header = join( ', ', @{ $sth->{NAME} } );
         print $header, "\n", ( '-' x length $header ), "\n";
@@ -38,7 +42,7 @@ bif-sql -  run an SQL command against the database
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 
@@ -46,18 +50,19 @@ bif-sql -  run an SQL command against the database
 
 =head1 DESCRIPTION
 
-Run an SQL statement directly against the database. If the statement is
-not given on the command line it will be read from I<stdin>.
+The C<bif sql> command runs an SQL statement directly against the
+database. If the statement is not given on the command line it will be
+read from I<stdin>.
 
-If the statement begins with "select" or "pragma" the results of the
-statement will be fetched and displayed. Otherwise the return value of
-the statement (DBI "do" method) will be printed.
+If STATEMENT begins with "select", "pragma" or "explain" the results of
+the statement will be fetched and displayed. Otherwise the return value
+of the statement (DBI "do" method) will be printed.
 
 By default a read-only handle for the database is used. Note that
 "pragma" statements would therefore require the C<--write> flag to
 succeed, even if they are only returning data.
 
-=head1 ARGUMENTS
+=head1 ARGUMENTS & OPTIONS
 
 =over
 
@@ -67,11 +72,11 @@ The SQL statement text to execute. You will possibly want to use single
 quotes around this argument (or escape shell characters like "*") to
 prevent unwanted shell expansion messing with your query.
 
-=back
+=item --noprint
 
-=head1 OPTIONS
-
-=over
+Do not print results but return them to the calling subroutine as a
+Perl data structure.  This option is only useful for internal test
+scripts.
 
 =item --write, -w
 

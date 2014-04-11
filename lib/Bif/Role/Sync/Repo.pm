@@ -4,7 +4,7 @@ use warnings;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 sub real_export_repo {
     my $self = shift;
@@ -30,7 +30,7 @@ sub real_export_repo {
     $sth->execute;
     $self->send_updates($sth) || return;
 
-    $self->write( [ 'MERGE', 'updates', { merge => 1 } ] );
+    $self->write( 'MERGE', 'updates', { merge => 1 } );
     return $self->read;
 }
 
@@ -70,22 +70,22 @@ sub real_import_repo {
     my $count = 0;
     return $db->txn(
         sub {
-            while ( my $msg = $self->read ) {
-                if ( !exists $import_func{ $msg->[0] } ) {
-                    $self->write( ['BadMethod'] );
+            while ( my ( $action, $type, $ref ) = $self->read ) {
+                if ( !exists $import_func{$action} ) {
+                    $self->write('BadMethod');
                     $db->rollback;
                     return 'BadMethod';
                 }
 
-                if ( $msg->[0] eq 'QUIT' or $msg->[0] eq 'CANCEL' ) {
-                    $self->write( [ 'QUIT', 'bye' ] );
+                if ( $action eq 'QUIT' or $action eq 'CANCEL' ) {
+                    $self->write( 'QUIT', 'bye' );
                     $db->rollback;
                     return 'UnexpectedQuit';
                 }
 
-                my $func = $import_func{ $msg->[0] }->{ $msg->[1] };
+                my $func = $import_func{$action}->{$type};
                 if ( !$func ) {
-                    $self->write( [ 'NotImplemented', ] );
+                    $self->write('NotImplemented');
                     $db->rollback;
                     return 'NotImplemented';
                 }
@@ -93,15 +93,15 @@ sub real_import_repo {
                 # This should be a savepoint?
                 $db->xdo(
                     insert_into => $func,
-                    values      => $msg->[2],
+                    values      => $ref,
                 );
 
-                if ( $msg->[0] eq 'MERGE' ) {
+                if ( $action eq 'MERGE' ) {
                     if ( !$count ) {
-                        $self->write( ['NoUpdates'] );
+                        $self->write('NoUpdates');
                         return 'NoUpdates';
                     }
-                    $self->write( ['RepoImported'] );
+                    $self->write('RepoImported');
                     $db->do('ANALYZE');
                     return 'RepoImported';
                 }
@@ -109,7 +109,7 @@ sub real_import_repo {
                 $count++;
             }
 
-            $self->write( ['Timeout'] );
+            $self->write('Timeout');
             return 'Timeout';
         }
     );
@@ -128,7 +128,7 @@ sub real_sync_repo {
                 where  => { id => $id },
             );
 
-            $self->write( [ 'HASH', $here->{hash} ] );
+            $self->write( 'HASH', $here->{hash} );
 
             my $there = $self->read;
 
@@ -150,20 +150,19 @@ sub real_sync_repo {
 
             while ( my $msg = $self->read ) {
                 if ( !exists $import_func{ $msg->[0] } ) {
-                    $self->write( [ 400, 'Bad DB Method: ' . $msg->[0] ] );
+                    $self->write( 400, 'Bad DB Method: ' . $msg->[0] );
                     $db->rollback;
                     return;
                 }
 
                 if ( $msg->[0] eq 'QUIT' or $msg->[0] eq 'CANCEL' ) {
-                    $self->write( [ 999, 'Rollback' ] );
+                    $self->write( 999, 'Rollback' );
                     $db->rollback;
                     return;
                 }
 
                 if ( !exists $import_func{ $msg->[0] }->{ $msg->[1] } ) {
-                    $self->write(
-                        [ 501, "Not Implemented: $msg->[0] $msg->[1]" ] );
+                    $self->write( 501, "Not Implemented: $msg->[0] $msg->[1]" );
                     $db->rollback;
                     return;
                 }
@@ -179,12 +178,12 @@ sub real_sync_repo {
                 if ( $msg->[0] eq 'MERGE' ) {
                     $log->infof('201 EXPORT project');
                     $db->do('ANALYZE');
-                    return $self->write( [ 201, 'Created' ] );
+                    return $self->write( 201, 'Created' );
                 }
 
             }
 
-            $self->write( [ 999, 'Timeout/disconnect?' ] );
+            $self->write( 999, 'Timeout/disconnect?' );
             $log->info('client disconnected');
             return;
         }

@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -113,7 +113,7 @@ bif-new-issue - add a new issue to a project
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 

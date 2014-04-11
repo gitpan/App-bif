@@ -14,7 +14,7 @@ on 'runtime' => sub {
 
     # Bif::DB
     requires 'DBD::SQLite' => '1.42';
-    requires 'DBIx::ThinSQL' => '0.0.12';
+    requires 'DBIx::ThinSQL' => '0.0.18';
 
     # Bif::DB::RW
     requires 'DBIx::ThinSQL::SQLite' => '0.0.6';
@@ -51,6 +51,7 @@ on 'runtime' => sub {
     # Synchronisation
     requires 'Coro';
     requires 'Coro::Handle';
+    requires 'JSON';
     requires 'Role::Basic' => 0;
     requires 'Sys::Cmd' => '0.81.6';
 };

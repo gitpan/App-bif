@@ -14,22 +14,36 @@ bifsync - synchronization server for bif hubs
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 
-  bifsync DIRECTORY
+  bifsync DIRECTORY [OPTIONS...]
 
 =head1 DESCRIPTION
 
-Receive synchronization requests from bif clients.
+The B<bifsync> command handles synchronization requests from L<bif>
+clients.
 
 Input is accepted on I<stdin>. Normal output is printed to I<stdout>.
-Error messages are sent to I<stderr>.  Debugging information may go to
-I<stderr> when F<DIRECTORY/debug> exists, otherwise information and
-errors will be logged to the syslog.
+Error messages are sent to I<stderr>.  Information and errors are
+logged to the syslog.
 
 An exit value of zero indicates success.
+
+=head1 ARGUMENTS & OPTIONS
+
+=over
+
+=item DIRECTORY
+
+A directory containing a bare bif repository.
+
+=item --debug, -d
+
+Add debugging statements to I<stderr>. Syslog will not be used.
+
+=back
 
 =head1 SEE ALSO
 

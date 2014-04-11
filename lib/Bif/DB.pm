@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -118,6 +118,18 @@ sub get_topic {
     return;
 }
 
+sub uuid2id {
+    my $self = shift;
+    my $uuid = shift || return;
+
+    my ($id) = $self->xarray(
+        select => 't.id',
+        from   => 'topics t',
+        where  => { 't.uuid' => $uuid },
+    );
+    return $id;
+}
+
 sub get_update {
     my $self = shift;
     my $token = shift || return;
@@ -177,11 +189,11 @@ sub get_local_repo_id {
 }
 
 sub get_project {
-    my $self = shift;
+    my $self  = shift;
     my $token = shift || return;
+    my $alias = shift;             # hub alias
 
-    if ( $token =~ m/(.*?)@(.*)/ ) {
-        my ( $path, $alias ) = ( $1, $2 );
+    if ($alias) {
         return $self->xhash(
             select => [
                 't.id',   't.kind',
@@ -197,7 +209,7 @@ sub get_project {
             },
             inner_join => 'topics t',
             on         => 't.id = p.id',
-            where      => { 'p.path' => $path },
+            where      => { 'p.path' => $token },
         );
     }
 

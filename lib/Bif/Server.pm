@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 with 'Bif::Role::Sync';
 
@@ -46,6 +46,7 @@ my %METHODS = (
 
 sub BUILD {
     my $self = shift;
+    $self->json->pretty if $self->debug;
 }
 
 sub accept {
@@ -53,44 +54,41 @@ sub accept {
     $self->rh( Coro::Handle->new_from_fh(*STDIN) );
     $self->wh( Coro::Handle->new_from_fh(*STDOUT) );
 
-    my $msg    = $self->read;
-    my $action = shift @$msg;
-    my $type   = shift @$msg;
+    my ( $action, $type, @rest ) = $self->read;
 
     # TODO a VERSION check
 
     if ( !$action ) {
-        $self->write( [ 'MissingAction', 'missing [1] action' ] );
+        $self->write( 'MissingAction', 'missing [1] action' );
         return;
     }
 
     if ( !exists $METHODS{$action} ) {
-        $self->write( [ 'InvalidAction', 'Invalid Action: ' . $action ] );
+        $self->write( 'InvalidAction', 'Invalid Action: ' . $action );
         return;
     }
 
     if ( $action eq 'QUIT' ) {
-        $self->write( [ 'QUIT', 'Bye' ] );
+        $self->write( 'QUIT', 'Bye' );
         return;
     }
 
     if ( !$type ) {
-        $self->write( [ 'MissingType', 'missing [2] type' ] );
+        $self->write( 'MissingType', 'missing [2] type' );
         return;
     }
 
     my $method = $METHODS{$action}->{$type};
 
     if ( !$self->can($method) ) {
-        $self->write(
-            [ 'TypeNotImplemented', 'type not implemented: ' . $type ] );
+        $self->write( 'TypeNotImplemented', 'type not implemented: ' . $type );
         return;
     }
 
-    my $response = eval { $self->$method(@$msg) };
+    my $response = eval { $self->$method(@rest) };
     if ($@) {
         $log->error($@);
-        $self->write( [ 'InternalError', 'Internal Server Error' ] );
+        $self->write( 'InternalError', 'Internal Server Error' );
         return;
     }
 
@@ -108,7 +106,7 @@ sub export_repo {
         where  => { 't.id' => $id },
     );
 
-    $self->write( [ 'EXPORT', 'repo', $uuid ] );
+    $self->write( 'EXPORT', 'repo', $uuid );
     return $self->real_export_repo($id);
 }
 
@@ -127,15 +125,15 @@ sub sync_repo {
     );
 
     if ( !$repo ) {
-        $self->write( [ 'RepoNotFound', 'repo uuid not found here' ] );
+        $self->write( 'RepoNotFound', 'repo uuid not found here' );
         return;
     }
     elsif ( $repo->{hash} eq $hash ) {
-        $self->write( [ 'RepoMatch', 'no changes to exchange' ] );
+        $self->write( 'RepoMatch', 'no changes to exchange' );
         return;
     }
 
-    $self->write( [ 'SYNC', 'repo', $uuid, $repo->{hash} ] );
+    $self->write( 'SYNC', 'repo', $uuid, $repo->{hash} );
     return $self->real_sync_repo( $repo->{id} );
 }
 
@@ -145,11 +143,11 @@ sub import_project {
     my $path = shift;
 
     if ( !$uuid ) {
-        $self->write( [ 'MissingUUID', 'uuid is required' ] );
+        $self->write( 'MissingUUID', 'uuid is required' );
         return;
     }
     elsif ( !$path ) {
-        $self->write( [ 'MissingPath', 'path is required' ] );
+        $self->write( 'MissingPath', 'path is required' );
         return;
     }
 
@@ -168,15 +166,15 @@ sub import_project {
     );
 
     if ( $local->{id} ) {
-        $self->write( [ 'ProjectFound', 'project exists' ] );
+        $self->write( 'ProjectFound', 'project exists' );
         return 'ProjectFound';
     }
     elsif ( $local->{other_uuid} ) {
-        $self->write( [ 'PathExists', 'path is ' . $local->{other_uuid} ] );
+        $self->write( 'PathExists', 'path is ' . $local->{other_uuid} );
         return 'PathExists';
     }
 
-    $self->write( [ 'IMPORT', 'project', $uuid ] );
+    $self->write( 'IMPORT', 'project', $uuid );
     return $self->real_import_project($uuid);
 }
 
@@ -186,11 +184,11 @@ sub sync_project {
     my $hash = shift;
 
     if ( !$uuid ) {
-        $self->write( [ 'MissingUUID', 'uuid is required' ] );
+        $self->write( 'MissingUUID', 'uuid is required' );
         return;
     }
     elsif ( !$hash ) {
-        $self->write( [ 'MissingHash', 'hash is required' ] );
+        $self->write( 'MissingHash', 'hash is required' );
         return;
     }
 
@@ -202,14 +200,14 @@ sub sync_project {
         where => { 't.uuid' => $uuid },
     );
 
-    return $self->write( [ 'ProjectNotFound', 'project not found: ' . $uuid ] )
+    return $self->write( 'ProjectNotFound', 'project not found: ' . $uuid )
       unless $pinfo;
 
     if ( $pinfo->{hash} eq $hash ) {
-        $self->write( [ 'ProjectMatch', $uuid, $pinfo->{hash} ] );
+        $self->write( 'ProjectMatch', $uuid, $pinfo->{hash} );
         return 'ProjectMatch';
     }
-    $self->write( [ 'SYNC', 'project', $uuid, $pinfo->{hash} ] );
+    $self->write( 'SYNC', 'project', $uuid, $pinfo->{hash} );
     return $self->real_sync_project( $pinfo->{id} );
 }
 

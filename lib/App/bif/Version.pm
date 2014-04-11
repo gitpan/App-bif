@@ -1,6 +1,6 @@
 package App::bif::Version;
-$App::bif::Version::VERSION = '0.1.0_4';
-$App::bif::Version::COMMIT = '66377b9f2bce5736dc36c00c565386b20f21c68e';
+$App::bif::Version::VERSION = '0.1.0_5';
+$App::bif::Version::COMMIT = 'e2bd16456c69816cf0358d0ad1290f4299664e4b';
 $App::bif::Version::BRANCH = 'devel';
-$App::bif::Version::DATE = '2014-04-10 14:56:07';
+$App::bif::Version::DATE = '2014-04-11 14:47:34';
 1;

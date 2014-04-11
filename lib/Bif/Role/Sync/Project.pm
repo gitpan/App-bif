@@ -1,10 +1,11 @@
 package Bif::Role::Sync::Project;
 use strict;
 use warnings;
+use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 my %import_functions = (
     NEW => {
@@ -42,34 +43,29 @@ sub real_import_project {
     my $count = 0;
     return $db->txn(
         sub {
-            while ( my $msg = $self->read ) {
-                if ( !exists $import_functions{ $msg->[0] } ) {
-                    $self->write(
-                        [ 'BadMethod', 'Bad DB Method: ' . $msg->[0] ] );
+            while ( my ( $action, $type, $ref ) = $self->read ) {
+                if ( !exists $import_functions{$action} ) {
+                    $self->write( 'BadMethod', 'Bad DB Method: ' . $action );
                     $db->rollback;
                     return 'BadMethod';
                 }
 
-                if ( $msg->[0] eq 'QUIT' or $msg->[0] eq 'CANCEL' ) {
-                    $self->write( [ 'QUIT', 'bye' ] );
+                if ( $action eq 'QUIT' or $action eq 'CANCEL' ) {
+                    $self->write( 'QUIT', 'bye' );
                     $db->rollback;
                     return 'UnexpectedQuit';
                 }
 
-                if ( !exists $import_functions{ $msg->[0] }->{ $msg->[1] } ) {
-                    $self->write(
-                        [
-                            'NotImplemented',
-                            "Not Implemented: $msg->[0] $msg->[1]"
-                        ]
-                    );
+                if ( !exists $import_functions{$action}->{$type} ) {
+                    $self->write( 'NotImplemented',
+                        "Not Implemented: $action $type" );
                     $db->rollback;
                     return 'NotImplemented';
                 }
 
-                my $func = $import_functions{ $msg->[0] }->{ $msg->[1] };
+                my $func = $import_functions{$action}->{$type};
 
-                if ( $msg->[0] eq 'MERGE' ) {
+                if ( $action eq 'MERGE' ) {
                     my ($id) = $db->xarray(
                         select => 't.id',
                         from   => 'topics t',
@@ -83,45 +79,21 @@ sub real_import_project {
                         set    => 'local = 1',
                         where  => { id => $id },
                     );
-
-                    $db->xdo(
-                        insert_into =>
-                          [ 'repo_related_updates', qw/repo_id update_id/ ],
-                        select => [ 'r.id', 'pru.update_id' ],
-                        from       => 'project_related_updates pru',
-                        inner_join => 'repos r',
-                        on         => 'r.local = 1',
-                        where      => { 'pru.project_id' => $id },
-                    );
                 }
 
                 # This should be a savepoint?
                 $db->xdo(
                     insert_into => $func,
-                    values      => $msg->[2],
+                    values      => $ref,
                 );
 
-                if ( $msg->[0] eq 'MERGE' ) {
+                if ( $action eq 'MERGE' ) {
                     if ( !$count ) {
-                        $self->write( ['NoUpdates'] );
+                        $self->write('NoUpdates');
                         return 'NoUpdates';
                     }
 
-                    $db->xdo(
-                        insert_into =>
-                          [ 'repo_related_updates', qw/repo_id update_id/ ],
-                        select => [ 'r.id', 'pru.update_id' ],
-                        from   => 'topics t',
-                        inner_join => 'project_related_updates pru',
-                        on         => 'pru.project_id = t.id',
-                        inner_join => 'repos r',
-                        on         => 'r.local = 1',
-                        where      => {
-                            't.uuid' => $uuid,
-                        },
-                    );
-
-                    $self->write( ['ProjectImported'] );
+                    $self->write('ProjectImported');
                     $db->do('ANALYZE');
                     return 'ProjectImported';
                 }
@@ -129,42 +101,116 @@ sub real_import_project {
                 $count++;
             }
 
-            $self->write( ['Timeout'] );
+            $self->write('Timeout');
             return 'Timeout';
         }
     );
 }
 
 sub real_sync_project {
-    my $self = shift;
-    my $id   = shift;
-    my $db   = $self->db;
+    my $self    = shift;
+    my $id      = shift;
+    my $prefix  = shift || '';
+    my $prefix2 = $prefix . '_';
+    my $tmp     = shift || 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) );
+    my $db      = $self->db;
 
     return $db->txn(
         sub {
 
+            $db->do("CREATE TEMPORARY TABLE $tmp(id INTEGER)")
+              if ( $prefix eq '' );
+
+            my @refs = $db->xarrays(
+                select => [qw/pm.prefix pm.hash/],
+                from   => 'projects_merkle pm',
+                where  => [
+                    'pm.project_id = ',     qv($id),
+                    ' AND pm.prefix LIKE ', qv($prefix2)
+                ],
+            );
+
+            my $here = { map { $_->[0] => $_->[1] } @refs };
+            $self->write( 'MATCH', $prefix2, $here );
+            my ( $action, $mprefix, $there ) = $self->read;
+
+            return 'ProtocolError'
+              unless $action eq 'MATCH'
+              and $mprefix eq $prefix2
+              and ref $there eq 'HASH';
+
+            my @next;
+            my @missing;
+
+            while ( my ( $k, $v ) = each %$here ) {
+                if ( !exists $there->{$k} ) {
+                    push( @missing, $k );
+                }
+                elsif ( $there->{$k} ne $v ) {
+                    push( @next, $k );
+                }
+            }
+
+            if (@missing) {
+                my @where;
+                foreach my $miss (@missing) {
+                    push( @where, ' OR ' ) if @where;
+                    push( @where,
+                        "u.prefix LIKE ",
+                        qv( $prefix . $miss . '%' ) ),
+                      ;
+                }
+
+                $self->db->xdo(
+                    insert_into => "$tmp(id)",
+                    select      => 'u.id',
+                    from        => 'updates u',
+                    inner_join  => 'project_related_updates pru',
+                    on          => 'pru.update_id = u.id',
+                    inner_join  => 'projects_tree pt',
+                    on          => {
+                        'pt.child'  => \'pru.project_id',
+                        'pt.parent' => $id,
+                    },
+                    where => \@where,
+                );
+            }
+
+            if (@next) {
+                foreach my $next ( sort @next ) {
+                    $self->real_sync_project( $id, $prefix . $next, $tmp );
+                }
+            }
+
+            return unless $prefix eq '';
+
             my $update_list = $db->xprepare(
                 select => [
-                    'updates.id',                  'updates.uuid',
-                    'parents.uuid AS parent_uuid', 'updates.mtime',
-                    'updates.mtimetz',             'updates.author',
-                    'updates.email',               'updates.lang',
-                    'updates.message',
+                    'u.id',                  'u.uuid',
+                    'p.uuid AS parent_uuid', 'u.mtime',
+                    'u.mtimetz',             'u.author',
+                    'u.email',               'u.lang',
+                    'u.message',
                 ],
-                from       => 'project_related_updates AS pru',
-                inner_join => 'updates',
-                on         => 'updates.id = pru.update_id',
-                left_join  => 'updates AS parents',
-                on         => 'parents.id = updates.parent_id',
-                where      => { 'pru.project_id' => $id },
-                order_by   => 'updates.id ASC',
+                from       => "$tmp t",
+                inner_join => 'updates u',
+                on         => 'u.id = t.id',
+                left_join  => 'updates p',
+                on         => 'p.id = u.parent_id',
+                order_by   => 'u.id ASC',
             );
 
             $update_list->execute;
             $self->send_updates($update_list) || return;
+            $self->write( 'MERGE', 'updates', { merge => 1 } );
 
-            $self->write( [ 'MERGE', 'updates', { merge => 1 } ] );
-            return $self->read;
+            my ($uuid) = $db->xarray(
+                select => 't.uuid',
+                from   => 'topics t',
+                where  => { 't.id' => $id },
+            );
+
+            return $self->real_import_project($uuid);
         }
     );
 }
@@ -198,180 +244,12 @@ sub real_export_project {
             $update_list->execute;
             $self->send_updates($update_list) || return;
 
-            $self->write( [ 'MERGE', 'updates', { merge => 1 } ] );
-            my $msg = $self->read;
-            return 'ProjectExported' if $msg->[0] eq 'ProjectImported';
-            return $msg->[0];
+            $self->write( 'MERGE', 'updates', { merge => 1 } );
+            my ($action) = $self->read;
+            return 'ProjectExported' if $action eq 'ProjectImported';
+            return $action;
         }
     );
 }
-
-=cut
-
-sub compare_get_all {
-    my $self    = shift;
-    my $compare = shift;
-    my $here    = shift;
-
-    $self->push_read(
-        sub {
-            my ( $header, $there ) = $self->getmsg(@_);
-            return unless $header;
-
-            if ( $header->{_} ne 'map' ) {
-                my $str = 'expected map';
-                return $self->error( $str, $str );
-            }
-            elsif ( !exists $header->{prefix} ) {
-                my $str = 'missing prefix';
-                return $self->error( $str, $str );
-            }
-            elsif ( $compare ne $header->{prefix} ) {
-                my $str = sprintf( 'wrong prefix. want %s have %s',
-                    $compare, $header->{prefix} );
-                return $self->error( $str, $str );
-            }
-            $self->expecting( $self->expecting - 1 );
-            $self->comparing($compare);
-
-            my @next;
-            my @missing;
-
-            my $temp_table = $self->db->irow( $self->temp_table );
-            my ( $updates, $project_topics, $projects_tree ) =
-              $self->db->srows(qw/updates project_topics projects_tree /);
-
-            my $where;
-
-            while ( my ( $k, $v ) = each %$here ) {
-                if ( !exists $there->{$k} ) {
-                    push( @missing, $k );
-                }
-                elsif ( $there->{$k} ne $v ) {
-                    push( @next, $k );
-
-                    #                    $next{$k} = [ @$compare, $k ];
-                }
-            }
-
-            if (@missing) {
-                my $where;
-                foreach my $miss (@missing) {
-
-             #                    my $prefix = join('', @$compare, $miss) . '%';
-                    $where =
-                        $where
-                      ? $where . OR . $updates->prefix->like( $miss . '%' )
-                      : $updates->prefix->like( $miss . '%' );
-                }
-                $self->db->do(
-                    insert_into => $temp_table->('id'),
-                    select      => [ $updates->update_id ],
-                    from        => $updates,
-                    inner_join  => $project_topics,
-                    on => $project_topics->thread_id == $updates->thread_id,
-                    inner_join => $projects_tree,
-                    on =>
-                      ( $projects_tree->child == $project_topics->project_id )
-                      . AND
-                      . ( $projects_tree->parent == $self->id ),
-                    where => $where,
-                );
-            }
-
-            $log->debugf( 'next %s and expecting %d', \@next,
-                $self->expecting );
-            return $self->run unless @next or $self->expecting;
-
-            foreach my $k ( sort @next ) {
-                $self->compare($k);
-            }
-        }
-    );
-}
-
-sub compare_get {
-    my $self    = shift;
-    my $compare = shift;
-    my $here    = shift;
-
-    $self->push_read(
-        sub {
-            my ( $header, $there ) = $self->getmsg(@_);
-            return unless $header;
-
-            if ( $header->{_} ne 'map' ) {
-                my $str = 'expected map';
-                return $self->error( $str, $str );
-            }
-            elsif ( !exists $header->{prefix} ) {
-                my $str = 'missing prefix';
-                return $self->error( $str, $str );
-            }
-            elsif ( $compare ne $header->{prefix} ) {
-                my $str = sprintf( 'wrong prefix. want %s have %s',
-                    $compare, $header->{prefix} );
-                return $self->error( $str, $str );
-            }
-            $self->expecting( $self->expecting - 1 );
-            $self->comparing($compare);
-
-            my @next;
-            my @missing;
-
-            my $temp_table = $self->db->irow( $self->temp_table );
-            my ( $updates, $project_topics, $projects_tree ) =
-              $self->db->srows(qw/updates project_topics projects_tree /);
-
-            my $where;
-
-            while ( my ( $k, $v ) = each %$here ) {
-                if ( !exists $there->{$k} ) {
-                    push( @missing, $k );
-                }
-                elsif ( $there->{$k} ne $v ) {
-                    push( @next, $k );
-
-                    #                    $next{$k} = [ @$compare, $k ];
-                }
-            }
-
-            if (@missing) {
-                my $where;
-                foreach my $miss (@missing) {
-                    $log->debug("ADDING MISS $miss");
-
-             #                    my $prefix = join('', @$compare, $miss) . '%';
-                    $where =
-                      ( !defined $where )
-                      ? $updates->prefix->like( $miss . '%' )
-                      : $where . OR . $updates->prefix->like( $miss . '%' );
-                }
-                $self->db->do(
-                    insert_into => $temp_table->('id'),
-                    select      => [ $updates->update_id ],
-                    from        => $updates,
-                    inner_join  => $project_topics,
-                    on => $project_topics->thread_id == $updates->thread_id,
-                    inner_join => $projects_tree,
-                    on =>
-                      ( $projects_tree->child == $project_topics->project_id )
-                      . AND
-                      . ( $projects_tree->parent == $self->id ),
-                    where => $where,
-                );
-            }
-
-            $log->debugf( 'next %s and expecting %d', \@next,
-                $self->expecting );
-            return $self->run unless @next or $self->expecting;
-
-            foreach my $k ( sort @next ) {
-                $self->compare($k);
-            }
-        }
-    );
-}
-=cut
 
 1;

@@ -5,42 +5,38 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
 sub read {
     my $self = shift;
 
-    my $json = $self->rh->readline;
+    my $json = $self->rh->readline("\n\n");
 
     if ( !defined $json ) {
         $self->on_error->('no message received');
-        return [ 'NoMsg', '' ];
+        return 'NoMsg';
     }
 
-    #    $log->debugf( 'r: %s', $json );
+    $log->debugf( 'r: ' . $json );
     my $msg = eval { $self->json->decode($json) };
 
     if ( $@ or !defined $msg ) {
         $self->on_error->( $@ || 'no message received' );
-        return [ 'InvalidEncoding', '' ];
+        return 'InvalidEncoding';
     }
 
-    $log->debugf( 'r: %s', $self->json->pretty->encode($msg) );
-    return $msg;
+    return @$msg;
 }
 
 sub write {
     my $self = shift;
-    my $msg  = shift;
 
-    #    $log->debugf( 'w: %s', $self->json->encode($msg) );
-    $self->json->pretty;
-    $log->debugf( 'w: %s', $self->json->encode($msg) );
-    $self->json->pretty(0);
+    $log->debugf( 'w: %s', $self->json->encode( \@_ ) )
+      if $self->debug;
 
-    return $self->wh->print( $self->json->encode($msg) . "\n" );
+    return $self->wh->print( $self->json->encode( \@_ ) . "\n\n" );
 }
 
 sub send_updates {
@@ -50,7 +46,7 @@ sub send_updates {
 
     while ( my $update = $update_list->hash ) {
         my $id = delete $update->{id};
-        $self->write( [ 'NEW', 'update', $update ] );
+        $self->write( 'NEW', 'update', $update );
 
         my $parts = $db->xprepare(
 
@@ -267,215 +263,186 @@ sub write_parts {
     while ( my $part = $parts->array ) {
         if ( $part->[0] eq 'repo' ) {
             if ( $part->[1] ) {
-                $self->write( [ 'NEW', 'repo', {}, ] );
+                $self->write( 'NEW', 'repo', {} );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE', 'repo',
-                        {
-                            repo_uuid             => $part->[2],
-                            default_location_uuid => $part->[3],
-                            project_uuid          => $part->[4],
-                            related_update_uuid   => $part->[5],
-                        }
-                    ]
+                    'UPDATE', 'repo',
+                    {
+                        repo_uuid             => $part->[2],
+                        default_location_uuid => $part->[3],
+                        project_uuid          => $part->[4],
+                        related_update_uuid   => $part->[5],
+                    }
+
                 );
             }
         }
         elsif ( $part->[0] eq 'repo_location' ) {
             if ( $part->[1] ) {
                 $self->write(
-                    [
-                        'NEW',
-                        'repo_location',
-                        {
-                            repo_uuid => $part->[2],
-                            location  => $part->[4],
-                        }
-                    ]
+                    'NEW',
+                    'repo_location',
+                    {
+                        repo_uuid => $part->[2],
+                        location  => $part->[4],
+                    }
                 );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE',
-                        'repo_location',
-                        {
-                            repo_location_uuid => $part->[3],
-                            location           => $part->[4],
-                        }
-                    ]
+                    'UPDATE',
+                    'repo_location',
+                    {
+                        repo_location_uuid => $part->[3],
+                        location           => $part->[4],
+                    }
                 );
             }
         }
         elsif ( $part->[0] eq 'project' ) {
             if ( $part->[1] ) {
                 $self->write(
-                    [
-                        'NEW',
-                        'project',
-                        {
-                            parent_uuid => $part->[3],
-                            name        => $part->[4],
-                            title       => $part->[5],
-                        }
-                    ]
+                    'NEW',
+                    'project',
+                    {
+                        parent_uuid => $part->[3],
+                        name        => $part->[4],
+                        title       => $part->[5],
+                    }
                 );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE',
-                        'project',
-                        {
-                            project_uuid => $part->[2],
-                            parent_uuid  => $part->[3],
-                            name         => $part->[4],
-                            title        => $part->[5],
-                            status_uuid  => $part->[6],
-                            repo_uuid    => $part->[7],
-                        }
-                    ]
+                    'UPDATE',
+                    'project',
+                    {
+                        project_uuid => $part->[2],
+                        parent_uuid  => $part->[3],
+                        name         => $part->[4],
+                        title        => $part->[5],
+                        status_uuid  => $part->[6],
+                        repo_uuid    => $part->[7],
+                    }
                 );
             }
         }
         elsif ( $part->[0] eq 'project_status' ) {
             if ( $part->[1] ) {
                 $self->write(
-                    [
-                        'NEW',
-                        'project_status',
-                        {
-                            project_uuid => $part->[2],
-                            status       => $part->[4],
-                            rank         => $part->[7],
-                        }
-                    ]
+                    'NEW',
+                    'project_status',
+                    {
+                        project_uuid => $part->[2],
+                        status       => $part->[4],
+                        rank         => $part->[7],
+                    }
                 );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE',
-                        'project_status',
-                        {
-                            project_status_uuid => $part->[3],
-                            status              => $part->[4],
-                            rank                => $part->[7],
-                        }
-                    ]
+                    'UPDATE',
+                    'project_status',
+                    {
+                        project_status_uuid => $part->[3],
+                        status              => $part->[4],
+                        rank                => $part->[7],
+                    }
                 );
             }
         }
         elsif ( $part->[0] eq 'task_status' ) {
             if ( $part->[1] ) {
                 $self->write(
-                    [
-                        'NEW',
-                        'task_status',
-                        {
-                            project_uuid => $part->[2],
-                            status       => $part->[4],
-                            def          => $part->[5],
-                            rank         => $part->[7],
-                        }
-                    ]
+                    'NEW',
+                    'task_status',
+                    {
+                        project_uuid => $part->[2],
+                        status       => $part->[4],
+                        def          => $part->[5],
+                        rank         => $part->[7],
+                    }
                 );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE',
-                        'task_status',
-                        {
-                            task_status_uuid => $part->[3],
-                            status           => $part->[4],
-                            def              => $part->[5],
-                            rank             => $part->[7],
-                        }
-                    ]
+                    'UPDATE',
+                    'task_status',
+                    {
+                        task_status_uuid => $part->[3],
+                        status           => $part->[4],
+                        def              => $part->[5],
+                        rank             => $part->[7],
+                    }
                 );
             }
         }
         elsif ( $part->[0] eq 'issue_status' ) {
             if ( $part->[1] ) {
                 $self->write(
-                    [
-                        'NEW',
-                        'issue_status',
-                        {
-                            project_uuid => $part->[2],
-                            status       => $part->[4],
-                            def          => $part->[5],
-                            rank         => $part->[7],
-                        }
-                    ]
+                    'NEW',
+                    'issue_status',
+                    {
+                        project_uuid => $part->[2],
+                        status       => $part->[4],
+                        def          => $part->[5],
+                        rank         => $part->[7],
+                    }
                 );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE',
-                        'issue_status',
-                        {
-                            issue_status_uuid => $part->[3],
-                            status            => $part->[4],
-                            def               => $part->[5],
-                            rank              => $part->[7],
-                        }
-                    ]
+                    'UPDATE',
+                    'issue_status',
+                    {
+                        issue_status_uuid => $part->[3],
+                        status            => $part->[4],
+                        def               => $part->[5],
+                        rank              => $part->[7],
+                    }
                 );
             }
         }
         elsif ( $part->[0] eq 'task' ) {
             if ( $part->[1] ) {
                 $self->write(
-                    [
-                        'NEW', 'task',
-                        {
-                            task_status_uuid => $part->[3],
-                            title            => $part->[4],
-                        }
-                    ]
+                    'NEW', 'task',
+                    {
+                        task_status_uuid => $part->[3],
+                        title            => $part->[4],
+                    }
                 );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE', 'task',
-                        {
-                            task_uuid        => $part->[2],
-                            task_status_uuid => $part->[3],
-                            title            => $part->[4],
-                        }
-                    ]
+                    'UPDATE', 'task',
+                    {
+                        task_uuid        => $part->[2],
+                        task_status_uuid => $part->[3],
+                        title            => $part->[4],
+                    }
                 );
             }
         }
         elsif ( $part->[0] eq 'issue' ) {
             if ( $part->[1] ) {
                 $self->write(
-                    [
-                        'NEW', 'issue',
-                        {
-                            issue_status_uuid => $part->[3],
-                            title             => $part->[4],
-                        }
-                    ]
+                    'NEW', 'issue',
+                    {
+                        issue_status_uuid => $part->[3],
+                        title             => $part->[4],
+                    }
                 );
             }
             else {
                 $self->write(
-                    [
-                        'UPDATE', 'issue',
-                        {
-                            issue_uuid        => $part->[2],
-                            issue_status_uuid => $part->[3],
-                            title             => $part->[4],
-                            project_uuid      => $part->[5],
-                        }
-                    ]
+                    'UPDATE', 'issue',
+                    {
+                        issue_uuid        => $part->[2],
+                        issue_status_uuid => $part->[3],
+                        title             => $part->[4],
+                        project_uuid      => $part->[5],
+                    }
                 );
             }
         }

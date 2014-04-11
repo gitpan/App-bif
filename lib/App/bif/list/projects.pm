@@ -5,7 +5,7 @@ use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 sub _invalid_status {
     my $self = shift;
@@ -81,28 +81,33 @@ sub run {
     # TODO do this as a sub-select?
     foreach my $i ( 0 .. $#$data ) {
         my $row = $data->[$i];
-        if ( !$row->[6] ) {
-            $row->[3] = $row->[4] = $row->[5] = '*';
+        if ( !$row->[7] ) {
+            $row->[4] = $row->[5] = $row->[6] = '*';
         }
         else {
-            if ( $row->[5] ) {
-                $row->[5] =
-                  int( 100 * $row->[5] / ( $row->[5] + $row->[3] + $row->[4] ) )
+            if ( $row->[6] ) {
+                $row->[6] =
+                  int( 100 * $row->[6] / ( $row->[6] + $row->[4] + $row->[5] ) )
                   . '%';
             }
             else {
-                $row->[5] = '0%';
+                $row->[6] = '0%';
             }
         }
 
-        $row->[6] = '';
+        $row->[7] = '';
     }
 
     $ctx->start_pager( scalar @$data );
 
-    print $ctx->render_table( ' l  l  l  r r rl',
-        [ 'Project', 'Title', 'Phase', 'Open', 'Stalled', 'Progress', '' ],
-        $data );
+    print $ctx->render_table(
+        ' l  l  l  l  r r rl',
+        [
+            'Project', 'Hub',     'Title',    'Phase',
+            'Open',    'Stalled', 'Progress', ''
+        ],
+        $data
+    );
 
     $ctx->end_pager;
 
@@ -113,11 +118,12 @@ sub _get_data {
     my $ctx = shift;
     return $ctx->db->xarrays(
         select => [
+            'p.path',
             case (
                 when => 'r.id IS NOT NULL',
-                then => "p.path || '\@' || r.alias",
-                else => 'p.path',
-              )->as('path'),
+                then => 'r.alias',
+                else => qv(''),
+              )->as('hub'),
             'p.title',
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
@@ -234,7 +240,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 

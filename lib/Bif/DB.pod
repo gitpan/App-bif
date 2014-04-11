@@ -5,7 +5,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 
@@ -30,6 +30,11 @@ parts are separated for performance reasons.
 
 =over
 
+=item uuid2id( $UUID ) -> Int | Undef
+
+Returns the integer ID matching a topic C<$UUID>, or C<undef> if no
+match is found.
+
 =item path2project_id( $path, [ $REPO_ID ] ) -> Int
 
 Returns the integer ID matching the project C<$path>, or C<undef> if no
@@ -53,8 +58,11 @@ reference containg the following keys:
 
 =back
 
-If the topic is an issue then the following keys will also contain
-valid values:
+If C<$ID> has a length of 40 characters the search will be performed on
+the basis that it is a UUID.
+
+If the found topic is an issue then the following keys will also
+contain valid values:
 
 =over
 
@@ -97,10 +105,11 @@ contain valid values:
 
 Returns the ID for the local repository topic.
 
-=item get_project( $PATH ) -> HashRef
+=item get_project( $PATH, [$HUB] ) -> HashRef
 
-Looks up the project identified by C<$PATH> and returns undef, a
-negative integer, or a hash reference containg the following keys:
+Looks up the project identified by C<$PATH> in the local repository and
+returns undef, a negative integer, or a hash reference containg the
+following keys:
 
 =over
 
@@ -120,8 +129,11 @@ negative integer, or a hash reference containg the following keys:
 
 =back
 
-C<$PATH> can be a plain C<PATH> or a C<PATH@ALIAS>. If more than one
-match is found then the negative number of matches is returned.
+If more than one match is found then the negative number of matches is
+returned.
+
+A C<HUB> (actually a hub alias) argument can be given to search for
+project paths in non-local (but registered) repositories.
 
 =item status_ids( $project_id, $kind, @status ) -> \@ids, \@invalid
 

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_4';
+our $VERSION = '0.1.0_5';
 
 sub run {
     my $ctx = shift;
@@ -24,7 +24,7 @@ sub run {
 
     my @pinfo;
     foreach my $path ( @{ $ctx->{path} } ) {
-        my $pinfo = $db->get_project( $path . '@' . $hub->{alias} );
+        my $pinfo = $db->get_project( $path, $hub->{alias} );
 
         return $ctx->err( 'ProjectNotFound', 'project not found: %s', $path )
           unless $pinfo;
@@ -47,6 +47,8 @@ sub run {
     my $client = Bif::Client->new(
         db       => $db,
         hub      => $hub->{location},
+        debug    => $ctx->{debug},
+        debug_bs => $ctx->{debug_bs},
         on_error => sub {
             $error = shift;
             $cv->send;
@@ -124,7 +126,7 @@ bif-import -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_4 (yyyy-mm-dd)
+0.1.0_5 (2014-04-11)
 
 =head1 SYNOPSIS
 
