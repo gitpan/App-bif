@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub new {
     my $proto = shift;
@@ -29,10 +29,10 @@ sub new {
     if ( $opts->{debug} ) {
         require Log::Any::Adapter;
         Log::Any::Adapter->set('Stdout');
-
         $self->start_pager();
-        $log->debugf( 'ctx: %s %s', (caller)[0], $opts );
     }
+
+    $log->debugf( 'ctx: %s %s', (caller)[0], $opts );
 
     $self->find_user_conf;
     $self->find_repo;
@@ -286,6 +286,20 @@ sub dbw {
     return $dbw;
 }
 
+sub get_project {
+    my $self  = shift;
+    my $path  = shift;
+    my $alias = shift;
+
+    my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
+    my @matches = $db->get_projects( $path, $alias );
+
+    return $self->err( 'AmbiguousPath', "ambiguous path: $path" )
+      if @matches > 1;
+
+    return $matches[0];
+}
+
 sub render_table {
     my $self   = shift;
     my $format = shift;
@@ -403,7 +417,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 
@@ -533,6 +547,12 @@ operations.
 You should manually import any L<DBIx::ThinSQL> functions you need only
 after calling C<$ctx->dbw>, in order to keep startup time short for
 cases such as when the repository is not found.
+
+=item get_project( $path, [ $hub ]) -> HashRef
+
+Calls C<get_projects> from C<Bif::DB> and raises an error if more than
+one project is found. Otherwise it passes back the the single hashref
+returned.
 
 =item render_table( $format, \@header, \@data, [ $indent ] ) -> Str
 

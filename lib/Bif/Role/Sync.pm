@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -56,8 +56,8 @@ sub send_updates {
                 'repo_updates.new',
                 'repos.uuid',    # for update
                 'rl.uuid AS default_location_uuid',
-                'projects.uuid',
                 'repo_updates.related_update_uuid',
+                5,
                 6,
                 qv(undef)->as('int_filler'),
                 'repo_updates.id AS update_order',
@@ -67,8 +67,6 @@ sub send_updates {
             on         => 'repos.id = repo_updates.repo_id',
             left_join  => 'topics AS rl',
             on         => 'rl.id = repo_updates.default_location_id',
-            left_join  => 'topics AS projects',
-            on         => 'projects.id = repo_updates.project_id',
             where      => { 'repo_updates.update_id' => $id },
 
             # repo_locations
@@ -271,8 +269,7 @@ sub write_parts {
                     {
                         repo_uuid             => $part->[2],
                         default_location_uuid => $part->[3],
-                        project_uuid          => $part->[4],
-                        related_update_uuid   => $part->[5],
+                        related_update_uuid   => $part->[4],
                     }
 
                 );

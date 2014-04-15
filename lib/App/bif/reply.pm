@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 require App::bif::update;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -36,7 +36,7 @@ bif-reply - reply to a previous update or comment
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = shift;
@@ -18,7 +18,7 @@ sub run {
 
     my @pinfo;
     foreach my $path ( @{ $ctx->{path} } ) {
-        my $pinfo = $db->get_project($path);
+        my $pinfo = $ctx->get_project($path);
 
         return $ctx->err( 'ProjectNotFound', 'project not found: %s', $path )
           unless $pinfo;
@@ -32,11 +32,14 @@ sub run {
 
     my $hub = $locations[0];
 
+    my @new_pinfo;
     foreach my $pinfo (@pinfo) {
-        my $exists = $db->get_project( $pinfo->{path}, $hub->{alias} );
+        my $exists = $ctx->get_project( $pinfo->{path}, $hub->{alias} );
 
         if ($exists) {
             if ( $exists->{uuid} eq $pinfo->{uuid} ) {
+                print "Already exported to $hub->{alias}: $pinfo->{path}\n";
+                next;
             }
             else {
                 return $ctx->err( 'PathExists',
@@ -44,7 +47,11 @@ sub run {
                     $pinfo->{path} );
             }
         }
+        push( @new_pinfo, $pinfo );
     }
+
+    return $ctx->ok('Export') unless @new_pinfo;
+    @pinfo = @new_pinfo;
 
     $|++;    # no buffering
     my $error;
@@ -126,6 +133,7 @@ sub run {
                         }
                         elsif ( $status eq 'ProjectFound' ) {
                             print "Project already exported: $pinfo->{path}\n";
+                            $db->rollback;
                         }
                         else {
                             $db->rollback;
@@ -164,7 +172,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

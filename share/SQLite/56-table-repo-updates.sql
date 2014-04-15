@@ -5,12 +5,10 @@ CREATE TABLE repo_updates (
     related_update_uuid VARCHAR,
     new INTEGER,
     default_location_id INTEGER,
-    project_id INTEGER,
     FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE,
     FOREIGN KEY(repo_id) REFERENCES repos(id) ON DELETE CASCADE,
     FOREIGN KEY(default_location_id) REFERENCES repo_locations(id)
-        ON DELETE CASCADE,
-    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+        ON DELETE CASCADE
 ) WITHOUT ROWID;
 
 CREATE TRIGGER
@@ -25,8 +23,7 @@ BEGIN
         NEW.update_id,
         NEW.related_update_uuid,
         NEW.repo_id,
-        NEW.default_location_id,
-        NEW.project_id
+        NEW.default_location_id
     );
 
     UPDATE
@@ -40,13 +37,8 @@ BEGIN
                     || COALESCE(NEW.related_update_uuid, '') || x'0A'
                 || 'default_location_uuid:' || COALESCE(location.uuid, '')
                     || x'0A'
-                || 'project_uuid:' || COALESCE(project.uuid, '') || x'0A'
             FROM
                 topics
-            LEFT JOIN
-                topics AS project
-            ON
-                project.id = NEW.project_id
             LEFT JOIN
                 topics AS location
             ON
@@ -79,18 +71,6 @@ BEGIN
         (NEW.default_location_id IS NOT NULL)
     WHERE
         repo_id = NEW.repo_id
-    ;
-
-    INSERT INTO
-        repo_projects(
-            repo_id,
-            project_id
-        )
-    SELECT
-        NEW.repo_id,
-        NEW.project_id
-    WHERE
-        NEW.project_id IS NOT NULL
     ;
 
 END;

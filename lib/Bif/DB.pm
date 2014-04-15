@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -60,25 +60,6 @@ package Bif::DB::db;
 use DBIx::ThinSQL qw/ qv bv /;
 
 our @ISA = ('DBIx::ThinSQL::db');
-
-sub path2project_id {
-    my $db      = shift;
-    my $path    = shift;
-    my $repo_id = shift || $db->get_local_repo_id;
-
-    my ($id) = $db->xarray(
-        select     => 'p.id',
-        from       => 'projects p',
-        inner_join => 'repo_projects rp',
-        on         => {
-            'rp.project_id' => \'p.id',
-            'rp.repo_id'    => $repo_id,
-        },
-        where => [ 'p.path = ', qv($path) ],
-    );
-
-    return $id;
-}
 
 sub get_topic {
     my $self = shift;
@@ -188,13 +169,13 @@ sub get_local_repo_id {
     return $repo->[0];
 }
 
-sub get_project {
+sub get_projects {
     my $self  = shift;
-    my $token = shift || return;
+    my $path  = shift || return;
     my $alias = shift;             # hub alias
 
     if ($alias) {
-        return $self->xhash(
+        return $self->xhashes(
             select => [
                 't.id',   't.kind',
                 't.uuid', 'p.parent_id',
@@ -209,11 +190,11 @@ sub get_project {
             },
             inner_join => 'topics t',
             on         => 't.id = p.id',
-            where      => { 'p.path' => $token },
+            where      => { 'p.path' => $path },
         );
     }
 
-    my @tries = $self->xhash(
+    return $self->xhashes(
         select => [
             't.id',   't.kind',            't.uuid', 'p.parent_id',
             'p.path', 't.first_update_id', 'p.local',
@@ -221,11 +202,11 @@ sub get_project {
         from       => 'projects p',
         inner_join => 'topics t',
         on         => 't.id = p.id',
-        where      => { 'p.path' => $token, 'p.local' => 1, },
+        where      => {
+            'p.path'  => $path,
+            'p.local' => 1,
+        },
     );
-
-    return -scalar @tries if @tries > 1;
-    return $tries[0];
 }
 
 sub status_ids {

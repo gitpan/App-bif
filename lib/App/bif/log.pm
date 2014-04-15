@@ -5,7 +5,7 @@ use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 my $NOW;
 my $bold;
@@ -34,7 +34,7 @@ sub run {
     if ( $ctx->{id} ) {
         my $info =
              $db->get_topic( $ctx->{id} )
-          || $db->get_project( $ctx->{id} )
+          || $ctx->get_project( $ctx->{id} )
           || return $ctx->err( 'TopicNotFound',
             'topic not found: ' . $ctx->{id} );
 
@@ -556,7 +556,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

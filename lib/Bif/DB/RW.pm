@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -111,12 +111,9 @@ sub update_repo {
     );
 
     $dbw->xdo(
-        insert_into => [
-            'repo_updates',
-            qw/repo_id update_id related_update_uuid project_id/
-        ],
-        select =>
-          [ qv( $repo->{id} ), qv($uid), 'ru.uuid', qv( $ref->{project_id} ), ],
+        insert_into =>
+          [ 'repo_updates', qw/repo_id update_id related_update_uuid/ ],
+        select    => [ qv( $repo->{id} ), qv($uid), 'ru.uuid', ],
         from      => '(select 1)',
         left_join => 'topics ru',
         on        => {

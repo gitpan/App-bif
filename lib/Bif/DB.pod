@@ -5,7 +5,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 
@@ -17,7 +17,7 @@ Bif::DB - helper methods for a read-only bif database
     my $db = Bif::DB->connect( $dsn );
 
     # Read only operations on a bif database:
-    my $id = $db->path2project_id( $path );
+    my $id = $db->uuid2id( $uuid );
 
 =head1 DESCRIPTION
 
@@ -34,12 +34,6 @@ parts are separated for performance reasons.
 
 Returns the integer ID matching a topic C<$UUID>, or C<undef> if no
 match is found.
-
-=item path2project_id( $path, [ $REPO_ID ] ) -> Int
-
-Returns the integer ID matching the project C<$path>, or C<undef> if no
-match is found. By default local projects are searched. An additional
-argument REPO_ID can be given to search projects is a different repo.
 
 =item get_topic( $ID ) -> HashRef
 
@@ -105,10 +99,10 @@ contain valid values:
 
 Returns the ID for the local repository topic.
 
-=item get_project( $PATH, [$HUB] ) -> HashRef
+=item get_projects( $PATH, [$ALIAS] ) -> HashRef
 
-Looks up the project identified by C<$PATH> in the local repository and
-returns undef, a negative integer, or a hash reference containg the
+Looks up the project(s) identified by C<$PATH> (and optionally a hub
+C<$ALIAS>) returns undef, or a lits of hash references containg the
 following keys:
 
 =over
@@ -128,12 +122,6 @@ following keys:
 =item * local - true if the project is locally synchronized
 
 =back
-
-If more than one match is found then the negative number of matches is
-returned.
-
-A C<HUB> (actually a hub alias) argument can be given to search for
-project paths in non-local (but registered) repositories.
 
 =item status_ids( $project_id, $kind, @status ) -> \@ids, \@invalid
 

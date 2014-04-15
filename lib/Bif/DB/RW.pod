@@ -5,7 +5,7 @@ Bif::DB::RW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

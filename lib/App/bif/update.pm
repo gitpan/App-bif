@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -11,7 +11,7 @@ sub run {
 
     my $info =
          $db->get_topic( $ctx->{id} )
-      || $db->get_project( $ctx->{id} )
+      || $ctx->get_project( $ctx->{id} )
       || return $ctx->err( 'TopicNotFound', 'topic not found: ' . $ctx->{id} );
 
     $info->{update_id} = $info->{first_update_id};
@@ -272,7 +272,7 @@ bif-update - update or comment a topic
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

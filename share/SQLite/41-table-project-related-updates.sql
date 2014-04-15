@@ -28,6 +28,13 @@ AFTER INSERT ON
 FOR EACH ROW WHEN
     NEW.project_only = 1
 BEGIN
+    SELECT debug(
+        'ai_project_related_updates',
+        NEW.update_id,
+        NEW.project_id,
+        NEW.project_only
+    );
+
     INSERT INTO
         repo_related_updates(
             repo_id,

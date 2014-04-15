@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -16,14 +16,10 @@ sub run {
     if ( !$ctx->{path} ) {
 
         my ( $path, $count ) = $db->xarray(
-            select     => [ "coalesce(p.path,'')", 'count(p.id)' ],
-            from       => 'repos r',
-            inner_join => 'repo_projects rp',
-            on         => 'rp.repo_id = r.id',
-            inner_join => 'projects p',
-            on         => 'p.id = rp.project_id',
-            where      => 'r.local = 1',
-            order_by   => 'p.path',
+            select   => [ "coalesce(p.path,'')", 'count(p.id)' ],
+            from     => 'projects p',
+            where    => 'p.local = 1',
+            order_by => 'p.path',
         );
 
         if ( 0 == $count ) {
@@ -39,7 +35,7 @@ sub run {
     }
 
     return $ctx->err( 'ProjectNotFound', 'project not found: ' . $ctx->{path} )
-      unless my $pinfo = $db->get_project( $ctx->{path} );
+      unless my $pinfo = $ctx->get_project( $ctx->{path} );
 
     if ( $ctx->{status} ) {
         my ( $status_ids, $invalid ) =
@@ -114,7 +110,7 @@ bif-new-task - add a new task to a project
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

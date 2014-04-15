@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -12,7 +12,7 @@ sub run {
     my $info =
          $db->get_topic( $ctx->{id} )
       || $db->get_update( $ctx->{id} )
-      || $db->get_project( $ctx->{id} )
+      || $ctx->get_project( $ctx->{id} )
       || return $ctx->err( 'TopicNotFound',
         'topic, update or project not found: ' . $ctx->{id} );
 
@@ -72,7 +72,7 @@ bif-drop - delete a topic or topic update
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

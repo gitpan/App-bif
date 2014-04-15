@@ -17,3 +17,18 @@ CREATE INDEX
 ON
     repo_related_updates(update_id)
 ;
+
+CREATE TRIGGER
+    bi_repo_related_updates
+BEFORE INSERT ON
+    repo_related_updates
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        'bi_repo_related_updates',
+        NEW.repo_id,
+        NEW.update_id,
+        NEW.merkled
+    );
+
+END;

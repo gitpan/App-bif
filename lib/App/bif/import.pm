@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = shift;
@@ -24,13 +24,13 @@ sub run {
 
     my @pinfo;
     foreach my $path ( @{ $ctx->{path} } ) {
-        my $pinfo = $db->get_project( $path, $hub->{alias} );
+        my $pinfo = $ctx->get_project( $path, $hub->{alias} );
 
         return $ctx->err( 'ProjectNotFound', 'project not found: %s', $path )
           unless $pinfo;
 
         if ( $pinfo->{local} ) {
-            print "Project already imported: $pinfo->{path}\n";
+            print "Already imported: $pinfo->{path}\n";
             next;
         }
 
@@ -126,7 +126,7 @@ bif-import -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

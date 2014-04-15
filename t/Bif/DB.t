@@ -43,20 +43,11 @@ run_in_tempdir {
                 values      => { merge => 1 },
             );
 
-            $dbw->xdo(
-                insert_into => 'repo_projects',
-                values      => {
-                    project_id => $project->{id},
-                    repo_id    => $repo->{id},
-                },
-            );
         }
     );
 
     my $db = Bif::DB->connect('dbi:SQLite:dbname=db.sqlite3');
     isa_ok $db, 'Bif::DB::db';
-
-    # path2project
 
     # get_topic
     subtest 'get_topic', sub {
@@ -168,28 +159,34 @@ run_in_tempdir {
         is $db->get_local_repo_id, $repo->{id}, 'get_local_repo_id';
     };
 
-    # get_project
-    subtest 'get_project', sub {
-        my $ref;
-        is_deeply $ref = $db->get_project(undef), undef, 'get_project undef';
+    # get_projects
+    subtest 'get_projects', sub {
+        my @ref = $db->get_projects(undef);
+        is_deeply \@ref, [], 'get_projects undef';
 
-        is_deeply $ref = $db->get_project(-1), undef, 'get_project unknown ID';
+        @ref = $db->get_projects(-1);
+        is_deeply \@ref, [], 'get_projects unknown ID';
 
-        is_deeply $ref = $db->get_project( $project->{id} ), undef,
-          'get_project ID';
-        is_deeply $ref = $db->get_project('unknown'), undef,
-          'get_project unknown project';
+        @ref = $db->get_projects( $project->{id} );
+        is_deeply \@ref, [], 'get_projects ID';
 
-        is_deeply $ref = $db->get_project( $project->{name} ), {
-            id              => $project->{id},
-            first_update_id => $project->{update_id},
-            kind            => 'project',
-            uuid      => $ref->{uuid},       # hard to know this in advance
-            parent_id => undef,
-            path      => $project->{name},
-            local     => 1,
-          },
-          'get_project known project';
+        @ref = $db->get_projects('unknown');
+        is_deeply \@ref, [], 'get_projects unknown project';
+
+        @ref = $db->get_projects( $project->{name} );
+
+        is_deeply \@ref, [
+            {
+                id              => $project->{id},
+                first_update_id => $project->{update_id},
+                kind            => 'project',
+                uuid      => $ref[0]->{uuid},    # hard to know this in advance
+                parent_id => undef,
+                path      => $project->{name},
+                local     => 1,
+            }
+          ],
+          'get_projects known project';
 
         # TODO get project with repo
     };

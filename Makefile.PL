@@ -10,7 +10,7 @@ use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
 
-my $VERSION = '0.1.0_6';
+my $VERSION = '0.1.0_7';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';

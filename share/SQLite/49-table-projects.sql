@@ -19,7 +19,7 @@ CREATE TABLE projects (
         DEFERRABLE INITIALLY DEFERRED
 );
 
-CREATE INDEX projects_path ON projects(path);
+CREATE UNIQUE INDEX projects_path_repo_id ON projects(path,repo_id);
 
 /*
     In the event that a project is exported to a hub repository, create

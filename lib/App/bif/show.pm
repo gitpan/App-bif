@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 my $NOW;
 my $bold;
@@ -31,7 +31,7 @@ sub run {
 
     my $db   = $ctx->db();
     my $info = $db->get_topic( $ctx->{id} )
-      || $db->get_project( $ctx->{id}, $ctx->{hub} );
+      || $ctx->get_project( $ctx->{id}, $ctx->{hub} );
 
     if ( !$info && defined $info && $info < 0 ) {
         return $ctx->err(
@@ -97,26 +97,14 @@ sub _show_project {
 
     my $ref = $db->xhash(
         select => [
-            'topics.id',
-            'topics.uuid',
-            'projects.path',
-            'projects.title',
-            'topics.ctime',
-            'topics.ctimetz',
-            'topics.mtime',
-            'topics.mtimetz',
-            'updates.author',
-            'updates.email',
-            'updates.message',
-            'project_status.status',
-            'project_status.status',
-            case (
-                when => 'rp.repo_id IS NOT NULL',
-                then => 1,
-                else => qv(undef),
-              )->as('local'),
-            'r2.alias AS hub',
-            't2.uuid AS hub_uuid',
+            'topics.id',             'topics.uuid',
+            'projects.path',         'projects.title',
+            'topics.ctime',          'topics.ctimetz',
+            'topics.mtime',          'topics.mtimetz',
+            'updates.author',        'updates.email',
+            'updates.message',       'project_status.status',
+            'project_status.status', 'projects.local',
+            'r.alias AS hub',        't2.uuid AS hub_uuid',
         ],
         from       => 'projects',
         inner_join => 'topics',
@@ -126,13 +114,9 @@ sub _show_project {
         inner_join => 'project_status',
         on         => 'project_status.id = projects.status_id',
         inner_join => 'repos r',
-        on         => 'r.local = 1',
-        left_join  => 'repo_projects rp',
-        on         => 'rp.repo_id = r.id AND rp.project_id = projects.id',
-        left_join  => 'repos r2',
-        on         => 'r2.id = projects.repo_id',
+        on         => 'r.id = projects.repo_id',
         left_join  => 'topics t2',
-        on         => 't2.id = r2.id',
+        on         => 't2.id = r.id',
         where      => { 'projects.id' => $info->{id} },
     );
 
@@ -280,10 +264,8 @@ sub _show_task {
         on         => 'task_status.id = tasks.status_id',
         inner_join => 'projects',
         on         => 'projects.id = task_status.project_id',
-        inner_join => 'repo_projects rp',
-        on         => 'rp.project_id = projects.id',
         inner_join => 'repos r',
-        on         => 'r.id = rp.repo_id',
+        on         => 'r.id = projects.repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'updates AS updates2',
@@ -367,10 +349,8 @@ sub _show_issue {
         on         => 'project_issues.issue_id = topics.id',
         inner_join => 'projects',
         on         => 'projects.id = project_issues.project_id',
-        inner_join => 'repo_projects rp',
-        on         => 'rp.project_id = projects.id',
         inner_join => 'repos r',
-        on         => 'r.id = rp.repo_id',
+        on         => 'r.id = projects.repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'issue_status',
@@ -428,7 +408,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

@@ -3,13 +3,13 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
     my $db  = $ctx->db;
 
-    my $id = $db->path2project_id( $ctx->{path} )
+    my $pinfo = $ctx->get_project( $ctx->{path} )
       || return $ctx->err( 'PathNotFound',
         'project not found: ' . $ctx->{path} );
 
@@ -25,7 +25,7 @@ sub run {
             )->as('Default'),
         ],
         from     => 'issue_status',
-        where    => { project_id => $id },
+        where    => { project_id => $pinfo->{id} },
         order_by => 'rank',
 
     );
@@ -49,7 +49,7 @@ bif-list-issue-status - list valid issue status/status values
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

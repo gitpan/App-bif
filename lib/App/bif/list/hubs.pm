@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -13,15 +13,15 @@ sub run {
 
     my $data = $db->xarrays(
         select => [
-            'r.id',        'COALESCE(r.alias,"")',
-            'rl.location', 'COUNT(rp.project_id)',
+            'r.id',        'COALESCE(r.alias,"") AS alias',
+            'rl.location', 'COUNT(p.id)',
         ],
-        from       => 'repo_locations rl',
-        inner_join => 'repos r',
-        on         => 'r.id = rl.repo_id AND r.local IS NULL',
-        left_join  => 'repo_projects rp',
-        on         => 'rp.repo_id = r.id',
-        group_by   => [ 'r.alias', 'rl.location' ],
+        from       => 'repos r',
+        inner_join => 'repo_locations rl',
+        on         => 'rl.id = r.default_location_id AND r.local IS NULL',
+        left_join  => 'projects p',
+        on         => 'p.repo_id = r.id',
+        group_by   => [ 'r.id', 'alias', 'rl.location' ],
         order_by   => 'r.alias',
     );
 
@@ -46,7 +46,7 @@ bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

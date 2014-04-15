@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_6';
+our $VERSION = '0.1.0_7';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -19,7 +19,7 @@ sub run {
 
     return $ctx->err( 'ProjectExists',
         'project already exists: ' . $ctx->{path} )
-      if $db->path2project_id( $ctx->{path} );
+      if $ctx->get_project( $ctx->{path} );
 
     if ( $ctx->{path} =~ m/\// ) {
         my @parts = split( '/', $path );
@@ -27,9 +27,10 @@ sub run {
 
         my $parent_path = join( '/', @parts );
 
-        $ctx->{parent_id} = $db->path2project_id($parent_path)
+        my $parent_pinfo = $ctx->get_project($parent_path)
           || return $ctx->err( 'ParentProjectNotFound',
             'parent project not found: ' . $parent_path );
+        $ctx->{parent_id} = $parent_pinfo->{id};
     }
 
     my $where;
@@ -145,10 +146,9 @@ sub run {
 
             $db->update_repo(
                 {
-                    author     => $ctx->{user}->{name},
-                    email      => $ctx->{user}->{email},
-                    message    => "new project $ctx->{id} [$ctx->{path}]",
-                    project_id => $ctx->{id},
+                    author  => $ctx->{user}->{name},
+                    email   => $ctx->{user}->{email},
+                    message => "new project $ctx->{id} [$ctx->{path}]",
                 }
             );
 
@@ -168,7 +168,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_6 (2014-04-11)
+0.1.0_7 (2014-04-15)
 
 =head1 SYNOPSIS
 

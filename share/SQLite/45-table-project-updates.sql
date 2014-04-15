@@ -92,6 +92,10 @@ BEGIN
         project_id = NEW.project_id
     ;
 
+    /*
+        TODO This doesn't catch the update that sets repo_uuid, but I
+        think we catch that in Perl during an export/import... Check
+        and document.
     INSERT INTO
         repo_related_updates(
             update_id,
@@ -99,12 +103,13 @@ BEGIN
         )
     SELECT
         NEW.update_id,
-        rp.repo_id
+        p.repo_id
     FROM
-        repo_projects rp
+        projects p
     WHERE
-        rp.project_id = NEW.project_id
+        p.id = NEW.project_id
     ;
+    */
 
 END;
 

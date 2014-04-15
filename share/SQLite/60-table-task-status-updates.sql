@@ -61,24 +61,6 @@ BEGIN
         id = NEW.task_status_id
     ;
 
-    INSERT INTO
-        repo_related_updates(
-           update_id,
-           repo_id
-        )
-    SELECT
-        NEW.update_id,
-        rp.repo_id
-    FROM
-        task_status ts
-    INNER JOIN
-        repo_projects rp
-    ON
-        rp.project_id = ts.project_id
-    WHERE
-        ts.id = NEW.task_status_id
-    ;
-
     INSERT OR IGNORE INTO
         task_status_tomerge(task_status_id)
     VALUES

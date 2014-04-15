@@ -124,7 +124,6 @@ share/SQLite/49-table-projects.sql
 share/SQLite/50-table-repo-location-updates.sql
 share/SQLite/51-table-repo-locations-tomerge.sql
 share/SQLite/52-table-repo-locations.sql
-share/SQLite/53-table-repo-projects.sql
 share/SQLite/54-table-repo-related-updates.sql
 share/SQLite/55-table-repo-tomerge.sql
 share/SQLite/56-table-repo-updates.sql
