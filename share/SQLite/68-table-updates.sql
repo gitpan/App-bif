@@ -179,18 +179,18 @@ BEGIN
                 )
                 || '/'
                 || strftime('%Y%j%H%M%S',mtime,'unixepoch')
-                || substr(uuid,1,2)
+                || substr(NEW.prefix,1,2)
             ELSE
                 strftime('%Y%j%H%M%S',mtime,'unixepoch')
-                || substr(uuid,1,2)
+                || substr(NEW.prefix,1,2)
             END
     WHERE
-        id = OLD.id
+        id = NEW.id
     ;
 
     /*
         First of all add the parents of the list of projects in
-        upate_projects for the current update
+        update_projects for the current update
     */
 
     INSERT INTO
@@ -218,7 +218,12 @@ BEGIN
     */
 
     INSERT INTO
-        projects_merkle(project_id,prefix,hash,num_updates)
+        projects_merkle(
+            project_id,
+            prefix,
+            hash,
+            num_updates
+        )
     SELECT
         project_id,
         NEW.prefix,

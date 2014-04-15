@@ -11,7 +11,7 @@ index can be found in L<bif-doc-index>.
 
 =head1 Version
 
-0.1.0_7 (2014-04-15)
+0.1.0_8 (2014-04-15)
 
 =begin comment
 

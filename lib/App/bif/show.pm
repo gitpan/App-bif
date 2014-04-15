@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_7';
+our $VERSION = '0.1.0_8';
 
 my $NOW;
 my $bold;
@@ -113,7 +113,7 @@ sub _show_project {
         on         => 'updates.id = topics.first_update_id',
         inner_join => 'project_status',
         on         => 'project_status.id = projects.status_id',
-        inner_join => 'repos r',
+        left_join  => 'repos r',
         on         => 'r.id = projects.repo_id',
         left_join  => 'topics t2',
         on         => 't2.id = r.id',
@@ -242,7 +242,8 @@ sub _show_task {
         select => [
             'topics.id AS id',
             'topics.uuid',
-            concat( 'projects.path', qv('@'), 'r.alias' )->as('path'),
+            'projects.path',
+            'r.alias AS hub',
             'topics2.uuid AS project_uuid',
             'tasks.title AS title',
             'topics.mtime AS mtime',
@@ -264,7 +265,7 @@ sub _show_task {
         on         => 'task_status.id = tasks.status_id',
         inner_join => 'projects',
         on         => 'projects.id = task_status.project_id',
-        inner_join => 'repos r',
+        left_join  => 'repos r',
         on         => 'r.id = projects.repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
@@ -277,10 +278,25 @@ sub _show_task {
 
     push( @data,
         _header( $yellow . 'Task', $yellow . $ref->{title} ),
-        _header( '  ID',      "$ref->{id}", $ref->{uuid} ),
-        _header( '  Project', $ref->{path}, $ref->{project_uuid} ),
-        _header( '  Status', "$ref->{status} (" . $ago[0] . ')', $ago[1] ),
+        _header( '  ID', "$ref->{id}", $ref->{uuid} ),
     );
+
+    if ( $ref->{hub} ) {
+        push(
+            @data,
+            _header(
+                '  Project', "$ref->{path}\@$ref->{hub}",
+                $ref->{project_uuid}
+            )
+        );
+    }
+    else {
+        push( @data,
+            _header( '  Project', $ref->{path}, $ref->{project_uuid} ) );
+    }
+
+    push( @data,
+        _header( '  Status', "$ref->{status} (" . $ago[0] . ')', $ago[1] ) );
 
     if ( $ctx->{full} ) {
         require Text::Autoformat;
@@ -322,7 +338,8 @@ sub _show_issue {
         select => [
             'project_issues.id AS id',
             'topics.uuid',
-            concat( 'projects.path', qv('@'), 'r.alias' )->as('path'),
+            'projects.path',
+            'r.alias AS hub',
             'projects.title AS project_title',
             'topics2.uuid AS project_uuid',
             'issues.title AS title',
@@ -349,7 +366,7 @@ sub _show_issue {
         on         => 'project_issues.issue_id = topics.id',
         inner_join => 'projects',
         on         => 'projects.id = project_issues.project_id',
-        inner_join => 'repos r',
+        left_join  => 'repos r',
         on         => 'r.id = projects.repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
@@ -373,10 +390,25 @@ sub _show_issue {
     foreach my $ref (@refs) {
         if ( !$seen{ $ref->{id} }++ ) {
             my @ago = _new_ago( $ref->{smtime}, $ref->{mtimetz} );
+
+            if ( $ref->{hub} ) {
+                push(
+                    @data,
+                    _header(
+                        '  Project', "$ref->{path}\@$ref->{hub}",
+                        $ref->{project_uuid}
+                    ),
+                );
+            }
+            else {
+                push( @data,
+                    _header( '  Project', $ref->{path}, $ref->{project_uuid} ),
+                );
+            }
+
             push(
                 @data,
-                _header( '  Project', $ref->{path}, $ref->{project_uuid} ),
-                _header( '  ID',      $ref->{id},   $ref->{uuid} ),
+                _header( '  ID', $ref->{id}, $ref->{uuid} ),
                 _header(
                     '  Status', "$ref->{status} (" . $ago[0] . ')',
                     $ago[1]
@@ -408,7 +440,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_7 (2014-04-15)
+0.1.0_8 (2014-04-15)
 
 =head1 SYNOPSIS
 

@@ -21,37 +21,6 @@ CREATE TABLE projects (
 
 CREATE UNIQUE INDEX projects_path_repo_id ON projects(path,repo_id);
 
-/*
-    In the event that a project is exported to a hub repository, create
-    a matching set of repo-related updates from the project-(only)-
-    related updates.
-*/
-
-CREATE TRIGGER
-    au_projects_repo_id
-AFTER UPDATE OF
-    repo_id
-ON
-    projects
-FOR EACH ROW WHEN
-    NEW.repo_id IS NOT NULL
-BEGIN
-    INSERT INTO
-        repo_related_updates(
-            repo_id,
-            update_id
-        )
-    SELECT
-        NEW.repo_id,
-        pru.update_id
-    FROM
-        project_related_updates pru
-    WHERE
-        pru.project_id = NEW.id AND
-        pru.project_only = 1
-    ;
-END;
-
 CREATE TRIGGER
     bd_projects_1
 BEFORE DELETE ON

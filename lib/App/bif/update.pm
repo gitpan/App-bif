@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_7';
+our $VERSION = '0.1.0_8';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -272,7 +272,7 @@ bif-update - update or comment a topic
 
 =head1 VERSION
 
-0.1.0_7 (2014-04-15)
+0.1.0_8 (2014-04-15)
 
 =head1 SYNOPSIS
 

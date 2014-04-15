@@ -65,18 +65,6 @@ BEGIN
         update_id = NEW.update_id
     ;
 
-    INSERT INTO
-        project_related_updates(
-            update_id,
-            project_id,
-            project_only
-        )
-    VALUES(
-        NEW.update_id,
-        NEW.project_id,
-        1
-    );
-
     INSERT OR IGNORE INTO
         projects_tomerge(project_id) VALUES (NEW.project_id);
 
@@ -92,24 +80,45 @@ BEGIN
         project_id = NEW.project_id
     ;
 
+    INSERT INTO
+        project_related_updates(
+            update_id,
+            project_id,
+            project_only
+        )
+    VALUES(
+        NEW.update_id,
+        NEW.project_id,
+        1
+    );
+
     /*
-        TODO This doesn't catch the update that sets repo_uuid, but I
-        think we catch that in Perl during an export/import... Check
-        and document.
+        In the event that a project is exported to a hub, create a
+        matching set of repo-related updates from the project-(only)-
+        related updates.
+
+        TODO - do the reverse when NEW.repo_id is set to null, or
+        rather set to something else.
+    */
+
     INSERT INTO
         repo_related_updates(
-            update_id,
-            repo_id
+            repo_id,
+            update_id
         )
     SELECT
-        NEW.update_id,
-        p.repo_id
+        t.id,
+        pru.update_id
     FROM
-        projects p
+        topics t
+    INNER JOIN
+        project_related_updates pru
+    ON
+        pru.project_id = NEW.project_id AND
+        pru.project_only = 1
     WHERE
-        p.id = NEW.project_id
+        t.uuid = NEW.repo_uuid
     ;
-    */
 
 END;
 

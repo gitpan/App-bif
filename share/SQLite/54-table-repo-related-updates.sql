@@ -32,3 +32,63 @@ BEGIN
     );
 
 END;
+
+CREATE TRIGGER
+    bu_repo_related_updates
+BEFORE UPDATE OF
+    merkled
+ON
+    repo_related_updates
+FOR EACH ROW WHEN
+    NEW.merkled = 1
+BEGIN
+    SELECT debug(
+        'bu_repo_related_updates',
+        NEW.repo_id,
+        NEW.update_id,
+        NEW.merkled
+    );
+
+
+    /*
+        TODO: write a new agg_sha1_hex_sorted function because the
+        following is broken: rows fed to aggregate functions in SQLite
+        in arbitrary order.
+    */
+
+    INSERT INTO
+        repos_merkle(
+            repo_id,
+            prefix,
+            hash,
+            num_updates
+        )
+    SELECT
+        NEW.repo_id,
+        src.prefix,
+        substr(agg_sha1_hex(src.uuid),1,8) AS hash,
+        count(src.uuid) as num_updates
+    FROM
+        (
+        SELECT
+            u2.prefix,
+            u2.uuid
+        FROM
+            updates u
+        INNER JOIN
+            updates u2
+        ON
+            u2.prefix = u.prefix
+        INNER JOIN
+            repo_related_updates rru
+        ON
+            rru.update_id = u2.id AND rru.repo_id = NEW.repo_id
+        WHERE
+            u.id = NEW.update_id
+        ) src
+    GROUP BY
+        NEW.repo_id,
+        src.prefix
+    ;
+
+END;

@@ -35,9 +35,9 @@ BEGIN
     UPDATE
         updates
     SET
-        uuid = sha1_hex(OLD.terms)
+        uuid = sha1_hex(NEW.terms)
     WHERE
-        id = OLD.update_id
+        id = NEW.update_id
     ;
 
     UPDATE
@@ -45,7 +45,7 @@ BEGIN
     SET
         prefix = SUBSTR(uuid, 1, 5)
     WHERE
-        id = OLD.update_id
+        id = NEW.update_id
     ;
 
     DELETE FROM

@@ -4,7 +4,7 @@ use warnings;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_7';
+our $VERSION = '0.1.0_8';
 
 sub real_export_repo {
     my $self = shift;
