@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_8';
+our $VERSION = '0.1.0_9';
 
 sub run {
     my $opts = shift;
@@ -16,30 +16,31 @@ sub run {
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
     my $dbw   = $ctx->dbw;
     my @repos = $dbw->xhashes(
-        select     => [ 'r.id', 'r.location', 't.uuid' ],
+        select     => [ 'r.id', 'r.alias', 'rl.location', 't.uuid' ],
         from       => 'repos r',
         inner_join => 'topics t',
         on         => 't.id = r.id',
-        where      => 'r.local IS NULL',
+        inner_join => 'repo_locations rl',
+        on    => 'rl.id = r.default_location_id',
+        where => 'r.local IS NULL',
     );
+
+    return $ctx->err( 'SyncNone', 'no hubs registered' ) unless @repos;
 
     $|++;    # no buffering
 
-    my $err;
-    my $status;
-    my $cv = AE::cv;
-
-    foreach my $repo (@repos) {
-        $err    = undef;
-        $status = undef;
+    foreach my $hub (@repos) {
+        my $error;
+        my $cv = AE::cv;
 
         my $client = Bif::Client->new(
             db       => $dbw,
-            hub      => $repo->{location},
+            hub      => $hub->{location},
             debug    => $ctx->{debug},
             debug_bs => $ctx->{debug_bs},
             on_error => sub {
-                $err = shift;
+                $error = shift;
+                $cv->send;
             },
         );
 
@@ -52,7 +53,7 @@ sub run {
                 undef $stderr_watcher;
                 return;
             }
-            print STDERR 'hub: ' . $line;
+            print STDERR "$hub->{alias}: $line";
         };
 
         my $coro = async {
@@ -60,26 +61,54 @@ sub run {
                 $dbw->txn(
                     sub {
                         my $previous = $dbw->get_max_update_id;
+                        my $status   = $client->sync_repo( $hub->{id} );
 
-                        $status = $client->sync_repo( $repo->{id} );
+                        if (   $status eq 'RepoMatch'
+                            or $status eq 'RepoImported' )
+                        {
+                            my @projects = $dbw->xhashes(
+                                select => ['p.id'],
+                                from   => 'projects p',
+                                where  => {
+                                    'p.repo_id' => $hub->{id},
+                                    'p.local'   => 1,
+                                },
+                            );
+
+                            foreach my $p (@projects) {
+                                $status = $client->sync_project( $p->{id} );
+
+                                unless ( $status eq 'ProjectMatch'
+                                    or $status eq 'ProjectImported' )
+                                {
+                                    $dbw->rollback;
+                                    $error = $status;
+                                }
+                            }
+                        }
+                        else {
+                            $dbw->rollback;
+                            $error = $status;
+                        }
 
                         # Catch up on errors
                         undef $stderr_watcher;
                         $stderr->blocking(0);
                         while ( my $line = $stderr->getline ) {
-                            print STDERR 'hub: ' . $line;
+                            print STDERR "$hub->{alias}: $line";
                         }
 
-                        return unless $status->[0];
+                        return if $error;
 
                         my $current = $dbw->get_max_update_id;
                         my $delta   = $current - $previous;
 
                         $dbw->update_repo(
                             {
-                                author  => $ctx->{user}->{name},
-                                email   => $ctx->{user}->{email},
-                                message => "sync $repo->{location} [+$delta]",
+                                author => $ctx->{user}->{name},
+                                email  => $ctx->{user}->{email},
+                                message =>
+"sync $hub->{location} [+$delta] $ctx->{message}",
                             }
                         );
 
@@ -88,35 +117,21 @@ sub run {
                 );
             };
 
-            if ($@) {
-                $status = [ 0, 'InternalError', $@ ];
-            }
-
-            if ( $status->[0] ) {
-                print "$repo->{location}: $status->[2]\n";
-            }
-
+            $error .= $@ if $@;
             $client->disconnect;
-            $cv->send;
-            return;
+            return $cv->send( !$error );
         };
 
-        my $sig;
-        $sig = AE::signal 'INT', sub {
-            warn 'INT';
-            undef $sig;
-            $client->disconnect;
-            $cv->send;
-        };
+        next if $cv->recv;
+        return $ctx->err( 'Unknown', $error );
 
-        $cv->recv;
     }
 
-    return $ctx->ok( $status->[1], $status->[2] ) if $status->[0];
-    return $ctx->err( $status->[1], $status->[2] );
+    return $ctx->ok('Sync');
 }
 
 1;
+
 __END__
 
 =head1 NAME
@@ -125,7 +140,7 @@ bif-sync -  exchange updates with repos
 
 =head1 VERSION
 
-0.1.0_8 (2014-04-15)
+0.1.0_9 (2014-04-16)
 
 =head1 SYNOPSIS
 

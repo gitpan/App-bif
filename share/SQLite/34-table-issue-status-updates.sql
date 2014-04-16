@@ -17,7 +17,7 @@ AFTER INSERT ON
     issue_status_updates
 FOR EACH ROW
 BEGIN
-
+    
     SELECT debug(
         NEW.update_id,
         NEW.issue_status_id,
@@ -25,6 +25,14 @@ BEGIN
         NEW.rank,
         NEW.def
     );
+
+    UPDATE
+        updates
+    SET
+        ucount = ucount + 1
+    WHERE
+        id = NEW.update_id
+    ;
 
     UPDATE
         updates_pending

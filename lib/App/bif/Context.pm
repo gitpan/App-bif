@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_8';
+our $VERSION = '0.1.0_9';
 
 sub new {
     my $proto = shift;
@@ -417,7 +417,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_8 (2014-04-15)
+0.1.0_9 (2014-04-16)
 
 =head1 SYNOPSIS
 

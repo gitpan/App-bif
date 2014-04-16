@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_8';
+our $VERSION = '0.1.0_9';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -133,3 +133,88 @@ package Bif::DB::RW::st;
 our @ISA = ('Bif::DB::st');
 
 1;
+
+=head1 NAME
+
+Bif::DB::RW - read-write helper methods for a bif database
+
+=head1 VERSION
+
+0.1.0_9 (2014-04-16)
+
+=head1 SYNOPSIS
+
+    use strict;
+    use warnings;
+    use Bif::DB::RW;
+
+    # Bif inherits from DBIx::ThinSQL, which inherits from DBI.
+    my $dbw = Bif::DB::RW->connect( $dsn );
+
+    # Read and write operations on a bif database:
+
+    $dbw->txn(sub {
+        my ($old,$new) = $dbw->deploy;
+
+        $dbw->xdo(
+            insert_into => 'updates',
+            values      => $hashref,
+        );
+
+        $dbw->update_repo(
+            {
+                name  => $name,
+                email => $email,
+                message   => $message
+            }
+        );
+    });
+
+=head1 DESCRIPTION
+
+B<Bif::DB::RW> is a L<DBI> derivative that provides various read-write
+methods for retrieving information from a L<bif> repository. For a
+read-only equivalent see L<Bif::DB>. The read-only and read-write parts
+are separated for performance reasons.
+
+=head1 DBH METHODS
+
+=over
+
+=item nextval( $name ) -> Int
+
+Advance the sequence C<$name> to its next value and return that value.
+
+=item currval( $name ) -> Int
+
+Return the current value of the sequence <$name>.
+
+=item deploy -> (Int, Int)
+
+Deploys the current Bif distribution schema to the database, returning
+the previous (possibly 0) and newly deployed versions.
+
+=item update_repo($hashref)
+
+Create an update of the local repo from a hashref containing a user
+name, a user email, and a message.
+
+=back
+
+=head1 SEE ALSO
+
+L<Bif::DB>, L<DBIx::ThinSQL::Deploy>
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

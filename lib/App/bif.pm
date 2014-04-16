@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_8';
+our $VERSION = '0.1.0_9';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -666,6 +666,13 @@ arg hub => (
     comment => 'hub repository address or alias',
 );
 
+opt message => (
+    isa     => 'Str',
+    alias   => 'm',
+    default => '',
+    comment => 'message for multiple test script updates / second ',
+);
+
 opt debug_bs => (
     isa     => 'Bool',
     alias   => 'E',
@@ -750,7 +757,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_8 (2014-04-15)
+0.1.0_9 (2014-04-16)
 
 =head1 SYNOPSIS
 

@@ -12,6 +12,7 @@ CREATE TABLE updates (
     email VARCHAR(255) NOT NULL,
     lang VARCHAR(8) NOT NULL DEFAULT 'en',
     message text NOT NULL DEFAULT '',
+    ucount INTEGER NOT NULL DEFAULT 1,
     prefix VARCHAR COLLATE NOCASE,
     FOREIGN KEY(parent_id) REFERENCES updates(id)
         ON DELETE CASCADE
@@ -142,9 +143,11 @@ BEGIN
     SELECT debug(
         'TRIGGER bu_updates_1',
         OLD.uuid,
-        NEW.uuid
+        NEW.uuid,
+        NEW.message
     );
-    SELECT RAISE(ABORT, 'updates.uuid mismatch');
+
+    SELECT RAISE(ABORT, 'Bif::Error::UuidMismatch');
 END;
 
 

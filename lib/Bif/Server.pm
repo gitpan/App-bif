@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_8';
+our $VERSION = '0.1.0_9';
 
 with 'Bif::Role::Sync';
 
@@ -85,7 +85,10 @@ sub accept {
         return;
     }
 
-    my $response = eval { $self->$method(@rest) };
+    my $response = eval {
+        $self->db->txn( sub { $self->$method(@rest) } );
+    };
+
     if ($@) {
         $log->error($@);
         $self->write( 'InternalError', 'Internal Server Error' );
@@ -126,11 +129,11 @@ sub sync_repo {
 
     if ( !$repo ) {
         $self->write( 'RepoNotFound', 'repo uuid not found here' );
-        return;
+        return 'RepoNotFound';
     }
     elsif ( $repo->{hash} eq $hash ) {
         $self->write( 'RepoMatch', 'no changes to exchange' );
-        return;
+        return 'RepoMatch';
     }
 
     $self->write( 'SYNC', 'repo', $uuid, $repo->{hash} );
@@ -185,11 +188,11 @@ sub sync_project {
 
     if ( !$uuid ) {
         $self->write( 'MissingUUID', 'uuid is required' );
-        return;
+        return 'MissingUUID';
     }
     elsif ( !$hash ) {
         $self->write( 'MissingHash', 'hash is required' );
-        return;
+        return 'MissingHash';
     }
 
     my $pinfo = $self->db->xhash(
@@ -200,8 +203,10 @@ sub sync_project {
         where => { 't.uuid' => $uuid },
     );
 
-    return $self->write( 'ProjectNotFound', 'project not found: ' . $uuid )
-      unless $pinfo;
+    if ( !$pinfo ) {
+        $self->write( 'ProjectNotFound', 'project not found: ' . $uuid );
+        return 'ProjectNotFound';
+    }
 
     if ( $pinfo->{hash} eq $hash ) {
         $self->write( 'ProjectMatch', $uuid, $pinfo->{hash} );

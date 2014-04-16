@@ -8,7 +8,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_8';
+our $VERSION = '0.1.0_9';
 
 with 'Bif::Role::Sync';
 
@@ -104,22 +104,9 @@ sub sync_repo {
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'SYNC' and $type eq 'repo' ) {
-        return $self->real_sync_repo( $repo->{id} );
+        return $self->real_sync_repo($id);
     }
 
-    return $action;
-}
-
-sub export_project {
-    my $self  = shift;
-    my $pinfo = shift;
-
-    $self->write( 'EXPORT', 'project', $pinfo->{uuid}, $pinfo->{path} );
-
-    my ( $action, $type ) = $self->read;
-    if ( $action eq 'IMPORT' and $type eq 'project' ) {
-        return $self->real_export_project( $pinfo->{id} );
-    }
     return $action;
 }
 
@@ -159,6 +146,41 @@ sub import_project {
 
     $self->write( 'ExpectedSync', 'Expected SYNC' );
     return 'ExpectedSync';
+}
+
+sub sync_project {
+    my $self = shift;
+    my $id   = shift;
+
+    my $project = $self->db->xhash(
+        select     => [ 'p.hash', 't.uuid' ],
+        from       => 'projects p',
+        inner_join => 'topics t',
+        on         => 't.id = p.id',
+        where => { 'p.id' => $id },
+    );
+
+    $self->write( 'SYNC', 'project', $project->{uuid}, $project->{hash} );
+
+    my ( $action, $type ) = $self->read;
+    if ( $action eq 'SYNC' and $type eq 'project' ) {
+        return $self->real_sync_project($id);
+    }
+
+    return $action;
+}
+
+sub export_project {
+    my $self  = shift;
+    my $pinfo = shift;
+
+    $self->write( 'EXPORT', 'project', $pinfo->{uuid}, $pinfo->{path} );
+
+    my ( $action, $type ) = $self->read;
+    if ( $action eq 'IMPORT' and $type eq 'project' ) {
+        return $self->real_export_project( $pinfo->{id} );
+    }
+    return $action;
 }
 
 sub disconnect {

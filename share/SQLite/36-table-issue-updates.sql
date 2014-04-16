@@ -67,6 +67,14 @@ BEGIN
     );
 
     UPDATE
+        updates
+    SET
+        ucount = ucount + 1
+    WHERE
+        id = NEW.update_id
+    ;
+
+    UPDATE
         updates_pending
     SET
         terms = terms || (

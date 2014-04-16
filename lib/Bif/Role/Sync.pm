@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_8';
+our $VERSION = '0.1.0_9';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -33,8 +33,11 @@ sub read {
 sub write {
     my $self = shift;
 
-    $log->debugf( 'w: %s', $self->json->encode( \@_ ) )
-      if $self->debug;
+    $log->debugf(
+        'w: %s', $log->is_debug
+        ? $self->json->encode( \@_ )
+        : \@_
+    );
 
     return $self->wh->print( $self->json->encode( \@_ ) . "\n\n" );
 }
