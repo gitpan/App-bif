@@ -1,0 +1,108 @@
+=head1 NAME
+
+bif-log - review the repository or topic history
+
+=head1 VERSION
+
+0.1.0_10 (2014-04-17)
+
+=head1 SYNOPSIS
+
+    bif log [ID] [OPTIONS...]
+
+=head1 DESCRIPTION
+
+Display the history of changes in the repository in reverse
+chronological order.
+
+=head1 ARGUMENTS
+
+=over
+
+=item ID
+
+A topic ID or a project PATH. If this argument is used then only the
+history from that topic will be displayed, in hierarchical
+(conversation topic) order.
+
+=back
+
+=head1 OPTIONS
+
+=over
+
+=item --filter TYPE
+
+Only show entries of a specific TYPE:
+
+=over
+
+=item * new
+
+Entries related to topic creation.
+
+=item * status
+
+Entries related to topic status changes. Note that this option will
+include the entries from the 'new' filter.
+
+=back
+
+Can be used multiple times to filter on multiple types.
+
+=item --format STYLE
+
+[Not Implemented] Change the amount of detail displayed for each entry.
+STYLE can be one of the following:
+
+=over
+
+=item * short
+
+=item * normal
+
+=item * full
+
+=back
+
+=item --group TIMESPAN
+
+[Not Implemented] Group the entries together based on one of the
+following TIMESPANs:
+
+=over
+
+=item * hour
+
+=item * day
+
+=item * week
+
+=item * month
+
+=item * logtime
+
+Group the entries into blocks of activity that happened in the last
+hour, today, yesterday, last week, etc.
+
+=back
+
+=back
+
+=head1 SEE ALSO
+
+L<bif>(1)
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

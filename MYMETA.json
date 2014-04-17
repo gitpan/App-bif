@@ -1,0 +1,110 @@
+{
+   "abstract" : "Distributed Project Management Tool",
+   "author" : [
+      "Mark Lawrence <nomad@null.net>"
+   ],
+   "dynamic_config" : 0,
+   "generated_by" : "Module::Install version 1.08, CPAN::Meta::Converter version 2.132830",
+   "license" : [
+      "gpl_3"
+   ],
+   "meta-spec" : {
+      "url" : "http://search.cpan.org/perldoc?CPAN::Meta::Spec",
+      "version" : "2"
+   },
+   "name" : "App-bif",
+   "no_index" : {
+      "directory" : [
+         "inc",
+         "share",
+         "t",
+         "xt"
+      ],
+      "package" : [
+         "Bif::DB::db",
+         "Bif::DB::st",
+         "Bif::DB::RW::db",
+         "Bif::DB::RW::st",
+         "Bif::Mo",
+         "Bif::OK",
+         "Bif::Error"
+      ]
+   },
+   "prereqs" : {
+      "build" : {
+         "requires" : {
+            "CPAN::Meta" : "0",
+            "ExtUtils::MakeMaker" : "6.59"
+         }
+      },
+      "configure" : {
+         "requires" : {
+            "CPAN::Meta" : "0",
+            "Cwd" : "0",
+            "ExtUtils::MakeMaker" : "6.59",
+            "File::Spec" : "0",
+            "FindBin" : "0",
+            "Path::Tiny" : "0",
+            "Pod::Select" : "0"
+         }
+      },
+      "develop" : {
+         "requires" : {
+            "Module::Install" : "0",
+            "Module::Install::AuthorTests" : "0",
+            "Module::Install::CPANfile" : "0"
+         }
+      },
+      "runtime" : {
+         "requires" : {
+            "Config::Tiny" : "2.19",
+            "Coro" : "0",
+            "Coro::Handle" : "0",
+            "DBD::SQLite" : "1.42",
+            "DBIx::ThinSQL" : "v0.0.18",
+            "DBIx::ThinSQL::SQLite" : "v0.0.6",
+            "File::HomeDir" : "0",
+            "File::ShareDir" : "0",
+            "IO::Pager" : "0.24",
+            "IO::Prompt::Tiny" : "0",
+            "JSON" : "0",
+            "Log::Any::Adapter" : "0.11",
+            "Log::Any::Plugin::Levels" : "0",
+            "OptArgs" : "v0.1.6",
+            "POSIX" : "0",
+            "Path::Tiny" : "0.019",
+            "Proc::InvokeEditor" : "0",
+            "Role::Basic" : "0",
+            "Sys::Cmd" : "v0.81.6",
+            "Term::ANSIColor" : "0",
+            "Term::Size" : "0",
+            "Text::Autoformat" : "0",
+            "Text::FormatTable" : "0",
+            "Time::Duration" : "0",
+            "locale" : "0",
+            "perl" : "5.006"
+         }
+      },
+      "test" : {
+         "requires" : {
+            "Exporter::Tidy" : "0",
+            "File::chdir" : "0",
+            "FindBin" : "0",
+            "Test::Fatal" : "0",
+            "Test::More" : "0"
+         }
+      }
+   },
+   "release_status" : "testing",
+   "resources" : {
+      "bugtracker" : {
+         "web" : "bif://bifax.org/bif/"
+      },
+      "homepage" : "http://bifax.org/bif/",
+      "repository" : {
+         "type" : "git",
+         "url" : "git://bifax.org/bif.git/"
+      }
+   },
+   "version" : "0.1.0_10"
+}

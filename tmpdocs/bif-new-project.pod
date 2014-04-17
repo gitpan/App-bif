@@ -1,0 +1,61 @@
+=head1 NAME
+
+bif-new-project - create a new project
+
+=head1 VERSION
+
+0.1.0_10 (2014-04-17)
+
+=head1 SYNOPSIS
+
+    bif new project [PATH] [TITLE] [OPTIONS...]
+
+=head1 DESCRIPTION
+
+Create a new project according to the following items:
+
+=over
+
+=item PATH
+
+An identifier for the project. Consists of the parent PATH (if any)
+plus the the name of the project separated by a slash "/". Will be
+prompted for if not provided.
+
+=item TITLE
+
+A short summary of what the project is about. Will be prompted for if
+not provided.
+
+=back
+
+
+=head2 Options
+
+=over
+
+=item --message, -m MESSAGE
+
+The project description.  An editor will be invoked to record a MESSAGE
+if this option is not used.
+
+=back
+
+
+=head1 SEE ALSO
+
+L<bif>(1)
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

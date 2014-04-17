@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_9 (2014-04-16)
+0.1.0_10 (2014-04-17)
 
 =head1 SYNOPSIS
 
@@ -394,11 +394,13 @@ change. However you will find that as soon as you re-synchronise with a
 hub that has those changes they will return to haunt you like the
 undead.
 
-=head2 Hub Authentication & Registration
+=head2 Collaboration Via A Hub
 
 So far we have covered local-only operations, which are sufficient for
 managing simple, completely self-contained projects.  However the real
 value of bif comes from its collaboration capabilities.
+
+=head3 Hub Signup/Authentication
 
 As previously mentioned, a remote repository known as a hub is the
 mechanism for exchanging updates with others.  You can either self host
@@ -412,9 +414,10 @@ server.  Commercial providers will probably use another method (such as
 the L<bifhub>(1) tool) for transfering the public key during their
 signup process.
 
-Registering with a hub has two purposes. The first is to transfer your
-ssh key (and request access in the event the hub is restricted), and
-the second reason is for obtaining the list of projects in the hub.
+=head3 Registering A Hub
+
+The reason for registering with a hub is to obtain the list of projects
+hosted there.
 
     #!sh
     bif register my.org@provider.com
