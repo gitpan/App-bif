@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 sub new {
     my $proto = shift;
@@ -373,6 +373,20 @@ sub prompt_edit {
     return $args{val};
 }
 
+sub lprint {
+    my $self = shift;
+    my $msg  = shift;
+
+    return if $self->{_bif_pager};
+    my $old = $self->{_bif_print} //= '';
+
+    local $| = 1;
+
+    my $chars = print ' ' x length($old), "\b" x length($old), $msg, "\r";
+    $self->{_bif_print} = $msg =~ m/\n/ ? '' : $msg;
+    return $chars;
+}
+
 package Bif::OK;
 use overload
   bool     => sub { 1 },
@@ -417,7 +431,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_10 (2014-04-17)
+0.1.0_11 (2014-04-18)
 
 =head1 SYNOPSIS
 
@@ -566,6 +580,13 @@ of spaces.
 If the environment is interactive this function will invoke an editor
 and return the result. All comment lines (beginning with '#') are
 removed. TODO: describe %options.
+
+=item lprint( $msg ) -> Int
+
+If a pager is not active this method prints C<$msg> to STDOUT and
+returns the cursor to the beginning of the line.  The next call
+over-writes the previously printed text before printing the new
+C<$msg>. In this way a continually updating status can be displayed.
 
 =back
 

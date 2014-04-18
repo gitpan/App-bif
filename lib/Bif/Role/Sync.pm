@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -46,9 +46,15 @@ sub send_updates {
     my $self        = shift;
     my $update_list = shift;
     my $db          = $self->db;
+    my $on_update   = $self->on_update;
+    my $total       = 0;
 
     while ( my $update = $update_list->hash ) {
         my $id = delete $update->{id};
+
+        $on_update->( 'outbound updates: ' . ( $total += $update->{ucount} ) )
+          if $on_update;
+
         $self->write( 'NEW', 'update', $update );
 
         my $parts = $db->xprepare(

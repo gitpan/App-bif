@@ -67,6 +67,7 @@ on 'test' => sub {
 };
 
 on 'develop' => sub {
+    requires 'App::githook_perltidy';
     requires 'Module::Install';
     requires 'Module::Install::AuthorTests';
     requires 'Module::Install::CPANfile';

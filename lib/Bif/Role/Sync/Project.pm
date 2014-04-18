@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 my %import_functions = (
     NEW => {
@@ -42,9 +42,12 @@ sub real_import_project {
     }
 
     my $ucount;
+    my $on_update = $self->on_update;
 
     while ( $total-- > 0 ) {
         my ( $action, $type, $ref ) = $self->read;
+
+        $on_update->( 'inbound updates: ' . $total ) if $on_update;
 
         if ( !exists $import_functions{$action} ) {
             $self->write( 'BadMethod', $action );
@@ -98,7 +101,6 @@ sub real_import_project {
 
     $self->write('ProjectImported');
     my ($action) = $self->read;
-    $db->do('ANALYZE');
     return 'ProjectImported' if $action eq 'ProjectExported';
     return $action;
 }
@@ -110,8 +112,9 @@ sub real_sync_project {
     my $tmp    = shift || 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) );
 
     $prefix = '' unless defined $prefix;
-    my $prefix2 = $prefix . '_';
-    my $db      = $self->db;
+    my $prefix2   = $prefix . '_';
+    my $db        = $self->db;
+    my $on_update = $self->on_update;
 
     $db->do("CREATE TEMPORARY TABLE $tmp(id INTEGER, ucount INTEGER)")
       if ( $prefix eq '' );
@@ -131,6 +134,8 @@ sub real_sync_project {
       unless $action eq 'MATCH'
       and $mprefix eq $prefix2
       and ref $there eq 'HASH';
+
+    $on_update->( 'matching ' . $prefix2 ) if $on_update;
 
     my @next;
     my @missing;

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -72,7 +72,7 @@ bif-drop - delete a topic or topic update
 
 =head1 VERSION
 
-0.1.0_10 (2014-04-17)
+0.1.0_11 (2014-04-18)
 
 =head1 SYNOPSIS
 

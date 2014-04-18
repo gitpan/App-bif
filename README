@@ -1,11 +1,10 @@
 Bif Project Management Tool
     Bif is a project management tool with a command-line interface. It
     tracks tasks and issues using a local database, exchanging updates with
-    remote databases on demand. The tool runs on any system that supports
-    Perl and SQLite.
+    remote databases on demand.
 
-    Bif is particularly useful for distributed software teams as the
-    underlying data model supports a couple of noteworthy features:
+    The bif data model supports a couple of features which may be of
+    interest to distributed project teams:
 
     Offline Operation
         Many bif actions work offline; you can create and update tasks and
@@ -20,6 +19,8 @@ Bif Project Management Tool
     are designed for consistency and ease of use. See bif-doc-intro for a
     very quick hands-on introduction.
 
+    Bif runs on any system that supports Perl and SQLite.
+
 Software Status
     Bif is still at a very early stage of development. Much of the
     functionality is missing, documentation is incomplete (or in some cases
@@ -32,15 +33,15 @@ Community Organisation
     Website:
         <http://bifax.org/bif/>
 
-    Mailing List:
-        Subscribe via <http://www.freelists.org/list/bif-devel> and then
-        send mail to <bif-devel@freelists.org>.
+    Code Repository:
+        git://bifax.org/bif.git/
 
     Issue Tracker:
         Doesn't exit yet.
 
-    Code Repository:
-        git://bifax.org/bif.git/
+    Mailing List:
+        Subscribe via <http://www.freelists.org/list/bif-devel> and then
+        send mail to <bif-devel@freelists.org>.
 
 Documentation
     The main entry point for reference documentation is the bif manual.
@@ -116,28 +117,38 @@ Development
         git clone git://bifax.org/bif.git --branch devel
         cd bif
 
+    For development we recommend the use of direnv
+    <https://github.com/zimbatm/direnv> to keep installed files away from
+    the rest of your system. Something like the following in a local .envrc
+    file will do the trick:
+
+        source_up
+        layout perl
+        PATH_add $PWD/t
+
     Make sure that you have a recent "cpanm" that has the "--with-develop"
-    option. [The cpanminus packages in the current stable versions of Ubuntu
-    and Debian do not]. Development dependencies can be installed in a local
-    libext/ directory without polluting the rest of your system:
+    option. The cpanminus packages in the current stable versions of Ubuntu
+    and Debian do not. Development dependencies can then be installed like
+    so:
 
         #!sh
+        cpanm --installdeps --with-develop $PWD
 
-        cpanm \
-            --local-lib-contained libext \
-            --installdeps \
-            --with-develop \
-            --notest \
-            $PWD
+    All Perl and POD content is expected to be "tidy" according to the
+    .perltidyrc and .podtidy-opts files in the source tree. The easiest way
+    to ensure this happens on commit is to run "githook-perltidy" (installed
+    as one of the "--with-develop" dependencies):
+
+        #!sh
+        githook-perltidy install
 
     A test bif script is created in the t/ directory when you run
-    Makefile.PL, which you can easily access afterwards by modifying your
-    PATH:
+    Makefile.PL.
 
         #!sh
         perl Makefile.PL
-        export PATH=$PWD/t:$PATH
-        which bif   # t/bif
+        export PATH=$PWD/t:$PATH    # if you don't use direnv
+        which bif                   # t/bif
 
     We encourage personal development branches in the git repository. Send a
     request to the mailing list with your public ssh key (something like
@@ -165,16 +176,6 @@ Development
     This allows anyone who clones the repository to see, modify and merge
     your work from the command line, without having to visit a website to
     find where all the forks are.
-
-    All Perl and POD content is expected to be "tidy" according to the
-    .perltidyrc and .podtidy-opts files in the source tree. The easiest way
-    to ensure this happens on commit is to install "githook-perltidy":
-
-        #!sh
-        cpanm App::githook_perltidy
-
-        # cd into your git repository and then:
-        githook-perltidy install
 
 License
     Bif is free software: you can redistribute it and/or modify it under the

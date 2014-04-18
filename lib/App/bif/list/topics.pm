@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -102,6 +102,7 @@ sub run {
         foreach (@$data) {
             $table->row(@$_);
             $project->[2]++;
+            $i++;
         }
     }
 
@@ -124,7 +125,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_10 (2014-04-17)
+0.1.0_11 (2014-04-18)
 
 =head1 SYNOPSIS
 

@@ -49,51 +49,6 @@ BEGIN
         NEW.merkled
     );
 
-select debug('select id,uuid,prefix from updates');
-select debug('select * from repo_related_updates');
-select debug('SELECT
-            u2.prefix,
-            u2.uuid
-        FROM
-            updates u
-        INNER JOIN
-            updates u2
-        ON
-            u2.prefix = u.prefix
-        INNER JOIN
-            repo_related_updates rru
-        ON
-            rru.update_id = u2.id AND rru.repo_id = ?
-        WHERE
-            u.id = ?
-',NEW.repo_id,NEW.update_id);
-select debug('SELECT
-        ?,
-        src.prefix,
-        substr(agg_sha1_hex(src.uuid),1,8) AS hash,
-        count(src.uuid) as num_updates
-    FROM
-        (
-        SELECT
-            u2.prefix,
-            u2.uuid
-        FROM
-            updates u
-        INNER JOIN
-            updates u2
-        ON
-            u2.prefix = u.prefix
-        INNER JOIN
-            repo_related_updates rru
-        ON
-            rru.update_id = u2.id AND rru.repo_id = ?
-        WHERE
-            u.id = ?
-        ) src
-    GROUP BY
-        ?,
-        src.prefix
-',NEW.repo_id,NEW.repo_id,NEW.update_id,NEW.repo_id);
 
     /*
         TODO: write a new agg_sha1_hex_sorted function because the

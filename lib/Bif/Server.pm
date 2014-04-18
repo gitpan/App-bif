@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 with 'Bif::Role::Sync';
 
@@ -23,6 +23,8 @@ has rh => ( is => 'rw' );
 has wh => ( is => 'rw' );
 
 has json => ( is => 'rw', default => sub { JSON->new->utf8 } );
+
+has on_update => ( is => 'rw', );
 
 has on_error => ( is => 'ro', required => 1 );
 

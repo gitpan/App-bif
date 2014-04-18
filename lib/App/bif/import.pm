@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 sub run {
     my $ctx = shift;
@@ -113,7 +113,11 @@ sub run {
         return $cv->send( !$error );
     };
 
-    return $ctx->ok('Import') if $cv->recv;
+    if ( $cv->recv ) {
+        $db->do('ANALYZE');
+        return $ctx->ok('Import');
+    }
+
     return $ctx->err( 'Unknown', $error );
 }
 
@@ -126,7 +130,7 @@ bif-import -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_10 (2014-04-17)
+0.1.0_11 (2014-04-18)
 
 =head1 SYNOPSIS
 

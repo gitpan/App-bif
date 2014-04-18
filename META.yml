@@ -18,7 +18,7 @@ configure_requires:
   Path::Tiny: '0'
   Pod::Select: '0'
 dynamic_config: '0'
-generated_by: 'Module::Install version 1.08, CPAN::Meta::Converter version 2.132830'
+generated_by: 'Module::Install version 1.08, CPAN::Meta::Converter version 2.120921'
 license: gpl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -69,4 +69,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.0_10
+version: 0.1.0_11

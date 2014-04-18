@@ -4,7 +4,7 @@
       "Mark Lawrence <nomad@null.net>"
    ],
    "dynamic_config" : "0",
-   "generated_by" : "Module::Install version 1.08, CPAN::Meta::Converter version 2.132830",
+   "generated_by" : "Module::Install version 1.08, CPAN::Meta::Converter version 2.120921",
    "license" : [
       "gpl_3"
    ],
@@ -49,6 +49,7 @@
       },
       "develop" : {
          "requires" : {
+            "App::githook_perltidy" : "0",
             "Module::Install" : "0",
             "Module::Install::AuthorTests" : "0",
             "Module::Install::CPANfile" : "0"
@@ -105,5 +106,5 @@
          "url" : "git://bifax.org/bif.git/"
       }
    },
-   "version" : "0.1.0_10"
+   "version" : "0.1.0_11"
 }

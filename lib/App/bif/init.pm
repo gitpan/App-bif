@@ -7,26 +7,7 @@ use Bif::DB::RW;
 use Log::Any '$log';
 use Path::Tiny qw/path cwd tempdir/;
 
-our $VERSION = '0.1.0_10';
-
-sub DBIx::ThinSQL::SQLite::agg_sha1::step {
-    my $self = shift;
-    $log->debug( $self
-          . '->step('
-          . join( ' ', map { defined $_ ? $_ : '*undef*' } @_ )
-          . ')' );
-    $self->add(
-        map { utf8::is_utf8($_) ? Encode::encode_utf8($_) : $_ }
-        grep { defined $_ } @_
-    );
-}
-
-sub DBIx::ThinSQL::SQLite::agg_sha1_hex::finalize {
-    my $self = shift;
-    my $x    = $self->hexdigest;
-    $log->debug( $self . '->finalize = ' . $x );
-    $x;
-}
+our $VERSION = '0.1.0_11';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -133,7 +114,7 @@ bif-init -  create new bif repository
 
 =head1 VERSION
 
-0.1.0_10 (2014-04-17)
+0.1.0_11 (2014-04-18)
 
 =head1 SYNOPSIS
 

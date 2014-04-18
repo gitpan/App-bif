@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_10';
+our $VERSION = '0.1.0_11';
 
 sub run {
     my $opts = shift;
@@ -32,12 +32,16 @@ sub run {
     foreach my $hub (@repos) {
         my $error;
         my $cv = AE::cv;
+        $ctx->lprint("$hub->{alias}: connecting...");
 
         my $client = Bif::Client->new(
-            db       => $dbw,
-            hub      => $hub->{location},
-            debug    => $ctx->{debug},
-            debug_bs => $ctx->{debug_bs},
+            db        => $dbw,
+            hub       => $hub->{location},
+            debug     => $ctx->{debug},
+            debug_bs  => $ctx->{debug_bs},
+            on_update => sub {
+                $ctx->lprint("$hub->{alias}: $_[0]");
+            },
             on_error => sub {
                 $error = shift;
                 $cv->send;
@@ -62,12 +66,13 @@ sub run {
                     sub {
                         my $previous = $dbw->get_max_update_id;
                         my $status   = $client->sync_repo( $hub->{id} );
+                        $ctx->lprint("$hub->{alias}: $status");
 
                         if (   $status eq 'RepoMatch'
                             or $status eq 'RepoImported' )
                         {
                             my @projects = $dbw->xhashes(
-                                select => ['p.id'],
+                                select => [ 'p.id', 'p.path' ],
                                 from   => 'projects p',
                                 where  => {
                                     'p.repo_id' => $hub->{id},
@@ -76,7 +81,17 @@ sub run {
                             );
 
                             foreach my $p (@projects) {
+                                $client->on_update(
+                                    sub {
+                                        $ctx->lprint(
+                                            "$hub->{alias} [$p->{path}]: $_[0]"
+                                        );
+                                    }
+                                );
+
                                 $status = $client->sync_project( $p->{id} );
+                                $ctx->lprint(
+                                    "$hub->{alias} [$p->{path}]: $status");
 
                                 unless ( $status eq 'ProjectMatch'
                                     or $status eq 'ProjectImported' )
@@ -105,10 +120,10 @@ sub run {
 
                         $dbw->update_repo(
                             {
-                                author => $ctx->{user}->{name},
-                                email  => $ctx->{user}->{email},
-                                message =>
-"sync $hub->{location} [+$delta] $ctx->{message}",
+                                author  => $ctx->{user}->{name},
+                                email   => $ctx->{user}->{email},
+                                message => "sync $hub->{location} "
+                                  . "[+$delta] $ctx->{message}",
                             }
                         );
 
@@ -122,10 +137,19 @@ sub run {
             return $cv->send( !$error );
         };
 
-        next if $cv->recv;
+        if ( $cv->recv ) {
+            ;
+            $ctx->lprint("$hub->{alias}: sync ok\n");
+            next;
+        }
+        print "\n";
         return $ctx->err( 'Unknown', $error );
 
     }
+
+    # TODO make this dependent on how many updates received/made since the last
+    # analyze
+    $dbw->do('ANALYZE');
 
     return $ctx->ok('Sync');
 }
@@ -140,7 +164,7 @@ bif-sync -  exchange updates with repos
 
 =head1 VERSION
 
-0.1.0_10 (2014-04-17)
+0.1.0_11 (2014-04-18)
 
 =head1 SYNOPSIS
 
