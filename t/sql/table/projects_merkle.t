@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use Bif::DB::RW;
+use Bif::DBW;
 use Digest::SHA qw/sha1_hex/;
 use List::Util qw/sum/;
 use Test::Bif;
@@ -78,7 +78,7 @@ sub test_topic_hash {
 
 run_in_tempdir {
 
-    my $db = Bif::DB::RW->connect('dbi:SQLite:dbname=db.sqlite3');
+    my $db = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
 
     my $res = undef;
     eval {

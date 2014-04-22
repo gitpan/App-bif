@@ -1,4 +1,4 @@
-package Bif::DB::RW;
+package Bif::DBW;
 use strict;
 use warnings;
 use Bif::DB;
@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -50,7 +50,7 @@ sub connect {
     return $class->SUPER::connect( $dsn, $user, $password, $attrs );
 }
 
-package Bif::DB::RW::db;
+package Bif::DBW::db;
 our @ISA = ('Bif::DB::db');
 
 use DBIx::ThinSQL qw/qv/;
@@ -129,27 +129,27 @@ sub update_repo {
     return;
 }
 
-package Bif::DB::RW::st;
+package Bif::DBW::st;
 our @ISA = ('Bif::DB::st');
 
 1;
 
 =head1 NAME
 
-Bif::DB::RW - read-write helper methods for a bif database
+Bif::DBW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 
     use strict;
     use warnings;
-    use Bif::DB::RW;
+    use Bif::DBW;
 
-    # Bif inherits from DBIx::ThinSQL, which inherits from DBI.
-    my $dbw = Bif::DB::RW->connect( $dsn );
+    # Bif::DBW inherits Bif::DB -> DBIx::ThinSQL -> DBI.
+    my $dbw = Bif::DBW->connect( $dsn );
 
     # Read and write operations on a bif database:
 
@@ -172,10 +172,10 @@ Bif::DB::RW - read-write helper methods for a bif database
 
 =head1 DESCRIPTION
 
-B<Bif::DB::RW> is a L<DBI> derivative that provides various read-write
+B<Bif::DBW> is a L<DBI> derivative that provides various read-write
 methods for retrieving information from a L<bif> repository. For a
 read-only equivalent see L<Bif::DB>. The read-only and read-write parts
-are separated for performance reasons.
+are separated for security and performance reasons.
 
 =head1 DBH METHODS
 
@@ -198,6 +198,39 @@ the previous (possibly 0) and newly deployed versions.
 
 Create an update of the local repo from a hashref containing a user
 name, a user email, and a message.
+
+=back
+
+=head1 SQLITE FUNCTIONS
+
+The following SQL functions created using the user-defined-function
+feature of SQLite.
+
+=over
+
+=item create_sequence()
+
+TODO
+
+=item nextval( $name ) -> Int
+
+Advance the sequence C<$name> to its next value and return that value.
+
+=item currval( $name ) -> Int
+
+Return the current value of the sequence <$name>.
+
+=item debug()
+
+TODO
+
+=item sha1_hex()
+
+TODO
+
+=item agg_sha1_hex()
+
+TODO
 
 =back
 

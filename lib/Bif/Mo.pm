@@ -102,3 +102,50 @@ my $i = \&import;
 @f = qw[build default is required import];
 use strict;
 use warnings;
+
+__END__
+
+=head1 NAME
+
+Bif::Mo - mini object-oriented module
+
+=head1 SYNOPSIS
+
+    package Some::Event;
+    use Bif::Mo;
+
+    has epoch => (
+        is      => 'ro',
+        default => sub { time }
+    );
+
+    has message => (
+        is       => 'ro',
+        required => 1,
+    );
+
+    my $e = Some::Event->new; # Boom! message required
+
+=head1 DESCRIPTION
+
+Bif::Mo is a mini object-oriented module derived from L<Mo> using the
+following plugins:
+
+=over
+
+=item * build
+
+=item * default
+
+=item * is
+
+=item * required
+
+=item * import
+
+=back
+
+=head1 SEE ALSO
+
+L<Mo>, L<mo-inline>
+

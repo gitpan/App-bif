@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 my $NOW;
 my $bold;
@@ -16,11 +16,11 @@ sub run {
     my $ctx = App::bif::Context->new(shift);
 
     if ( $ctx->{id} eq 'VERSION' ) {
-        require App::bif::Version;
-        print "$App::bif::Version::VERSION "
-          . "($App::bif::Version::BRANCH) "
-          . "$App::bif::Version::COMMIT "
-          . "($App::bif::Version::DATE)\n";
+        require App::bif::Build;
+        print "$App::bif::Build::VERSION "
+          . "($App::bif::Build::BRANCH) "
+          . "$App::bif::Build::COMMIT "
+          . "($App::bif::Build::DATE)\n";
         return $ctx->ok('ShowVersion');
     }
     elsif ( $ctx->{uuid} ) {
@@ -440,7 +440,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 
@@ -481,7 +481,7 @@ Lookup the topic using ID as a UUID string instead of a topic integer.
 
 =head1 SEE ALSO
 
-L<bif>(1)
+L<bif>(1), L<App::bif::Build>
 
 =head1 AUTHOR
 

@@ -5,7 +5,7 @@ management tool x does what it does.
 
 =head1 Version
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 Background
 
@@ -165,7 +165,7 @@ the database, render output, generate errors and so on.
 
 =head2 Database access
 
-Each command uses either L<Bif::DB> or L<Bif::DB::RW> (based on
+Each command uses either L<Bif::DB> or L<Bif::DBW> (based on
 L<DBIx::ThinSQL>, L<DBI>, and L<DBD::SQLite>) to access the database.
 
 As much as possible is done inside the database with the goal of

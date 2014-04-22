@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 sub new {
     my $proto = shift;
@@ -278,8 +278,8 @@ sub dbw {
 
     $log->debug( 'ctx: dbw: ' . $dsn );
 
-    require Bif::DB::RW;
-    my $dbw = Bif::DB::RW->connect( $dsn, undef, undef, undef, $self->{debug} );
+    require Bif::DBW;
+    my $dbw = Bif::DBW->connect( $dsn, undef, undef, undef, $self->{debug} );
 
     $log->debug( 'ctx: SQLite version: ' . $dbw->{sqlite_version} );
     $self->{_bif_dbw} = $dbw;
@@ -431,7 +431,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 
@@ -552,7 +552,7 @@ You should manually import any L<DBIx::ThinSQL> functions you need only
 after calling C<bif_db>, in order to keep startup time short for cases
 such as when the repository is not found.
 
-=item dbw -> Bif::DB::RW::db
+=item dbw -> Bif::DBW::db
 
 Returns a handle for the SQLite database in the current respository (as
 found by C<bif_repo>). The handle is good for INSERT, UPDATE and DELETE
@@ -592,7 +592,7 @@ C<$msg>. In this way a continually updating status can be displayed.
 
 =head1 SEE ALSO
 
-L<Bif::DB>, L<Bif::DB::RW>
+L<Bif::DB>, L<Bif::DBW>
 
 =head1 AUTHOR
 

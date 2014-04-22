@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -87,7 +87,7 @@ sub run {
         next unless @$data;
 
         $table->rule(' ') if $i;
-        $table->head( $bold . 'ID', "Topic [$project->[1]]",
+        $table->head( $bold . 'ID', "[$project->[1]] Topic",
             'Status' . $reset );
 
         if ($dark) {
@@ -125,7 +125,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 

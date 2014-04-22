@@ -2,6 +2,7 @@ CREATE TABLE updates (
     id INTEGER NOT NULL PRIMARY KEY,
     uuid char(40) NOT NULL UNIQUE DEFAULT '',
     parent_id INTEGER,
+    ucount INTEGER NOT NULL DEFAULT 1,
     itime INTEGER,
     mtime INTEGER NOT NULL
         DEFAULT (strftime('%s','now')),
@@ -12,7 +13,6 @@ CREATE TABLE updates (
     email VARCHAR(255) NOT NULL,
     lang VARCHAR(8) NOT NULL DEFAULT 'en',
     message text NOT NULL DEFAULT '',
-    ucount INTEGER NOT NULL DEFAULT 1,
     prefix VARCHAR COLLATE NOCASE,
     FOREIGN KEY(parent_id) REFERENCES updates(id)
         ON DELETE CASCADE

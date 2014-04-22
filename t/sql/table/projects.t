@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use Bif::DB::RW;
+use Bif::DBW;
 use Digest::SHA qw/sha1_hex/;
 use Test::Bif;
 use Test::Fatal;
@@ -12,7 +12,7 @@ run_in_tempdir {
 
     DBIx::ThinSQL->import(qw/ qv /);
 
-    my $db = Bif::DB::RW->connect('dbi:SQLite:dbname=db.sqlite3');
+    my $db = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
 
     $db->txn(
         sub {

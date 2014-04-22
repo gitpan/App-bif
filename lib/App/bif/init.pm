@@ -3,11 +3,11 @@ use strict;
 use warnings;
 use App::bif::Context;
 use Config::Tiny;
-use Bif::DB::RW;
+use Bif::DBW;
 use Log::Any '$log';
 use Path::Tiny qw/path cwd tempdir/;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -34,7 +34,7 @@ sub run {
     $config->write( $tempdir->child('config') );
 
     my $dbfile = $tempdir->child('db.sqlite3');
-    my $dbw    = Bif::DB::RW->connect( 'dbi:SQLite:dbname=' . $dbfile,
+    my $dbw    = Bif::DBW->connect( 'dbi:SQLite:dbname=' . $dbfile,
         undef, undef, undef, $ctx->{debug} );
 
     $log->debug( 'init: SQLite version: ' . $dbw->{sqlite_version} );
@@ -114,7 +114,7 @@ bif-init -  create new bif repository
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 

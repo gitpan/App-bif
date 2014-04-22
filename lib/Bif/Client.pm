@@ -8,7 +8,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 with 'Bif::Role::Sync';
 

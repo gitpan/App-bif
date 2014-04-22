@@ -1,16 +1,14 @@
-# devel/lib/ should only exist in the Git tree and is added to @INC here
+# util/lib/ should only exist in the Git tree and is added to @INC here
 # in order to pick up our Module::Install::PRIVATE::App_bif module. Can
 # be ignored, and shouldn't have any effect on target machines
-use lib 'devel/lib';
+use lib 'util/lib';
 
-# libext/lib/perl5 is is added for in-tree execution with a local::lib
-use lib 'libext/lib/perl5';
 use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
 
-my $VERSION = '0.1.0_11';
+my $VERSION = '0.1.0_12';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -35,8 +33,8 @@ author_tests 'xt';
 
 no_index package => 'Bif::DB::db';
 no_index package => 'Bif::DB::st';
-no_index package => 'Bif::DB::RW::db';
-no_index package => 'Bif::DB::RW::st';
+no_index package => 'Bif::DBW::db';
+no_index package => 'Bif::DBW::st';
 no_index package => 'Bif::Mo';
 no_index package => 'Bif::OK';
 no_index package => 'Bif::Error';
@@ -49,7 +47,6 @@ WriteAll;
     print FH <<"END";
 #!$^X
 use strict;
-use lib "$Bin/libext/lib/perl5";
 use lib "$Bin/lib";
 use OptArgs qw/dispatch/;
 
@@ -76,7 +73,6 @@ END
     print FH <<"END";
 #!$^X
 use strict;
-use lib "$Bin/libext/lib/perl5";
 use lib "$Bin/lib";
 use OptArgs qw/dispatch/;
 
@@ -90,7 +86,7 @@ END
     path('t/bifsync')->append_utf8($pod);
 }
 
-# Set App::bif::Version if we are a developer
+# Setup App::bif::Build if we are a developer
 exit unless -d '.git';
 
 my $commit = qx/git rev-parse HEAD/;
@@ -101,13 +97,82 @@ chomp $branch;
 my $t    = gmtime;
 my $when = $t->ymd . ' ' . $t->hms;
 
-open( FH, '>', 'lib/App/bif/Version.pm' ) or die "open: $!";
-print FH <<"END";
-package App::bif::Version;
-\$App::bif::Version::VERSION = '$VERSION';
-\$App::bif::Version::COMMIT = '$commit';
-\$App::bif::Version::BRANCH = '$branch';
-\$App::bif::Version::DATE = '$when';
+open( FH, '>', 'lib/App/bif/Build.pm' ) or die "open: $!";
+print FH <<"THE_END";
+package App::bif::Build;
+\$App::bif::Build::VERSION = '$VERSION';
+\$App::bif::Build::COMMIT = '$commit';
+\$App::bif::Build::BRANCH = '$branch';
+\$App::bif::Build::DATE = '$when';
 1;
-END
+__END__
+
+=head1 NAME
+
+App::bif::Build - build-time constants for App-bif
+
+=head1 VERSION
+
+0.1.0_12 (2014-04-22)
+
+=head1 SYNOPSIS
+
+    use App::bif::Build
+
+    # Do something with:
+    #  \$App::bif::Build::BRANCH
+    #  \$App::bif::Build::COMMIT
+    #  \$App::bif::Build::DATE
+    #  \$App::bif::Build::VERSION
+
+=head1 DESCRIPTION
+
+B<App::bif::Build> is generated when Makefile.PL is run in the bif
+source tree and simply contains 4 scalar variables. The variables are
+used by the C<bif show VERSION> command to display relevant build
+information.
+
+When this version of App-bif was built the variables were set as
+follows:
+
+=over
+
+=item \$App::bif::Build::BRANCH = "$branch"
+
+The Git branch name which was current when the App-bif distribution was
+created.
+
+=item \$App::bif::Build::COMMIT = "$commit"
+
+The Git commit hash at the head of the branch when the App-bif
+distribution was created.
+
+=item \$App::bif::Build::DATE = "$when"
+
+The UTC date that the Makefile.PL file was run.
+
+=item \$App::bif::Build::VERSION = "$VERSION"
+
+The version of the App-bif distribution.
+
+=back
+
+=head1 SEE ALSO
+
+L<bif-show>(1)
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad\@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2014 Mark Lawrence <nomad\@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+
+THE_END
 

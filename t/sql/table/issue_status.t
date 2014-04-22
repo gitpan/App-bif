@@ -1,7 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use Bif::DB::RW;
+use Bif::DBW;
 use Digest::SHA qw/sha1_hex/;
 use Test::Bif;
 use Test::Fatal;
@@ -13,7 +13,7 @@ exit;
 
 run_in_tempdir {
 
-    my $db = Bif::DB::RW->connect('dbi:SQLite:dbname=db.sqlite3');
+    my $db = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
 
     my $id        = $db->nextval('topics');
     my $update_id = $db->nextval('updates');

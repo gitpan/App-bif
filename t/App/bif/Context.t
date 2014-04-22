@@ -144,7 +144,7 @@ subtest 'App::bif::Context', sub {
             mkdir '.bif';
             $ctx = App::bif::Context->new( {} );
             my $dbw = $ctx->dbw;
-            isa_ok $dbw, 'Bif::DB::RW::db';
+            isa_ok $dbw, 'Bif::DBW::db';
             my $sha1 = Digest::SHA::sha1_hex(1);
             my ($sha) = $dbw->selectrow_array('select sha1_hex(1)');
             is $sha, $sha1, 'read-write';

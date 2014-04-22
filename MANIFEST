@@ -19,6 +19,7 @@ inc/Module/Install/Share.pm
 inc/Module/Install/Win32.pm
 inc/Module/Install/WriteAll.pm
 lib/App/bif.pm
+lib/App/bif/Build.pm
 lib/App/bif/Context.pm
 lib/App/bif/doc.pm
 lib/App/bif/drop.pm
@@ -45,7 +46,6 @@ lib/App/bif/sql.pm
 lib/App/bif/sync.pm
 lib/App/bif/update.pm
 lib/App/bif/upgrade.pm
-lib/App/bif/Version.pm
 lib/App/bifsync.pm
 lib/bif-doc-changelog.pod
 lib/bif-doc-design.pod
@@ -58,7 +58,7 @@ lib/bif-doc-roadmap.pod
 lib/bif-doc-table-projects.pod
 lib/Bif/Client.pm
 lib/Bif/DB.pm
-lib/Bif/DB/RW.pm
+lib/Bif/DBW.pm
 lib/Bif/Mo.pm
 lib/Bif/Role/Sync.pm
 lib/Bif/Role/Sync/Project.pm
@@ -163,7 +163,7 @@ t/App/bif/sync.t
 t/App/bif/update.t
 t/App/bif/upgrade.t
 t/Bif/DB.t
-t/Bif/DB/RW.t
+t/Bif/DBW.t
 t/lib/Log/Any/Adapter/Diag.pm
 t/lib/Test/Bif.pm
 t/sql/func_import_update.t

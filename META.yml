@@ -33,8 +33,8 @@ no_index:
   package:
     - Bif::DB::db
     - Bif::DB::st
-    - Bif::DB::RW::db
-    - Bif::DB::RW::st
+    - Bif::DBW::db
+    - Bif::DBW::st
     - Bif::Mo
     - Bif::OK
     - Bif::Error
@@ -44,7 +44,8 @@ requires:
   Coro::Handle: '0'
   DBD::SQLite: '1.42'
   DBIx::ThinSQL: v0.0.18
-  DBIx::ThinSQL::SQLite: v0.0.6
+  DBIx::ThinSQL::SQLite: v0.0.8
+  Digest::SHA: '0'
   File::HomeDir: '0'
   File::ShareDir: '0'
   IO::Pager: '0.24'
@@ -69,4 +70,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.0_11
+version: 0.1.0_12

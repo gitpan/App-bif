@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -294,7 +294,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 
@@ -312,7 +312,7 @@ Bif::DB - helper methods for a read-only bif database
 
 B<Bif::DB> is a L<DBI> derivative that provides various read-only
 methods for retrieving information from a L<bif> repository. For a
-read-write equivalent see L<Bif::DB::RW>. The read-only and read-write
+read-write equivalent see L<Bif::DBW>. The read-only and read-write
 parts are separated for performance reasons.
 
 =head1 METHODS
@@ -388,10 +388,10 @@ contain valid values:
 
 Returns the ID for the local repository topic.
 
-=item get_projects( $PATH, [$ALIAS] ) -> HashRef
+=item get_projects( $PATH, [$ALIAS] ) -> [HashRef, ...]
 
 Looks up the project(s) identified by C<$PATH> (and optionally a hub
-C<$ALIAS>) returns undef, or a lits of hash references containg the
+C<$ALIAS>) returns undef, or a list of hash references containg the
 following keys:
 
 =over
@@ -446,7 +446,7 @@ Returns the maximum update ID in the database.
 
 =head1 SEE ALSO
 
-L<Bif::DB::RW>
+L<Bif::DBW>
 
 =head1 AUTHOR
 

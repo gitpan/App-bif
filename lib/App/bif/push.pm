@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -129,7 +129,7 @@ bif-push - push a thread to another project
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 
@@ -139,7 +139,7 @@ bif-push - push a thread to another project
 
 Push a thread to another project.
 
-=head1 ARGUMENTS
+=head1 ARGUMENTS & OPTIONS
 
 =over
 
@@ -156,16 +156,10 @@ The destination project PATH. Required.
 The location of the hub where the project is hosted. If not given the
 project is assumed to be in the current repository.
 
-=head1 OPTIONS
-
-=item --alias, -a NAME
-
-The alias to refer to the hub in future calls.
-
 =item --copy, -c
 
-Copy the topic instead of its default push behaviour (link for issues,
-move for tasks).
+[not implemented] Copy the topic instead of its default push behaviour
+(link for issues, move for tasks).
 
 =item --message, -m MESSAGE
 

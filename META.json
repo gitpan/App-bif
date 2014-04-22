@@ -23,8 +23,8 @@
       "package" : [
          "Bif::DB::db",
          "Bif::DB::st",
-         "Bif::DB::RW::db",
-         "Bif::DB::RW::st",
+         "Bif::DBW::db",
+         "Bif::DBW::st",
          "Bif::Mo",
          "Bif::OK",
          "Bif::Error"
@@ -50,9 +50,12 @@
       "develop" : {
          "requires" : {
             "App::githook_perltidy" : "0",
+            "Mo" : "0",
             "Module::Install" : "0",
             "Module::Install::AuthorTests" : "0",
-            "Module::Install::CPANfile" : "0"
+            "Module::Install::CPANfile" : "0",
+            "Test::Pod" : "0",
+            "Test::Pod::Coverage" : "0"
          }
       },
       "runtime" : {
@@ -62,7 +65,8 @@
             "Coro::Handle" : "0",
             "DBD::SQLite" : "1.42",
             "DBIx::ThinSQL" : "v0.0.18",
-            "DBIx::ThinSQL::SQLite" : "v0.0.6",
+            "DBIx::ThinSQL::SQLite" : "v0.0.8",
+            "Digest::SHA" : "0",
             "File::HomeDir" : "0",
             "File::ShareDir" : "0",
             "IO::Pager" : "0.24",
@@ -106,5 +110,5 @@
          "url" : "git://bifax.org/bif.git/"
       }
    },
-   "version" : "0.1.0_11"
+   "version" : "0.1.0_12"
 }

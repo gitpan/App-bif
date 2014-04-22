@@ -121,7 +121,7 @@
 
 =item * L<Bif::DB> - initialise a bif repository
 
-=item * L<Bif::DB::RW> - initialise a bif repository
+=item * L<Bif::DBW> - initialise a bif repository
 
 =item * L<Bif::Role::Sync> - initialise a bif repository
 

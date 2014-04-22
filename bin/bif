@@ -22,11 +22,18 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_11 (2014-04-18)
+0.1.0_12 (2014-04-22)
 
 =head1 SYNOPSIS
 
   bif COMMAND [...]
+
+=head1 SOFTWARE STATUS
+
+Bif is still at a very early stage of development.  Much of the
+functionality is missing, documentation is incomplete (or in some cases
+ahead of the implementation) and test coverage is lacking and/or
+failing.  B<DO NOT USE BIF FOR REAL DATA!>
 
 =head1 DESCRIPTION
 
@@ -606,7 +613,7 @@ L<http://bifax.org/bif/>
 
 =item User Mailing List:
 
-Doesn't exist yet.
+Doesn't exist yet. Please use the development list below.
 
 =back
 
@@ -635,18 +642,18 @@ C<--debug> flag turned on.
 
 =over
 
-=item Development Mailing List:
+=item Code Repository:
 
-Subscribe via L<http://www.freelists.org/list/bif-devel> and then send
-mail to <bif-devel@freelists.org>.
+git://bifax.org/bif.git/
 
 =item Issue Tracker:
 
 Doesn't exit yet.
 
-=item Code Repository:
+=item Development Mailing List:
 
-git://bifax.org/bif.git/
+Subscribe via L<http://www.freelists.org/list/bif-devel> and then send
+mail to <bif-devel@freelists.org>.
 
 =back
 

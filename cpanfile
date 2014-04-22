@@ -1,7 +1,7 @@
 on 'configure' => sub {
 
     # Required by the scripting in Makefile.PL
-    requires 'Cwd' => 0;
+    requires 'Cwd'     => 0;
     requires 'FindBin' => 0;
 
     # These are all used by Module::Install::PRIVATE::App_bif
@@ -13,11 +13,12 @@ on 'configure' => sub {
 on 'runtime' => sub {
 
     # Bif::DB
-    requires 'DBD::SQLite' => '1.42';
+    requires 'DBD::SQLite'   => '1.42';
     requires 'DBIx::ThinSQL' => '0.0.18';
 
-    # Bif::DB::RW
-    requires 'DBIx::ThinSQL::SQLite' => '0.0.6';
+    # Bif::DBW
+    requires 'DBIx::ThinSQL::SQLite' => '0.0.8';
+    requires 'Digest::SHA'           => 0;
 
     # App::bif
     requires 'OptArgs' => '0.1.6';
@@ -53,22 +54,25 @@ on 'runtime' => sub {
     requires 'Coro::Handle';
     requires 'JSON';
     requires 'Role::Basic' => 0;
-    requires 'Sys::Cmd' => '0.81.6';
+    requires 'Sys::Cmd'    => '0.81.6';
 };
 
 on 'test' => sub {
 
     # tests
-    test_requires 'File::chdir' => 0;
-    test_requires 'FindBin'     => 0;
-    test_requires 'Test::More'  => 0;
-    test_requires 'Test::Fatal' => 0;
-    test_requires 'Exporter::Tidy'     => 0;
+    test_requires 'File::chdir'    => 0;
+    test_requires 'FindBin'        => 0;
+    test_requires 'Test::More'     => 0;
+    test_requires 'Test::Fatal'    => 0;
+    test_requires 'Exporter::Tidy' => 0;
 };
 
 on 'develop' => sub {
     requires 'App::githook_perltidy';
+    requires 'Mo';
     requires 'Module::Install';
     requires 'Module::Install::AuthorTests';
     requires 'Module::Install::CPANfile';
+    requires 'Test::Pod';
+    requires 'Test::Pod::Coverage';
 };

@@ -1,3 +1,13 @@
+* Bug: Given an issue in two projects, pushing either of those projets
+to a hub will fail because the second project doesn't exist at the hub.
+
+    - two situations: importing a project containing an issue that
+      refers to an existing project, or importing a project that is
+      referred to by an existing issue. Probably means storing the
+      project_uuid in the issue update and triggering things
+      appropriately. Alternatively, we don't sync the issue_updates
+      that refer to non-present projects?
+
 * Trademark policy? http://modeltrademarkguidelines.org/
 
 * http://developercertificate.org/

@@ -1,14 +1,14 @@
 use strict;
 use warnings;
 use lib 't/lib';
-use Bif::DB::RW;
+use Bif::DBW;
 use Test::Bif;
 use Test::More;
 
 run_in_tempdir {
 
-    my $db  = Bif::DB::RW->connect('dbi:SQLite:dbname=db.sqlite3');
-    my $xdb = Bif::DB::RW->connect('dbi:SQLite:dbname=xdb.sqlite3');
+    my $db  = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
+    my $xdb = Bif::DBW->connect('dbi:SQLite:dbname=xdb.sqlite3');
 
     my $update;
     my $project;

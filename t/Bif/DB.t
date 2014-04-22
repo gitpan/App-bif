@@ -2,13 +2,13 @@ use strict;
 use warnings;
 use lib 't/lib';
 use Bif::DB;
-use Bif::DB::RW;
+use Bif::DBW;
 use Test::Bif;
 use Test::More;
 
 run_in_tempdir {
 
-    my $dbw = Bif::DB::RW->connect('dbi:SQLite:dbname=db.sqlite3');
+    my $dbw = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
 
     my ( $repo, $update, $project, $ps, $ts, $is, $task, $issue );
     $dbw->txn(

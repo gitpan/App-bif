@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 use AnyEvent;
-use Bif::DB::RW;
+use Bif::DBW;
 use Bif::Server;
 use Coro;
 use Log::Any '$log';
@@ -12,7 +12,7 @@ use Log::Any::Plugin;
 use OptArgs;
 use Path::Tiny;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 arg directory => (
     isa      => 'Str',
@@ -56,7 +56,7 @@ sub run {
 
     my $err;
     my $cv = AnyEvent->condvar;
-    my $db = Bif::DB::RW->connect( 'dbi:SQLite:dbname=' . $sqlite,
+    my $db = Bif::DBW->connect( 'dbi:SQLite:dbname=' . $sqlite,
         undef, undef, undef, $opts->{debug} );
 
     my $server = Bif::Server->new(

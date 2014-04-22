@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_11';
+our $VERSION = '0.1.0_12';
 
 with 'Bif::Role::Sync';
 
