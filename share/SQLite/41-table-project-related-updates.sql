@@ -70,13 +70,6 @@ BEGIN
         NEW.merkled
     );
 
-
-    /*
-        TODO: write a new agg_sha1_hex_sorted function because the
-        following is broken: rows fed to aggregate functions in SQLite
-        in arbitrary order.
-    */
-
     INSERT INTO
         projects_merkle(
             project_id,
@@ -87,7 +80,7 @@ BEGIN
     SELECT
         NEW.project_id,
         src.prefix,
-        substr(agg_sha1_hex(src.uuid),1,8) AS hash,
+        substr(agg_sha1_hex(src.uuid, src.uuid),1,8) AS hash,
         count(src.uuid) as num_updates
     FROM
         (

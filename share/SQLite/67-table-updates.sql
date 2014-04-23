@@ -230,7 +230,7 @@ BEGIN
     SELECT
         project_id,
         NEW.prefix,
-        substr(agg_sha1_hex(update_uuid),1,8) AS hash,
+        substr(agg_sha1_hex(update_uuid, update_uuid),1,8) AS hash,
         count(update_uuid) as num_updates
     FROM
         (
@@ -250,9 +250,6 @@ BEGIN
             up2.project_id = project_related_updates.project_id
         WHERE
             updates.prefix = NEW.prefix
-        ORDER BY
-            project_related_updates.project_id,
-            updates.uuid
         )
     GROUP BY
         project_id,

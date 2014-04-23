@@ -95,7 +95,7 @@ BEGIN
     SELECT
         NEW.repo_id,
         substr(NEW.prefix,1,4) as prefix,
-        substr(agg_sha1_hex(hash),1,8),
+        substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
     FROM
         (SELECT
@@ -105,8 +105,6 @@ BEGIN
         WHERE
             repo_id = NEW.repo_id AND
             prefix LIKE substr(NEW.prefix,1,4) || '_'
-        ORDER BY
-            prefix
         )
     GROUP BY
         NEW.repo_id,prefix
@@ -119,7 +117,7 @@ BEGIN
     SELECT
         NEW.repo_id,
         substr(NEW.prefix,1,3) as prefix,
-        substr(agg_sha1_hex(hash),1,8),
+        substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
     FROM
         (SELECT
@@ -129,8 +127,6 @@ BEGIN
         WHERE
             repo_id = NEW.repo_id AND
             prefix LIKE substr(NEW.prefix,1,3) || '_'
-        ORDER BY
-            prefix
         )
     GROUP BY
         NEW.repo_id,prefix
@@ -142,8 +138,8 @@ BEGIN
         repos_merkle(repo_id,prefix,hash,num_updates)
     SELECT
         NEW.repo_id,
-        substr(NEW.prefix,1,2) as 'prefix',
-        substr(agg_sha1_hex(hash),1,8),
+        substr(NEW.prefix,1,2) as prefix,
+        substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
     FROM
         (SELECT
@@ -153,8 +149,6 @@ BEGIN
         WHERE
             repo_id = NEW.repo_id AND
             prefix LIKE substr(NEW.prefix,1,2) || '_'
-        ORDER BY
-            prefix
         )
     GROUP BY
         NEW.repo_id,prefix
@@ -166,8 +160,8 @@ BEGIN
         repos_merkle(repo_id,prefix,hash,num_updates)
     SELECT
         NEW.repo_id,
-        substr(NEW.prefix,1,1) as 'prefix',
-        substr(agg_sha1_hex(hash),1,8),
+        substr(NEW.prefix,1,1) as prefix,
+        substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
     FROM
         (SELECT
@@ -177,8 +171,6 @@ BEGIN
         WHERE
             repo_id = NEW.repo_id AND
             prefix LIKE substr(NEW.prefix,1,1) || '_'
-        ORDER BY
-            prefix
         )
     GROUP BY
         NEW.repo_id,prefix
@@ -193,7 +185,7 @@ BEGIN
     SET
         hash = (
             SELECT
-                substr(agg_sha1_hex(hash),1,8)
+                substr(agg_sha1_hex(hash, hash),1,8)
             FROM
                 (SELECT
                       hash
@@ -202,8 +194,6 @@ BEGIN
                 WHERE
                     repo_id = NEW.repo_id AND
                     prefix LIKE '_'
-                ORDER BY
-                    prefix
                 )
             GROUP BY
                 NULL

@@ -18,7 +18,7 @@ configure_requires:
   Path::Tiny: '0'
   Pod::Select: '0'
 dynamic_config: '0'
-generated_by: 'Module::Install version 1.08, CPAN::Meta::Converter version 2.120921'
+generated_by: 'Module::Install version 1.08, CPAN::Meta::Converter version 2.140640'
 license: gpl
 meta-spec:
   url: http://module-build.sourceforge.net/META-spec-v1.4.html
@@ -35,7 +35,6 @@ no_index:
     - Bif::DB::st
     - Bif::DBW::db
     - Bif::DBW::st
-    - Bif::Mo
     - Bif::OK
     - Bif::Error
 requires:
@@ -44,7 +43,7 @@ requires:
   Coro::Handle: '0'
   DBD::SQLite: '1.42'
   DBIx::ThinSQL: v0.0.18
-  DBIx::ThinSQL::SQLite: v0.0.8
+  DBIx::ThinSQL::SQLite: v0.0.10
   Digest::SHA: '0'
   File::HomeDir: '0'
   File::ShareDir: '0'
@@ -70,4 +69,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.0_12
+version: 0.1.0_13

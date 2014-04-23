@@ -8,7 +8,7 @@ use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
 
-my $VERSION = '0.1.0_12';
+my $VERSION = '0.1.0_13';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -35,7 +35,6 @@ no_index package => 'Bif::DB::db';
 no_index package => 'Bif::DB::st';
 no_index package => 'Bif::DBW::db';
 no_index package => 'Bif::DBW::st';
-no_index package => 'Bif::Mo';
 no_index package => 'Bif::OK';
 no_index package => 'Bif::Error';
 
@@ -98,81 +97,87 @@ my $t    = gmtime;
 my $when = $t->ymd . ' ' . $t->hms;
 
 open( FH, '>', 'lib/App/bif/Build.pm' ) or die "open: $!";
-print FH <<"THE_END";
-package App::bif::Build;
-\$App::bif::Build::VERSION = '$VERSION';
-\$App::bif::Build::COMMIT = '$commit';
-\$App::bif::Build::BRANCH = '$branch';
-\$App::bif::Build::DATE = '$when';
-1;
-__END__
 
-=head1 NAME
-
-App::bif::Build - build-time constants for App-bif
-
-=head1 VERSION
-
-0.1.0_12 (2014-04-22)
-
-=head1 SYNOPSIS
-
-    use App::bif::Build
-
-    # Do something with:
-    #  \$App::bif::Build::BRANCH
-    #  \$App::bif::Build::COMMIT
-    #  \$App::bif::Build::DATE
-    #  \$App::bif::Build::VERSION
-
-=head1 DESCRIPTION
-
-B<App::bif::Build> is generated when Makefile.PL is run in the bif
-source tree and simply contains 4 scalar variables. The variables are
-used by the C<bif show VERSION> command to display relevant build
-information.
-
-When this version of App-bif was built the variables were set as
-follows:
-
-=over
-
-=item \$App::bif::Build::BRANCH = "$branch"
-
-The Git branch name which was current when the App-bif distribution was
-created.
-
-=item \$App::bif::Build::COMMIT = "$commit"
-
-The Git commit hash at the head of the branch when the App-bif
-distribution was created.
-
-=item \$App::bif::Build::DATE = "$when"
-
-The UTC date that the Makefile.PL file was run.
-
-=item \$App::bif::Build::VERSION = "$VERSION"
-
-The version of the App-bif distribution.
-
-=back
-
-=head1 SEE ALSO
-
-L<bif-show>(1)
-
-=head1 AUTHOR
-
-Mark Lawrence E<lt>nomad\@null.netE<gt>
-
-=head1 COPYRIGHT AND LICENSE
-
-Copyright 2014 Mark Lawrence <nomad\@null.net>
-
-This program is free software; you can redistribute it and/or modify it
-under the terms of the GNU General Public License as published by the
-Free Software Foundation; either version 3 of the License, or (at your
-option) any later version.
-
+my $str = <<"THE_END";
+HIDDENpackage App::bif::Build;
+HIDDEN\$App::bif::Build::VERSION = '$VERSION';
+HIDDEN\$App::bif::Build::COMMIT = '$commit';
+HIDDEN\$App::bif::Build::BRANCH = '$branch';
+HIDDEN\$App::bif::Build::DATE = '$when';
+HIDDEN1;
+HIDDEN__END__
+HIDDEN
+HIDDEN=head1 NAME
+HIDDEN
+HIDDENApp::bif::Build - build-time constants for App-bif
+HIDDEN
+HIDDEN=head1 VERSION
+HIDDEN
+HIDDEN0.1.0_13 (2014-04-23)
+HIDDEN
+HIDDEN=head1 SYNOPSIS
+HIDDEN
+HIDDEN    use App::bif::Build
+HIDDEN
+HIDDEN    # Do something with:
+HIDDEN    #  \$App::bif::Build::BRANCH
+HIDDEN    #  \$App::bif::Build::COMMIT
+HIDDEN    #  \$App::bif::Build::DATE
+HIDDEN    #  \$App::bif::Build::VERSION
+HIDDEN
+HIDDEN=head1 DESCRIPTION
+HIDDEN
+HIDDENB<App::bif::Build> is generated when Makefile.PL is run in the bif
+HIDDENsource tree and simply contains 4 scalar variables. The variables are
+HIDDENused by the C<bif show VERSION> command to display relevant build
+HIDDENinformation.
+HIDDEN
+HIDDENWhen this version of App-bif was built the variables were set as
+HIDDENfollows:
+HIDDEN
+HIDDEN=over
+HIDDEN
+HIDDEN=item \$App::bif::Build::BRANCH = "$branch"
+HIDDEN
+HIDDENThe Git branch name which was current when the App-bif distribution was
+HIDDENcreated.
+HIDDEN
+HIDDEN=item \$App::bif::Build::COMMIT = "$commit"
+HIDDEN
+HIDDENThe Git commit hash at the head of the branch when the App-bif
+HIDDENdistribution was created.
+HIDDEN
+HIDDEN=item \$App::bif::Build::DATE = "$when"
+HIDDEN
+HIDDENThe UTC date that the Makefile.PL file was run.
+HIDDEN
+HIDDEN=item \$App::bif::Build::VERSION = "$VERSION"
+HIDDEN
+HIDDENThe version of the App-bif distribution.
+HIDDEN
+HIDDEN=back
+HIDDEN
+HIDDEN=head1 SEE ALSO
+HIDDEN
+HIDDENL<bif-show>(1)
+HIDDEN
+HIDDEN=head1 AUTHOR
+HIDDEN
+HIDDENMark Lawrence E<lt>nomad\@null.netE<gt>
+HIDDEN
+HIDDEN=head1 COPYRIGHT AND LICENSE
+HIDDEN
+HIDDENCopyright 2014 Mark Lawrence <nomad\@null.net>
+HIDDEN
+HIDDENThis program is free software; you can redistribute it and/or modify it
+HIDDENunder the terms of the GNU General Public License as published by the
+HIDDENFree Software Foundation; either version 3 of the License, or (at your
+HIDDENoption) any later version.
+HIDDEN
 THE_END
+
+$str =~ s/^HIDDEN//mg;
+
+print FH $str;
+close FH;
 
