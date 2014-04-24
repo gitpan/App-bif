@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_13';
+our $VERSION = '0.1.0_14';
 
 sub new {
     my $proto = shift;
@@ -376,9 +376,11 @@ sub prompt_edit {
 sub lprint {
     my $self = shift;
     my $msg  = shift;
+    my $old  = $self->{_bif_print} //= '';
 
-    return if $self->{_bif_pager};
-    my $old = $self->{_bif_print} //= '';
+    if ( $self->{_bif_pager} or $self->{debug} ) {
+        return print $msg . "\n";
+    }
 
     local $| = 1;
 
@@ -431,7 +433,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_13 (2014-04-23)
+0.1.0_14 (2014-04-24)
 
 =head1 SYNOPSIS
 

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_13';
+our $VERSION = '0.1.0_14';
 
 sub run {
     my $opts = shift;
@@ -35,13 +35,10 @@ sub run {
         $ctx->lprint("$hub->{alias}: connecting...");
 
         my $client = Bif::Client->new(
-            db        => $dbw,
-            hub       => $hub->{location},
-            debug     => $ctx->{debug},
-            debug_bs  => $ctx->{debug_bs},
-            on_update => sub {
-                $ctx->lprint("$hub->{alias}: $_[0]");
-            },
+            db       => $dbw,
+            hub      => $hub->{location},
+            debug    => $ctx->{debug},
+            debug_bs => $ctx->{debug_bs},
             on_error => sub {
                 $error = shift;
                 $cv->send;
@@ -64,12 +61,18 @@ sub run {
             eval {
                 $dbw->txn(
                     sub {
+                        $client->on_update(
+                            sub {
+                                $ctx->lprint("$hub->{alias} [META]: $_[0]");
+                            }
+                        );
+
                         my $previous = $dbw->get_max_update_id;
                         my $status   = $client->sync_repo( $hub->{id} );
-                        $ctx->lprint("$hub->{alias}: $status");
+                        print "\n";
 
                         if (   $status eq 'RepoMatch'
-                            or $status eq 'RepoImported' )
+                            or $status eq 'RepoSync' )
                         {
                             my @projects = $dbw->xhashes(
                                 select => [ 'p.id', 'p.path' ],
@@ -90,11 +93,10 @@ sub run {
                                 );
 
                                 $status = $client->sync_project( $p->{id} );
-                                $ctx->lprint(
-                                    "$hub->{alias} [$p->{path}]: $status");
+                                print "\n";
 
                                 unless ( $status eq 'ProjectMatch'
-                                    or $status eq 'ProjectImported' )
+                                    or $status eq 'ProjectSync' )
                                 {
                                     $dbw->rollback;
                                     $error = $status;
@@ -138,11 +140,9 @@ sub run {
         };
 
         if ( $cv->recv ) {
-            ;
-            $ctx->lprint("$hub->{alias}: sync ok\n");
             next;
         }
-        print "\n";
+
         return $ctx->err( 'Unknown', $error );
 
     }
@@ -164,7 +164,7 @@ bif-sync -  exchange updates with repos
 
 =head1 VERSION
 
-0.1.0_13 (2014-04-23)
+0.1.0_14 (2014-04-24)
 
 =head1 SYNOPSIS
 

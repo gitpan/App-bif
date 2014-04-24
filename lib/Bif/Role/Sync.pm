@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_13';
+our $VERSION = '0.1.0_14';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -15,8 +15,9 @@ sub read {
     my $json = $self->rh->readline("\n\n");
 
     if ( !defined $json ) {
-        $self->on_error->('no message received');
-        return 'NoMsg';
+        $self->on_error->('connection close/timeout');
+        $self->write('EOF/Timeout');
+        return 'EOF';
     }
 
     $log->debugf( 'r: ' . $json );
@@ -24,7 +25,8 @@ sub read {
 
     if ( $@ or !defined $msg ) {
         $self->on_error->( $@ || 'no message received' );
-        return 'InvalidEncoding';
+        $self->write('InvalidEncoding');
+        return 'INVALID';
     }
 
     return @$msg;
@@ -42,18 +44,26 @@ sub write {
     return $self->wh->print( $self->json->encode( \@_ ) . "\n\n" );
 }
 
+sub trigger_on_update {
+    my $self = shift;
+    $self->on_update->( 'updates sent: '
+          . ( $self->updates_sent // '' )
+          . ' received: '
+          . ( $self->updates_recv // '' ) );
+}
+
 sub send_updates {
     my $self        = shift;
     my $update_list = shift;
+    my $total       = shift;
     my $db          = $self->db;
-    my $on_update   = $self->on_update;
-    my $total       = 0;
+
+    my $sent = 0;
+    $self->updates_sent("$sent/$total");
+    $self->trigger_on_update;
 
     while ( my $update = $update_list->hash ) {
         my $id = delete $update->{id};
-
-        $on_update->( 'outbound updates: ' . ( $total += $update->{ucount} ) )
-          if $on_update;
 
         $self->write( 'NEW', 'update', $update );
 
@@ -258,7 +268,14 @@ sub send_updates {
 
         $parts->execute;
         return unless $self->write_parts($parts);
+
+        $sent += $update->{ucount};
+        $self->updates_sent("$sent/$total");
+        $self->trigger_on_update;
     }
+
+    $self->updates_sent($total);
+    $self->trigger_on_update;
 
     return 1;
 }

@@ -1,11 +1,12 @@
 package Bif::Role::Sync::Project;
 use strict;
 use warnings;
+use Coro;
 use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_13';
+our $VERSION = '0.1.0_14';
 
 my %import_functions = (
     NEW => {
@@ -34,34 +35,32 @@ sub real_import_project {
     my $uuid = shift;
     my $db   = $self->db;
 
-    my ( $TOTAL, $total ) = $self->read;
+    my ( $action, $total ) = $self->read;
+    $total //= '*undef*';
 
-    if ( $TOTAL ne 'TOTAL' ) {
-        $self->write('ExpectedCount');
-        return 'ExpectedCount';
+    if ( $action eq 'QUIT' or $action eq 'INVALID' or $action eq 'EOF' ) {
+        return $action;
+    }
+    elsif ( $action ne 'TOTAL' or $total !~ m/^\d+$/ ) {
+        return "expected TOTAL <int> (not $action $total)";
     }
 
     my $ucount;
-    my $on_update = $self->on_update;
+    my $i   = $total;
+    my $got = 0;
 
-    while ( $total-- > 0 ) {
+    $self->updates_recv("$got/$total");
+    $self->trigger_on_update;
+
+    while ( $got < $total ) {
         my ( $action, $type, $ref ) = $self->read;
 
-        $on_update->( 'inbound updates: ' . $total ) if $on_update;
-
         if ( !exists $import_functions{$action} ) {
-            $self->write( 'BadMethod', $action );
-            return 'BadMethod';
-        }
-
-        if ( $action eq 'QUIT' or $action eq 'CANCEL' ) {
-            $self->write('QUIT');
-            return 'UnexpectedQuit';
+            return "not implemented: $action";
         }
 
         if ( !exists $import_functions{$action}->{$type} ) {
-            $self->write('NotImplemented');
-            return 'NotImplemented';
+            return "not implemented: $action $type";
         }
 
         if ( $action eq 'NEW' and $type eq 'update' ) {
@@ -83,7 +82,14 @@ sub real_import_project {
                 values      => { merge => 1 },
             );
         }
+
+        $got++;
+        $self->updates_recv("$got/$total");
+        $self->trigger_on_update;
     }
+
+    $self->updates_recv($total);
+    $self->trigger_on_update;
 
     my ($id) = $db->xarray(
         select => 't.id',
@@ -99,10 +105,7 @@ sub real_import_project {
         where  => { id => $id },
     );
 
-    $self->write('ProjectImported');
-    my ($action) = $self->read;
-    return 'ProjectImported' if $action eq 'ProjectExported';
-    return $action;
+    return 'ProjectImported';
 }
 
 sub real_sync_project {
@@ -130,12 +133,12 @@ sub real_sync_project {
     $self->write( 'MATCH', $prefix2, $here );
     my ( $action, $mprefix, $there ) = $self->read;
 
-    return 'ProtocolError'
+    return "expected MATCH $prefix2 {} (not $action $mprefix ...)"
       unless $action eq 'MATCH'
       and $mprefix eq $prefix2
       and ref $there eq 'HASH';
 
-    $on_update->( 'matching ' . $prefix2 ) if $on_update;
+    $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
     my @next;
     my @missing;
@@ -179,31 +182,33 @@ sub real_sync_project {
 
     return unless $prefix eq '';
 
-    my ($total) = $self->db->xarray(
-        select => 'COALESCE(sum(t.ucount), 0)',
-        from   => "$tmp t",
-    );
+    my $send = async {
+        my ($total) = $self->db->xarray(
+            select => 'COALESCE(sum(t.ucount), 0)',
+            from   => "$tmp t",
+        );
 
-    $self->write( 'TOTAL', $total );
+        $self->write( 'TOTAL', $total );
 
-    my $update_list = $db->xprepare(
-        select => [
-            'u.id',                  'u.uuid',
-            'p.uuid AS parent_uuid', 'u.mtime',
-            'u.mtimetz',             'u.author',
-            'u.email',               'u.lang',
-            'u.message',             'u.ucount',
-        ],
-        from       => "$tmp t",
-        inner_join => 'updates u',
-        on         => 'u.id = t.id',
-        left_join  => 'updates p',
-        on         => 'p.id = u.parent_id',
-        order_by   => 'u.id ASC',
-    );
+        my $update_list = $db->xprepare(
+            select => [
+                'u.id',                  'u.uuid',
+                'p.uuid AS parent_uuid', 'u.mtime',
+                'u.mtimetz',             'u.author',
+                'u.email',               'u.lang',
+                'u.message',             'u.ucount',
+            ],
+            from       => "$tmp t",
+            inner_join => 'updates u',
+            on         => 'u.id = t.id',
+            left_join  => 'updates p',
+            on         => 'p.id = u.parent_id',
+            order_by   => 'u.id ASC',
+        );
 
-    $update_list->execute;
-    $self->send_updates($update_list) || return;
+        $update_list->execute;
+        $self->send_updates( $update_list, $total );
+    };
 
     my ($uuid) = $db->xarray(
         select => 't.uuid',
@@ -211,7 +216,11 @@ sub real_sync_project {
         where  => { 't.id' => $id },
     );
 
-    return $self->real_import_project($uuid);
+    my $r1 = $self->real_import_project($uuid);
+    my $r2 = $send->join;
+
+    return 'ProjectSync' if ( $r1 eq 'ProjectImported' and $r2 );
+    return $r1;
 }
 
 sub real_export_project {
@@ -246,12 +255,9 @@ sub real_export_project {
     );
 
     $sth->execute;
-    $self->send_updates($sth) || return;
+    $self->send_updates( $sth, $total );
 
-    $self->write( 'ProjectExported', $total );
-    my ($action) = $self->read;
-    return 'ProjectExported' if $action eq 'ProjectImported';
-    return $action;
+    return 'ProjectExported';
 }
 
 1;

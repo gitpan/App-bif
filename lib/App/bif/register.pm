@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_13';
+our $VERSION = '0.1.0_14';
 
 sub run {
     my $opts = shift;
@@ -72,8 +72,16 @@ sub run {
         eval {
             $dbw->txn(
                 sub {
+                    $client->on_update(
+                        sub {
+                            $ctx->lprint("$ctx->{alias} [META]: $_[0]");
+                        }
+                    );
+
                     my $previous = $dbw->get_max_update_id;
                     my $status   = $client->register;
+
+                    print "\n";
 
                     # Catch up on errors
                     undef $stderr_watcher;
@@ -137,7 +145,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_13 (2014-04-23)
+0.1.0_14 (2014-04-24)
 
 =head1 SYNOPSIS
 

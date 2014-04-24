@@ -85,7 +85,7 @@
             "Text::FormatTable" : "0",
             "Time::Duration" : "0",
             "locale" : "0",
-            "perl" : "v5.6.0"
+            "perl" : "v5.10.0"
          }
       },
       "test" : {
@@ -109,5 +109,5 @@
          "url" : "git://bifax.org/bif.git/"
       }
    },
-   "version" : "0.1.0_13"
+   "version" : "0.1.0_14"
 }

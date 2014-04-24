@@ -8,7 +8,10 @@ CREATE TABLE task_status_updates (
     def INTEGER,
     UNIQUE(update_id,task_status_id), -- one change per update
     FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE
-    FOREIGN KEY(task_status_id) REFERENCES task_status(id) ON DELETE CASCADE
+    FOREIGN KEY(task_status_id) REFERENCES task_status(id) ON DELETE CASCADE,
+    CONSTRAINT def_constraint CHECK (
+        def = 1 OR def IS NULL
+    )
 ) WITHOUT ROWID;
 
 CREATE TRIGGER
@@ -43,7 +46,7 @@ BEGIN
                 || '  task_status_uuid:' || COALESCE(topics.uuid, '') || x'0A'
                 || '  status:' || COALESCE(NEW.status, '') || x'0A'
                 || '  rank:' || COALESCE(NEW.rank, '') || x'0A'
-                || '  def:' || COALESCE(NEW.rank, '') || x'0A'
+                || '  def:' || COALESCE(NEW.def, '') || x'0A'
             FROM
                 topics
             WHERE

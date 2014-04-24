@@ -8,7 +8,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_13';
+our $VERSION = '0.1.0_14';
 
 with 'Bif::Role::Sync';
 
@@ -30,9 +30,16 @@ has child_watcher => ( is => 'rw' );
 
 has debug_bs => ( is => 'ro' );
 
-has on_update => ( is => 'rw' );
+has updates_sent => ( is => 'rw', default => 0 );
 
-has status => ( is => 'rw', default => sub { [ 0, 'Undefined' ] } );
+has updates_recv => ( is => 'rw', default => 0 );
+
+has on_update => (
+    is      => 'rw',
+    default => sub {
+        sub { }
+    }
+);
 
 has rh => ( is => 'rw' );
 
@@ -68,8 +75,9 @@ sub BUILD {
     );
 
     $self->rh(
-        Coro::Handle->new_from_fh( $self->child->stdout, timeout => 5 ) );
-    $self->wh( Coro::Handle->new_from_fh( $self->child->stdin, timeout => 5 ) );
+        Coro::Handle->new_from_fh( $self->child->stdout, timeout => 30 ) );
+    $self->wh(
+        Coro::Handle->new_from_fh( $self->child->stdin, timeout => 30 ) );
 
     $self->json->pretty if $self->debug;
     return;
@@ -79,10 +87,13 @@ sub register {
     my $self = shift;
     my $info = shift;
 
+    $self->on_update->('import');
     $self->write( 'IMPORT', 'repo' );
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'EXPORT' and $type eq 'repo' ) {
+        $self->updates_sent(0);
+        $self->updates_recv(0);
         return $self->real_import_repo;
     }
     return $action;
@@ -100,11 +111,17 @@ sub sync_repo {
         where => { 'r.id' => $id },
     );
 
+    $self->on_update->('sync');
     $self->write( 'SYNC', 'repo', $repo->{uuid}, $repo->{hash} );
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'SYNC' and $type eq 'repo' ) {
+        $self->updates_sent(0);
+        $self->updates_recv(0);
         return $self->real_sync_repo($id);
+    }
+    elsif ( $action eq 'RepoMatch' ) {
+        $self->on_update->('no changes');
     }
 
     return $action;
@@ -120,12 +137,15 @@ sub import_project {
         where  => { 'p.id' => $pinfo->{id} },
     );
 
+    $self->on_update->('sync');
     $self->write( 'SYNC', 'project', $pinfo->{uuid}, $hash );
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'SYNC' and $type eq 'project' ) {
+        $self->updates_sent(0);
+        $self->updates_recv(0);
         my $result = $self->real_sync_project( $pinfo->{id} );
-        if ( $result eq 'ProjectImported' or $result eq 'ProjectMatch' ) {
+        if ( $result eq 'ProjectSync' or $result eq 'ProjectMatch' ) {
             $self->db->xdo(
                 update => 'projects',
                 set    => 'local = 1',
@@ -136,6 +156,7 @@ sub import_project {
         return $result;
     }
     elsif ( $action eq 'ProjectMatch' ) {
+        $self->on_update->('no changes');
         $self->db->xdo(
             update => 'projects',
             set    => 'local = 1',
@@ -160,11 +181,17 @@ sub sync_project {
         where => { 'p.id' => $id },
     );
 
+    $self->on_update->('sync');
     $self->write( 'SYNC', 'project', $project->{uuid}, $project->{hash} );
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'SYNC' and $type eq 'project' ) {
+        $self->updates_sent(0);
+        $self->updates_recv(0);
         return $self->real_sync_project($id);
+    }
+    elsif ( $action eq 'ProjectMatch' ) {
+        $self->on_update->('no changes');
     }
 
     return $action;
@@ -174,10 +201,13 @@ sub export_project {
     my $self  = shift;
     my $pinfo = shift;
 
+    $self->on_update->('export project');
     $self->write( 'EXPORT', 'project', $pinfo->{uuid}, $pinfo->{path} );
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'IMPORT' and $type eq 'project' ) {
+        $self->updates_sent(0);
+        $self->updates_recv(0);
         return $self->real_export_project( $pinfo->{id} );
     }
     return $action;

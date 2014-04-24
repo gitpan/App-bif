@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_13';
+our $VERSION = '0.1.0_14';
 
 with 'Bif::Role::Sync';
 
@@ -24,7 +24,16 @@ has wh => ( is => 'rw' );
 
 has json => ( is => 'rw', default => sub { JSON->new->utf8 } );
 
-has on_update => ( is => 'rw', );
+has updates_sent => ( is => 'rw' );
+
+has updates_recv => ( is => 'rw' );
+
+has on_update => (
+    is      => 'rw',
+    default => sub {
+        sub { }
+    }
+);
 
 has on_error => ( is => 'ro', required => 1 );
 
@@ -51,53 +60,66 @@ sub BUILD {
     $self->json->pretty if $self->debug;
 }
 
-sub accept {
+sub run {
     my $self = shift;
-    $self->rh( Coro::Handle->new_from_fh(*STDIN) );
+    $self->rh( Coro::Handle->new_from_fh( *STDIN, timeout => 30 ) );
     $self->wh( Coro::Handle->new_from_fh(*STDOUT) );
 
-    my ( $action, $type, @rest ) = $self->read;
+    while (1) {
+        my ( $action, $type, @rest ) = $self->read;
 
-    # TODO a VERSION check
+        if ( $action eq 'EOF' ) {
+            return;
+        }
+        elsif ( $action eq 'INVALID' ) {
+            next;
+        }
+        elsif ( $action eq 'QUIT' ) {
+            $self->write('BYE');
+            return;
+        }
 
-    if ( !$action ) {
-        $self->write( 'MissingAction', 'missing [1] action' );
-        return;
+        # TODO a VERSION check
+
+        if ( !exists $METHODS{$action} ) {
+            $self->write( 'InvalidAction', 'Invalid Action: ' . $action );
+            next;
+        }
+
+        if ( !$type ) {
+            $self->write( 'MissingType', 'missing [2] type' );
+            next;
+        }
+
+        my $method = $METHODS{$action}->{$type};
+
+        if ( !$self->can($method) ) {
+            $self->write( 'TypeNotImplemented',
+                'type not implemented: ' . $type );
+            next;
+        }
+
+        my $response = eval {
+            $self->db->txn( sub { $self->$method(@rest) } );
+        };
+
+        if ($@) {
+            $log->error($@);
+            $self->write( 'InternalError', 'Internal Server Error' );
+            next;
+        }
+
+        if ( $response eq 'EOF' ) {
+            return;
+        }
+        elsif ( $response eq 'INVALID' ) {
+            next;
+        }
+        elsif ( $response eq 'QUIT' ) {
+            $self->write('Bye');
+            return;
+        }
     }
-
-    if ( !exists $METHODS{$action} ) {
-        $self->write( 'InvalidAction', 'Invalid Action: ' . $action );
-        return;
-    }
-
-    if ( $action eq 'QUIT' ) {
-        $self->write( 'QUIT', 'Bye' );
-        return;
-    }
-
-    if ( !$type ) {
-        $self->write( 'MissingType', 'missing [2] type' );
-        return;
-    }
-
-    my $method = $METHODS{$action}->{$type};
-
-    if ( !$self->can($method) ) {
-        $self->write( 'TypeNotImplemented', 'type not implemented: ' . $type );
-        return;
-    }
-
-    my $response = eval {
-        $self->db->txn( sub { $self->$method(@rest) } );
-    };
-
-    if ($@) {
-        $log->error($@);
-        $self->write( 'InternalError', 'Internal Server Error' );
-        return;
-    }
-
-    return $response;
 }
 
 sub export_repo {

@@ -3,12 +3,13 @@
 # be ignored, and shouldn't have any effect on target machines
 use lib 'util/lib';
 
+use 5.010;
 use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
 
-my $VERSION = '0.1.0_13';
+my $VERSION = '0.1.0_14';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -19,7 +20,7 @@ bugtracker 'bif://bifax.org/bif/';
 repository 'git://bifax.org/bif.git/';
 
 version $VERSION;
-perl_version '5.006';
+perl_version '5.010';
 
 install_share 'share';
 install_script 'bin/bif';
@@ -113,7 +114,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_13 (2014-04-23)
+HIDDEN0.1.0_14 (2014-04-24)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN

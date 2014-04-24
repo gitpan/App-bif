@@ -7,7 +7,6 @@ use Test::More;
 
 run_in_tempdir {
 
-    debug_on;
     bif(qw/init/);
     my $res = bif(qw/ new project todo --message message title /);
     isa_ok $res, 'Bif::OK::NewProject';
