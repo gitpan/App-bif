@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 my %import_functions = (
     NEW => {
@@ -30,7 +30,7 @@ my %import_functions = (
     CANCEL => {},
 );
 
-sub real_import_project {
+sub recv_project_updates {
     my $self = shift;
     my $uuid = shift;
     my $db   = $self->db;
@@ -38,10 +38,7 @@ sub real_import_project {
     my ( $action, $total ) = $self->read;
     $total //= '*undef*';
 
-    if ( $action eq 'QUIT' or $action eq 'INVALID' or $action eq 'EOF' ) {
-        return $action;
-    }
-    elsif ( $action ne 'TOTAL' or $total !~ m/^\d+$/ ) {
+    if ( $action ne 'TOTAL' or $total !~ m/^\d+$/ ) {
         return "expected TOTAL <int> (not $action $total)";
     }
 
@@ -88,24 +85,39 @@ sub real_import_project {
         $self->trigger_on_update;
     }
 
-    $self->updates_recv($total);
+    $self->updates_recv( ( ' ' x length("$got/") ) . $total );
     $self->trigger_on_update;
 
-    my ($id) = $db->xarray(
-        select => 't.id',
-        from   => 'topics t',
-        where  => {
-            't.uuid' => $uuid,
-        },
-    );
+    return $total;
+}
 
-    $db->xdo(
-        update => 'projects',
-        set    => 'local = 1',
-        where  => { id => $id },
-    );
+sub real_import_project {
+    my $self = shift;
+    my $uuid = shift;
 
-    return 'ProjectImported';
+    my $result = $self->recv_project_updates;
+
+    if ( $result =~ m/^\d+$/ ) {
+        my ($id) = $self->db->xarray(
+            select => 't.id',
+            from   => 'topics t',
+            where  => {
+                't.uuid' => $uuid,
+            },
+        );
+
+        $self->db->xdo(
+            update => 'projects',
+            set    => 'local = 1',
+            where  => { id => $id },
+        );
+
+        $self->write( 'Recv', $result );
+        return 'ProjectImported';
+    }
+
+    $self->write( 'ProtocolError', $result );
+    return $result;
 }
 
 sub real_sync_project {
@@ -207,19 +219,21 @@ sub real_sync_project {
         );
 
         $update_list->execute;
-        $self->send_updates( $update_list, $total );
+        return $self->send_updates( $update_list, $total );
     };
 
-    my ($uuid) = $db->xarray(
-        select => 't.uuid',
-        from   => 'topics t',
-        where  => { 't.id' => $id },
-    );
-
-    my $r1 = $self->real_import_project($uuid);
+    my $r1 = $self->recv_project_updates;
     my $r2 = $send->join;
 
-    return 'ProjectSync' if ( $r1 eq 'ProjectImported' and $r2 );
+    if ( $r1 =~ m/^\d+$/ ) {
+        $self->write( 'Recv', $r1 );
+        my ( $recv, $count ) = $self->read;
+        return 'ProjectSync' if $recv eq 'Recv' and $count == $r2;
+        $log->debug("MEH: $count $r2");
+        return $recv;
+    }
+
+    $self->write( 'ProtocolError', $r1 );
     return $r1;
 }
 
@@ -257,7 +271,9 @@ sub real_export_project {
     $sth->execute;
     $self->send_updates( $sth, $total );
 
-    return 'ProjectExported';
+    my ( $recv, $count ) = $self->read;
+    return 'ProjectExported' if $recv eq 'Recv' and $count == $total;
+    return $recv;
 }
 
 1;

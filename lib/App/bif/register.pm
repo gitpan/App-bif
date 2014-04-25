@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 sub run {
     my $opts = shift;
@@ -18,20 +18,22 @@ sub run {
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
     my $dbw = $ctx->dbw;
 
-    if ( -d $ctx->{hub} ) {
-        $ctx->{hub} = path( $ctx->{hub} )->realpath;
-        $ctx->{alias} ||= $ctx->{hub}->basename;
+    if ( $ctx->{location} =~ m!^ssh://(.+)! ) {
+        ( $ctx->{alias} ||= $1 ) =~ s/\@.*//;
     }
-    elsif ( $ctx->{hub} !~ m!^bif://! ) {
-        return $ctx->err( 'HubNotFound', 'hub not found: %s', $ctx->{hub} );
-        ( $ctx->{alias} ||= $ctx->{hub} ) =~ s!.*/!!;
-        $ctx->{alias} =~ s!/!!;    # trailing '/'
+    elsif ( -d $ctx->{location} ) {
+        $ctx->{location} = path( $ctx->{location} )->realpath;
+        $ctx->{alias} ||= $ctx->{location}->basename;
+    }
+    else {
+        return $ctx->err( 'HubNotFound', 'hub not found: %s',
+            $ctx->{location} );
     }
 
-    $log->debug("register hub: $ctx->{hub}");
+    $log->debug("register hub: $ctx->{location}");
     $log->debug("register alias: $ctx->{alias}");
 
-    my @repos = $dbw->get_repo_locations( $ctx->{hub} );
+    my @repos = $dbw->get_repo_locations( $ctx->{location} );
 
     return $ctx->err(
         'RepoExists',
@@ -46,7 +48,7 @@ sub run {
 
     my $client = Bif::Client->new(
         db       => $dbw,
-        hub      => $ctx->{hub},
+        hub      => $ctx->{location},
         debug    => $ctx->{debug},
         debug_bs => $ctx->{debug_bs},
         on_error => sub {
@@ -64,7 +66,7 @@ sub run {
             undef $stderr_watcher;
             return;
         }
-        print STDERR "$ctx->{hub}: $line";
+        print STDERR "$ctx->{alias}: $line";
 
     };
 
@@ -74,7 +76,7 @@ sub run {
                 sub {
                     $client->on_update(
                         sub {
-                            $ctx->lprint("$ctx->{alias} [META]: $_[0]");
+                            $ctx->lprint("$ctx->{alias} (meta): $_[0]");
                         }
                     );
 
@@ -87,7 +89,7 @@ sub run {
                     undef $stderr_watcher;
                     $stderr->blocking(0);
                     while ( my $line = $stderr->getline ) {
-                        print STDERR "$ctx->{hub}: $line";
+                        print STDERR "$ctx->{alias}: $line";
                     }
 
                     if ( $status ne 'RepoImported' ) {
@@ -102,7 +104,7 @@ sub run {
                     my ($id) = $dbw->xarray(
                         select => 'rl.repo_id',
                         from   => 'repo_locations rl',
-                        where  => { 'rl.location' => $ctx->{hub} },
+                        where  => { 'rl.location' => $ctx->{location} },
                     );
 
                     $dbw->xdo(
@@ -116,7 +118,7 @@ sub run {
                             author => $ctx->{user}->{name},
                             email  => $ctx->{user}->{email},
                             message =>
-                              "register $ctx->{alias} ($ctx->{hub}) [+$delta]",
+"register $ctx->{alias} ($ctx->{location}) [+$delta]",
                         }
                     );
 
@@ -145,37 +147,37 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_14 (2014-04-24)
+0.1.0_15 (2014-04-25)
 
 =head1 SYNOPSIS
 
-    bif register HUB [OPTIONS...]
+    bif register LOCATION [ALIAS] [OPTIONS...]
 
 =head1 DESCRIPTION
 
 The C<bif register> command connects to a hub (a remote repository) to
 obtain the list of projects hosted there. The project list is stored
-locally and is used by the C<import> and C<push> commands when
-communicating with the hub.
+locally and is used by the C<import>, C<sync> and C<push> commands.
 
 A hub can have an alias which useable with all of the hub-aware
 commands (import,export,push) to save typing the full address.
 
-If C<HUB> is a network address like C<an.organisation@a.provider> then
-the default alias will be C<an.organisation>.  If C<hub> is a
-filesystem path then the default alias is the path basename.
+If the location is a network address like
+C<ssh://an.organisation@a.provider> then the default alias will be
+C<an.organisation>.  If location is a filesystem path then the default
+alias is the path basename.
 
 =head1 ARGUMENTS & OPTIONS
 
 =over
 
-=item HUB
+=item LOCATION
 
-The location of a remote hub.
+The location of a remote repository.
 
-=item --alias, -a
+=item ALIAS
 
-Override the default alias for the HUB.
+Override the default alias for the hub.
 
 =back
 

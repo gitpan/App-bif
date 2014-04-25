@@ -1,9 +1,7 @@
 Bif Project Management Tool
-    Bif is a project management tool with a command-line interface. It
-    tracks tasks and issues using a local database, exchanging updates with
-    remote databases on demand.
-
-    The bif data model supports a couple of features which may be of
+    Bif is a project management tool with a command-line interface. It helps
+    you track tasks and issues using a local database, exchanging updates
+    with remote databases on demand. The tool has several features of
     interest to distributed project teams:
 
     Offline Operation

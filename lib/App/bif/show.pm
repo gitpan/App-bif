@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 my $NOW;
 my $bold;
@@ -17,10 +17,10 @@ sub run {
 
     if ( $ctx->{id} eq 'VERSION' ) {
         require App::bif::Build;
-        print "$App::bif::Build::VERSION "
-          . "($App::bif::Build::BRANCH) "
-          . "$App::bif::Build::COMMIT "
-          . "($App::bif::Build::DATE)\n";
+        print "version: $App::bif::Build::VERSION\n"
+          . "date:    $App::bif::Build::DATE\n"
+          . "branch:  $App::bif::Build::BRANCH\n"
+          . "commit:  $App::bif::Build::COMMIT\n";
         return $ctx->ok('ShowVersion');
     }
     elsif ( $ctx->{uuid} ) {
@@ -97,7 +97,7 @@ sub _show_project {
 
     my $ref = $db->xhash(
         select => [
-            'topics.id',             'topics.uuid',
+            'topics.id',             'substr(topics.uuid,1,8) as uuid',
             'projects.path',         'projects.title',
             'topics.ctime',          'topics.ctimetz',
             'topics.mtime',          'topics.mtimetz',
@@ -105,6 +105,7 @@ sub _show_project {
             'updates.message',       'project_status.status',
             'project_status.status', 'projects.local',
             'r.alias AS hub',        't2.uuid AS hub_uuid',
+            'rl.location',
         ],
         from       => 'projects',
         inner_join => 'topics',
@@ -115,6 +116,8 @@ sub _show_project {
         on         => 'project_status.id = projects.status_id',
         left_join  => 'repos r',
         on         => 'r.id = projects.repo_id',
+        left_join  => 'repo_locations rl',
+        on         => 'rl.id = r.default_location_id',
         left_join  => 'topics t2',
         on         => 't2.id = r.id',
         where      => { 'projects.id' => $info->{id} },
@@ -127,11 +130,10 @@ sub _show_project {
             $yellow . $ref->{title}
         ),
 
-        _header( '  ID',   $ref->{id}, $ref->{uuid} ),
-        _header( '  Path', $ref->{path} ),
+        _header( '  Path', $ref->{path}, $ref->{uuid} ),
     );
 
-    push( @data, _header( '  Hub', $ref->{hub}, $ref->{hub_uuid} ), )
+    push( @data, _header( '  Hub', $ref->{hub}, $ref->{location} ), )
       if $ref->{hub};
 
     if ( $ctx->{full} ) {
@@ -241,10 +243,11 @@ sub _show_task {
     my $ref = $db->xhash(
         select => [
             'topics.id AS id',
-            'topics.uuid',
+            'substr(topics.uuid,1,8) as uuid',
             'projects.path',
             'r.alias AS hub',
-            'topics2.uuid AS project_uuid',
+            'rl.location',
+            'substr(topics2.uuid,1,8) AS project_uuid',
             'tasks.title AS title',
             'topics.mtime AS mtime',
             'topics.mtimetz AS mtimetz',
@@ -267,6 +270,8 @@ sub _show_task {
         on         => 'projects.id = task_status.project_id',
         left_join  => 'repos r',
         on         => 'r.id = projects.repo_id',
+        left_join  => 'repo_locations rl',
+        on         => 'rl.id = r.default_location_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'updates AS updates2',
@@ -285,8 +290,9 @@ sub _show_task {
         push(
             @data,
             _header(
-                '  Project', "$ref->{path}\@$ref->{hub}",
-                $ref->{project_uuid}
+                '  Project',
+                "$ref->{path}\@$ref->{hub}",
+                "$ref->{project_uuid}\@$ref->{location}"
             )
         );
     }
@@ -337,11 +343,12 @@ sub _show_issue {
     my @refs = $db->xhashes(
         select => [
             'project_issues.id AS id',
-            'topics.uuid',
+            'substr(topics.uuid,1,8) as uuid',
             'projects.path',
             'r.alias AS hub',
+            'rl.location AS location',
             'projects.title AS project_title',
-            'topics2.uuid AS project_uuid',
+            'substr(topics2.uuid,1,8) AS project_uuid',
             'issues.title AS title',
             'topics.mtime AS mtime',
             'topics.mtimetz AS mtimetz',
@@ -368,6 +375,8 @@ sub _show_issue {
         on         => 'projects.id = project_issues.project_id',
         left_join  => 'repos r',
         on         => 'r.id = projects.repo_id',
+        left_join  => 'repo_locations rl',
+        on         => 'rl.id = r.default_location_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'issue_status',
@@ -394,21 +403,23 @@ sub _show_issue {
             if ( $ref->{hub} ) {
                 push(
                     @data,
+                    _header( '  ID', $ref->{id}, $ref->{uuid} ),
                     _header(
-                        '  Project', "$ref->{path}\@$ref->{hub}",
-                        $ref->{project_uuid}
+                        '  Project',
+                        "$ref->{path}\@$ref->{hub}",
+                        "$ref->{project_uuid}\@$ref->{location}"
                     ),
                 );
             }
             else {
                 push( @data,
+                    _header( '  ID',      $ref->{id},   $ref->{uuid} ),
                     _header( '  Project', $ref->{path}, $ref->{project_uuid} ),
                 );
             }
 
             push(
                 @data,
-                _header( '  ID', $ref->{id}, $ref->{uuid} ),
                 _header(
                     '  Status', "$ref->{status} (" . $ago[0] . ')',
                     $ago[1]
@@ -440,7 +451,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_14 (2014-04-24)
+0.1.0_15 (2014-04-25)
 
 =head1 SYNOPSIS
 

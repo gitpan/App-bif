@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 sub run {
     my $opts = shift;
@@ -63,7 +63,7 @@ sub run {
                     sub {
                         $client->on_update(
                             sub {
-                                $ctx->lprint("$hub->{alias} [META]: $_[0]");
+                                $ctx->lprint("$hub->{alias} (meta): $_[0]");
                             }
                         );
 
@@ -81,6 +81,7 @@ sub run {
                                     'p.repo_id' => $hub->{id},
                                     'p.local'   => 1,
                                 },
+                                order_by => 'p.path',
                             );
 
                             foreach my $p (@projects) {
@@ -164,7 +165,7 @@ bif-sync -  exchange updates with repos
 
 =head1 VERSION
 
-0.1.0_14 (2014-04-24)
+0.1.0_15 (2014-04-25)
 
 =head1 SYNOPSIS
 

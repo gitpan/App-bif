@@ -5,7 +5,7 @@ management tool x does what it does.
 
 =head1 Version
 
-0.1.0_14 (2014-04-24)
+0.1.0_15 (2014-04-25)
 
 =head1 Background
 
@@ -135,63 +135,6 @@ to the quality of the documentation.
 
 =back
 
-=head1 Application Architecture
-
-Bif is a Perl wrapper around an SQLite database. Commands are
-dispatched to Perl modules under the App::bif::* namespace by
-L<OptArgs>. Execution happens like this:
-
-=over
-
-=item * The shell runs the C<bif> file, which due to the #! hashbang
-line results in C<perl> being executed on that file.
-
-=item * The C<bif> script loads the Perl module L<OptArgs> and calls
-the C<OptArgs::dispatch> function against the L<App::bif> namespace.
-
-=item * L<App::bif> defines all of the subcommands, their arguments and
-options, which the L<dispatch> function uses to dispatch to the
-appropriate L<App::bif::*> module.
-
-=item * The L<App::bif::sub::command> module C<run> method is called.
-
-=item * Sub-command classes use functions from L<App::bif::Context> to
-discover the location of the repository, the user configuration, access
-the database, render output, generate errors and so on.
-
-=item * the program ends.
-
-=back
-
-=head2 Database access
-
-Each command uses either L<Bif::DB> or L<Bif::DBW> (based on
-L<DBIx::ThinSQL>, L<DBI>, and L<DBD::SQLite>) to access the database.
-
-As much as possible is done inside the database with the goal of
-ensuring data consistency regardless of what application is entering
-the data. Preparing for some other tool than Bif to be making
-modifications.
-
-=head2 Fake SQLite function calls
-
-SQLite does not have a built-in procedural programming language with a
-function calling interface. We cheat by defining C<BEFORE INSERT>
-triggers on normal tables that do their required work and then cancel
-the insert with a C<SELECT RAISE(IGNORE)> statement.
-
-=head2 Transport & Synchronisation
-
-Bif uses ssh to run the L<bifsync> program on remote hosts when
-exchanging updates with a hub, or else calls L<bifsync> directly when
-exchanging updates with a local repository. Regardless, it ends up
-being L<Bif::Client> that is talking to L<Bif::Server>, although most
-of the functionality is in the parent L<Bif::Role::Sync> class.
-
-Client/Server is a bit of a misnomer, as the protocol is actually about
-exchanging updates equally, and not particularly about a user needing a
-resource like HTTP verbs imply.
-
 =head1 Data Model
 
 Tables for current state of topics, table for updates to topics, tables
@@ -243,6 +186,36 @@ an update...
 
 =head1 Network operations
 
+=head2 Protocol
+
+Bif communicates using JSON sentences terminated by a double-newline
+(\n\n). Communication is bi-directional, often asynchronous, and occurs
+on a single channel.
+
+Commands or instructions are sent as array references with the first
+element being an UPPERCASE string, and the remaining elements vary
+depending on the instruction.
+
+    ["SYNC","project","f6f4f48ef6846421a5d","82e38655"]
+
+Status replies are array references generally containing a just a
+single CamelCase string element.
+
+    ["ProjectMatch"]
+
+Sometimes instead of a status reply a counter-instruction is sent, and
+sometimes multiple instructions are sent without waiting for a reply:
+
+    ["NEW","update",{"mtime":14153122121,"message":"Hello"]
+    ["NEW","project",{"mtime":14153122121,"title":"todo"]
+    ["NEW","project_status",{"mtime":14153122121,"title":"run"]
+    ["UPDATE","project",{"status_uuid":"11eb3ba88ae0f"]
+
+The server will generally keep the connection open and answering
+commands until the client sends a QUIT message:
+
+    ["QUIT"]
+
 =head2 Export/Import
 
 Basically just copies everything relating to a project from one
@@ -256,6 +229,94 @@ of the changes contained therein.
 A sync operation compares the tree from two repositories top-down,
 saving the updates missing from each one. The updates are then replayed
 in the correct order.
+
+=head1 Application Architecture
+
+Bif is a Perl wrapper around an SQLite database, structured as follows:
+
+=over
+
+=item App::bif::Context
+
+A utility module responsible for finding the F<.bif> repository and
+setting up debug, pagers, formatting tables, etc.
+
+=item App::bif::*
+
+A module for the implementation of each bif command.
+
+=item App::bifsync
+
+The implementation of the L<bifsync> synchronization command.
+
+=item Bif::DB, Bif::DBW
+
+Database access.
+
+=item Bif::Role::Sync[::Repo/Project]
+
+Roles that implement the core of the bif network protocol.
+
+=item Bif::Client, Bif::Server
+
+Classes that provide client and server interfaces for the App::bif::*
+commands.
+
+=back
+
+Commands are dispatched to Perl modules under the App::bif::* namespace
+by L<OptArgs>. Execution happens like this:
+
+=over
+
+=item * The shell runs the C<bif> file, which due to the #! hashbang
+line results in C<perl> being executed on that file.
+
+=item * The C<bif> script loads the Perl module L<OptArgs> and calls
+the C<OptArgs::dispatch> function against the L<App::bif> namespace.
+
+=item * L<App::bif> defines all of the subcommands, their arguments and
+options, which the L<dispatch> function uses to dispatch to the
+appropriate L<App::bif::*> module.
+
+=item * The L<App::bif::sub::command> module C<run> method is called.
+
+=item * Sub-command classes use functions from L<App::bif::Context> to
+discover the location of the repository, the user configuration, access
+the database, render output, generate errors and so on.
+
+=item * the program ends.
+
+=back
+
+=head2 Database access
+
+Each command uses either L<Bif::DB> or L<Bif::DBW> (based on
+L<DBIx::ThinSQL>, L<DBI>, and L<DBD::SQLite>) to access the database.
+
+As much as possible is done inside the database with the goal of
+ensuring data consistency regardless of what application is entering
+the data. Preparing for some other tool than Bif to be making
+modifications.
+
+=head2 Fake SQLite function calls
+
+SQLite does not have a built-in procedural programming language with a
+function calling interface. We cheat by defining C<BEFORE INSERT>
+triggers on normal tables that do their required work and then cancel
+the insert with a C<SELECT RAISE(IGNORE)> statement.
+
+=head2 Transport & Synchronisation
+
+Bif uses ssh to run the L<bifsync> program on remote hosts when
+exchanging updates with a hub, or else calls L<bifsync> directly when
+exchanging updates with a local repository. Regardless, it ends up
+being L<Bif::Client> that is talking to L<Bif::Server>, although most
+of the functionality is in the parent L<Bif::Role::Sync> class.
+
+Client/Server is a bit of a misnomer, as the protocol is actually about
+exchanging updates equally, and not particularly about a user needing a
+resource like HTTP verbs imply.
 
 =head1 Author
 

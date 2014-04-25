@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -267,17 +267,17 @@ sub send_updates {
         );
 
         $parts->execute;
-        return unless $self->write_parts($parts);
+        return $sent unless $self->write_parts($parts);
 
         $sent += $update->{ucount};
         $self->updates_sent("$sent/$total");
         $self->trigger_on_update;
     }
 
-    $self->updates_sent($total);
+    $self->updates_sent( ( ' ' x length("$sent/") ) . $total );
     $self->trigger_on_update;
 
-    return 1;
+    return $sent;
 }
 
 sub write_parts {

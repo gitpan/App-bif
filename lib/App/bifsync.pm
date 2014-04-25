@@ -12,12 +12,12 @@ use Log::Any::Plugin;
 use OptArgs;
 use Path::Tiny;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 arg directory => (
-    isa      => 'Str',
-    comment  => 'location of bif repository',
-    required => 1,
+    isa     => 'Str',
+    comment => 'location of bif repository',
+    default => 'default.bif',
 );
 
 opt debug => (

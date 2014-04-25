@@ -22,13 +22,13 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_14 (2014-04-24)
+0.1.0_15 (2014-04-25)
 
 =head1 SYNOPSIS
 
   bif COMMAND [...]
 
-=head1 SOFTWARE STATUS
+=head1 STATUS
 
 Bif is still at a very early stage of development.  Much of the
 functionality is missing, documentation is incomplete (or in some cases
@@ -38,11 +38,9 @@ failing.  B<DO NOT USE BIF FOR REAL DATA!>
 =head1 DESCRIPTION
 
 Bif is a project management tool with a command-line interface. It
-tracks tasks and issues using a local database, exchanging updates with
-remote databases on demand.
-
-The bif data model supports a couple of features which may be of
-interest to distributed project teams:
+helps you track tasks and issues using a local database, exchanging
+updates with remote databases on demand. The tool has several features
+of interest to distributed project teams:
 
 =over
 
@@ -107,7 +105,7 @@ bif commands and their arguments are listed below:
         bif new project [PATH] [TITLE...]
         bif new task [TITLE...]
     bif push ID PATH [HUB]
-    bif register HUB
+    bif register LOCATION [ALIAS]
     bif reply ID.UID
     bif show ID [HUB]
     bif sql [STATEMENT...]

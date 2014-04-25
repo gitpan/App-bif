@@ -1,3 +1,7 @@
+* Put the protocol version number in the location uri?
+
+    ssh+bs1://org@provider.com
+
 * Bug: Given an issue in two projects, pushing either of those projets
 to a hub will fail because the second project doesn't exist at the hub.
 

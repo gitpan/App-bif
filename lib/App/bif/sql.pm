@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -42,7 +42,7 @@ bif-sql -  run an SQL command against the database
 
 =head1 VERSION
 
-0.1.0_14 (2014-04-24)
+0.1.0_15 (2014-04-25)
 
 =head1 SYNOPSIS
 

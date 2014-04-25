@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 with 'Bif::Role::Sync';
 
@@ -75,7 +75,7 @@ sub run {
             next;
         }
         elsif ( $action eq 'QUIT' ) {
-            $self->write('BYE');
+            $self->write('Bye');
             return;
         }
 

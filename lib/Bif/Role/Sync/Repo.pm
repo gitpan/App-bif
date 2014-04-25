@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 my %import_functions = (
     NEW => {
@@ -34,17 +34,14 @@ my %import_functions = (
     CANCEL => {},
 );
 
-sub real_import_repo {
+sub recv_repo_updates {
     my $self = shift;
     my $db   = $self->db;
 
     my ( $action, $total ) = $self->read;
     $total //= '*undef*';
 
-    if ( $action eq 'QUIT' or $action eq 'INVALID' or $action eq 'EOF' ) {
-        return $action;
-    }
-    elsif ( $action ne 'TOTAL' or $total !~ m/^\d+$/ ) {
+    if ( $action ne 'TOTAL' or $total !~ m/^\d+$/ ) {
         return "expected TOTAL <int> (not $action $total)";
     }
 
@@ -92,10 +89,20 @@ sub real_import_repo {
 
     }
 
-    $self->updates_recv($total);
+    $self->updates_recv( ( ' ' x length("$got/") ) . $total );
     $self->trigger_on_update;
+    return $total;
+}
 
-    return 'RepoImported';
+sub real_import_repo {
+    my $self   = shift;
+    my $result = $self->recv_repo_updates;
+    if ( $result =~ m/^\d+$/ ) {
+        $self->write( 'Recv', $result );
+        return 'RepoImported';
+    }
+    $self->write( 'ProtocolError', $result );
+    return $result;
 }
 
 sub real_sync_repo {
@@ -198,16 +205,18 @@ sub real_sync_repo {
         return $self->send_updates( $update_list, $total );
     };
 
-    my ($uuid) = $db->xarray(
-        select => 't.uuid',
-        from   => 'topics t',
-        where  => { 't.id' => $id },
-    );
-
-    my $r1 = $self->real_import_repo($uuid);
+    my $r1 = $self->recv_repo_updates;
     my $r2 = $send->join;
 
-    return 'RepoSync' if ( $r1 eq 'RepoImported' and $r2 );
+    if ( $r1 =~ m/^\d+$/ ) {
+        $self->write( 'Recv', $r1 );
+        my ( $recv, $count ) = $self->read;
+        return 'RepoSync' if $recv eq 'Recv' and $count == $r2;
+        $log->debug("MEH: $count $r2");
+        return $recv;
+    }
+
+    $self->write( 'ProtocolError', $r1 );
     return $r1;
 }
 
@@ -243,9 +252,11 @@ sub real_export_repo {
     );
 
     $sth->execute;
-    $self->send_updates( $sth, $total ) || return;
+    $self->send_updates( $sth, $total );
 
-    return 'RepoExported';
+    my ( $recv, $count ) = $self->read;
+    return 'RepoExported' if $recv eq 'Recv' and $count == $total;
+    return $recv;
 }
 
 1;

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_14';
+our $VERSION = '0.1.0_15';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -86,19 +86,18 @@ opt bare => (
 
 subcmd(
     cmd     => [qw/register/],
-    comment => 'register with a remote repository',
+    comment => 'register with a bif hub repository',
 );
 
-arg hub => (
+arg location => (
     isa      => 'Str',
     required => 1,
     comment  => 'location of a remote repository',
 );
 
-opt alias => (
+arg alias => (
     isa     => 'Str',
-    alias   => 'a',
-    comment => 'alias for future references to HUB',
+    comment => 'alias for future references to the hub',
 );
 
 opt debug_bs => (
@@ -757,7 +756,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_14 (2014-04-24)
+0.1.0_15 (2014-04-25)
 
 =head1 SYNOPSIS
 
