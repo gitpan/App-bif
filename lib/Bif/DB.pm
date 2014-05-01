@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -153,20 +153,20 @@ sub get_update {
     return;
 }
 
-sub get_local_repo_id {
+sub get_local_hub_id {
     my $self = shift;
 
-    my $repo = $self->xarray(
-        select => ['repos.id'],
-        from   => 'repos',
-        where  => { 'repos.local' => 1 },
+    my $hub = $self->xarray(
+        select => ['hubs.id'],
+        from   => 'hubs',
+        where  => { 'hubs.local' => 1 },
     );
 
-    if ( !$repo ) {
-        warn "get_local_repo_id: no local repo!";
+    if ( !$hub ) {
+        warn "get_local_hub_id: no local repo!";
         return;
     }
-    return $repo->[0];
+    return $hub->[0];
 }
 
 sub get_projects {
@@ -183,10 +183,10 @@ sub get_projects {
                 'p.local',
             ],
             from       => 'projects p',
-            inner_join => 'repos r',
+            inner_join => 'hubs h',
             on         => {
-                'r.id'    => \'p.repo_id',
-                'r.alias' => $alias,
+                'h.id'    => \'p.hub_id',
+                'h.alias' => $alias,
             },
             inner_join => 'topics t',
             on         => 't.id = p.id',
@@ -234,39 +234,39 @@ sub status_ids {
     return \@ids, [ sort keys %invalid ];
 }
 
-sub get_repo_locations {
+sub get_hub_locations {
     my $self = shift;
     my $alias = shift || return;
 
     return $self->xhashes(
         select => [
-            'r.id AS id',
+            'h.id AS id',
             't.uuid AS uuid',
-            'r.alias AS alias',
-            'rl.location AS location',
-            'r.default_location_id = rl.id AS is_default'
+            'h.alias AS alias',
+            'hl.location AS location',
+            'h.default_location_id = hl.id AS is_default'
         ],
-        from       => 'repos r',
+        from       => 'hubs h',
         inner_join => 'topics t',
-        on         => 't.id = r.id',
-        inner_join => 'repo_locations rl',
-        on         => 'rl.repo_id = r.id',
+        on         => 't.id = h.id',
+        inner_join => 'hub_locations hl',
+        on         => 'hl.hub_id = h.id',
         where      => {
-            'r.alias' => $alias,
+            'h.alias' => $alias,
         },
         union_all_select => [
-            'r.id', 't.uuid', 'r.alias',
-            'rl.location', 'r.default_location_id = rl.id AS is_default'
+            'h.id', 't.uuid', 'h.alias',
+            'hl.location', 'h.default_location_id = hl.id AS is_default'
         ],
-        from       => 'repo_locations rl2',
-        inner_join => 'repos r',
-        on         => 'r.id = rl2.repo_id',
+        from       => 'hub_locations hl2',
+        inner_join => 'hubs h',
+        on         => 'h.id = hl2.hub_id',
         inner_join => 'topics t',
-        on         => 't.id = r.id',
-        inner_join => 'repo_locations rl',
-        on         => 'rl.repo_id = r.id',
+        on         => 't.id = h.id',
+        inner_join => 'hub_locations hl',
+        on         => 'hl.hub_id = h.id',
         where      => {
-            'rl2.location' => $alias,
+            'hl2.location' => $alias,
         },
         order_by => 'is_default ASC',
     );
@@ -294,7 +294,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 
@@ -384,7 +384,7 @@ contain valid values:
 =back
 
 
-=item get_local_repo_id -> Int
+=item get_local_hub_id -> Int
 
 Returns the ID for the local repository topic.
 
@@ -419,7 +419,7 @@ status names and returns an arrayref of matching IDs, and an arrayref
 of invalid names. This method will silently ignore any @status which
 are undefined.
 
-=item get_repo_locations( $alias ) -> @HashRef
+=item get_hub_locations( $alias ) -> @HashRef
 
 Returns a list of HASH references containing information about the hub
 identified by C<$alias>, each with the following keys:

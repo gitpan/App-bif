@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub new {
     my $proto = shift;
@@ -87,13 +87,8 @@ sub find_user_conf {
 
     $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
     $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
-    $conf->{'user.alias'}->{l}   = 'list topics --status open';
-    $conf->{'user.alias'}->{lt}  = 'list tasks --status open';
-    $conf->{'user.alias'}->{lts} = 'list tasks --status stalled';
-    $conf->{'user.alias'}->{li}  = 'list issues --status open';
-    $conf->{'user.alias'}->{lis} = 'list issues --status stalled';
-    $conf->{'user.alias'}->{ltc} = 'list projects --status closed';
-    $conf->{'user.alias'}->{lp}  = 'list projects --status run';
+    $conf->{'user.alias'}->{ls} = 'list projects --status run';
+    $conf->{'user.alias'}->{ll} = 'list topics --status open';
 
     print "Writing $file\n";
     $conf->write($file);
@@ -433,7 +428,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

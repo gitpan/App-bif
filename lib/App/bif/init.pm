@@ -7,7 +7,7 @@ use Bif::DBW;
 use Log::Any '$log';
 use Path::Tiny qw/path cwd tempdir/;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -59,7 +59,7 @@ sub run {
 
             my $rid = $dbw->nextval('topics');
             $dbw->xdo(
-                insert_into => 'func_new_repo',
+                insert_into => 'func_new_hub',
                 values      => {
                     id        => $rid,
                     update_id => $uid,
@@ -70,20 +70,20 @@ sub run {
 
             my $rlid = $dbw->nextval('topics');
             $dbw->xdo(
-                insert_into => 'func_new_repo_location',
+                insert_into => 'func_new_hub_location',
                 values      => {
                     id        => $rlid,
-                    repo_id   => $rid,
+                    hub_id    => $rid,
                     update_id => $uid,
                     location  => $bifdir,
                 },
             );
 
             $dbw->xdo(
-                insert_into => 'repo_updates',
+                insert_into => 'hub_updates',
                 values      => {
                     update_id           => $uid,
-                    repo_id             => $rid,
+                    hub_id              => $rid,
                     default_location_id => $rlid,
                 },
             );
@@ -114,7 +114,7 @@ bif-init -  create new bif repository
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

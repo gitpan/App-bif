@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub run {
     my $opts = shift;
@@ -33,14 +33,14 @@ sub run {
     $log->debug("register hub: $ctx->{location}");
     $log->debug("register alias: $ctx->{alias}");
 
-    my @repos = $dbw->get_repo_locations( $ctx->{location} );
+    my @locations = $dbw->get_hub_locations( $ctx->{location} );
 
     return $ctx->err(
         'RepoExists',
         'hub (or alias) already registered: %s (%s)',
-        $repos[0]->{location},
-        ( $repos[0]->{alias} || '' )
-    ) if (@repos);
+        $locations[0]->{location},
+        ( $locations[0]->{alias} || '' )
+    ) if (@locations);
 
     $|++;    # no buffering
     my $error;
@@ -102,13 +102,13 @@ sub run {
                     my $delta   = $current - $previous;
 
                     my ($id) = $dbw->xarray(
-                        select => 'rl.repo_id',
-                        from   => 'repo_locations rl',
-                        where  => { 'rl.location' => $ctx->{location} },
+                        select => 'hl.hub_id',
+                        from   => 'hub_locations hl',
+                        where  => { 'hl.location' => $ctx->{location} },
                     );
 
                     $dbw->xdo(
-                        update => 'repos',
+                        update => 'hubs',
                         set    => { alias => $ctx->{alias} },
                         where  => { id => $id },
                     );
@@ -147,7 +147,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -92,6 +92,15 @@ sub _push_issue {
                 insert_into => 'func_update_issue',
                 values      => {
                     id         => $info->{id},
+                    project_id => $info->{project_id},
+                    update_id  => $ctx->{update_id},
+                },
+            );
+
+            $db->xdo(
+                insert_into => 'func_update_issue',
+                values      => {
+                    id         => $info->{id},
                     project_id => $pinfo->{id},
                     update_id  => $ctx->{update_id},
                     status_id  => $status_id,
@@ -129,7 +138,7 @@ bif-push - push a thread to another project
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

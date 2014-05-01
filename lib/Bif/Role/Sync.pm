@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -69,40 +69,40 @@ sub send_updates {
 
         my $parts = $db->xprepare(
 
-            # repos
+            # hubs
             select => [
-                qv('repo')->as('kind'),
-                'repo_updates.new',
-                'repos.uuid',    # for update
-                'rl.uuid AS default_location_uuid',
-                'repo_updates.related_update_uuid',
+                qv('hub')->as('kind'),
+                'hub_updates.new',
+                'hubs.uuid',    # for update
+                'hl.uuid AS default_location_uuid',
+                'hub_updates.related_update_uuid',
                 5,
                 6,
                 qv(undef)->as('int_filler'),
-                'repo_updates.id AS update_order',
+                'hub_updates.id AS update_order',
             ],
-            from       => 'repo_updates',
-            inner_join => 'topics AS repos',
-            on         => 'repos.id = repo_updates.repo_id',
-            left_join  => 'topics AS rl',
-            on         => 'rl.id = repo_updates.default_location_id',
-            where      => { 'repo_updates.update_id' => $id },
+            from       => 'hub_updates',
+            inner_join => 'topics AS hubs',
+            on         => 'hubs.id = hub_updates.hub_id',
+            left_join  => 'topics AS hl',
+            on         => 'hl.id = hub_updates.default_location_id',
+            where      => { 'hub_updates.update_id' => $id },
 
-            # repo_locations
+            # hub_locations
             union_all_select => [
-                qv('repo_location')->as('kind'),
-                'rlu.new', 'r.uuid', 'rl2.uuid', 'rlu.location', 5, 6, 7,
-                'rlu.id AS update_order',
+                qv('hub_location')->as('kind'),
+                'hlu.new', 'h.uuid', 'hl2.uuid', 'hlu.location', 5, 6, 7,
+                'hlu.id AS update_order',
             ],
             from       => 'updates u',
-            inner_join => 'repo_location_updates rlu',
-            on         => 'rlu.update_id = u.id',
-            inner_join => 'repo_locations rl',
-            on         => 'rl.id = rlu.repo_location_id',
-            inner_join => 'topics rl2',
-            on         => 'rl2.id = rlu.repo_location_id',
-            inner_join => 'topics r',
-            on         => 'r.id = rl.repo_id',
+            inner_join => 'hub_location_updates hlu',
+            on         => 'hlu.update_id = u.id',
+            inner_join => 'hub_locations hl',
+            on         => 'hl.id = hlu.hub_location_id',
+            inner_join => 'topics hl2',
+            on         => 'hl2.id = hlu.hub_location_id',
+            inner_join => 'topics h',
+            on         => 'h.id = hl.hub_id',
             where      => { 'u.id' => $id },
 
             # projects
@@ -114,7 +114,7 @@ sub send_updates {
                 'project_updates.name',
                 'project_updates.title',
                 'status.uuid',      # for update
-                'project_updates.repo_uuid',
+                'project_updates.hub_uuid',
                 'project_updates.id AS update_order',
             ],
             from       => 'project_updates',
@@ -285,15 +285,15 @@ sub write_parts {
     my $parts = shift;
 
     while ( my $part = $parts->array ) {
-        if ( $part->[0] eq 'repo' ) {
+        if ( $part->[0] eq 'hub' ) {
             if ( $part->[1] ) {
-                $self->write( 'NEW', 'repo', {} );
+                $self->write( 'NEW', 'hub', {} );
             }
             else {
                 $self->write(
-                    'UPDATE', 'repo',
+                    'UPDATE', 'hub',
                     {
-                        repo_uuid             => $part->[2],
+                        hub_uuid              => $part->[2],
                         default_location_uuid => $part->[3],
                         related_update_uuid   => $part->[4],
                     }
@@ -301,24 +301,24 @@ sub write_parts {
                 );
             }
         }
-        elsif ( $part->[0] eq 'repo_location' ) {
+        elsif ( $part->[0] eq 'hub_location' ) {
             if ( $part->[1] ) {
                 $self->write(
                     'NEW',
-                    'repo_location',
+                    'hub_location',
                     {
-                        repo_uuid => $part->[2],
-                        location  => $part->[4],
+                        hub_uuid => $part->[2],
+                        location => $part->[4],
                     }
                 );
             }
             else {
                 $self->write(
                     'UPDATE',
-                    'repo_location',
+                    'hub_location',
                     {
-                        repo_location_uuid => $part->[3],
-                        location           => $part->[4],
+                        hub_location_uuid => $part->[3],
+                        location          => $part->[4],
                     }
                 );
             }
@@ -345,7 +345,7 @@ sub write_parts {
                         name         => $part->[4],
                         title        => $part->[5],
                         status_uuid  => $part->[6],
-                        repo_uuid    => $part->[7],
+                        hub_uuid     => $part->[7],
                     }
                 );
             }

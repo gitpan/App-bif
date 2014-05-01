@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 my %import_functions = (
     NEW => {
@@ -14,8 +14,8 @@ my %import_functions = (
         issue_status   => 'func_import_issue_status',
         project        => 'func_import_project',
         project_status => 'func_import_project_status',
-        repo           => 'func_new_repo',
-        repo_location  => 'func_import_repo_location',
+        hub            => 'func_new_hub',
+        hub_location   => 'func_import_hub_location',
         task           => 'func_import_task',
         task_status    => 'func_import_task_status',
         update         => 'func_import_update',
@@ -25,8 +25,8 @@ my %import_functions = (
         issue_status   => 'func_import_issue_status_update',
         project        => 'func_import_project_update',
         project_status => 'func_import_project_status_update',
-        repo           => 'func_import_repo_update',
-        repo_location  => 'func_import_repo_location_update',
+        hub            => 'func_import_hub_update',
+        hub_location   => 'func_import_hub_location_update',
         task           => 'func_import_task_update',
         task_status    => 'func_import_task_status_update',
     },
@@ -34,7 +34,7 @@ my %import_functions = (
     CANCEL => {},
 );
 
-sub recv_repo_updates {
+sub recv_hub_updates {
     my $self = shift;
     my $db   = $self->db;
 
@@ -94,9 +94,9 @@ sub recv_repo_updates {
     return $total;
 }
 
-sub real_import_repo {
+sub real_import_hub {
     my $self   = shift;
-    my $result = $self->recv_repo_updates;
+    my $result = $self->recv_hub_updates;
     if ( $result =~ m/^\d+$/ ) {
         $self->write( 'Recv', $result );
         return 'RepoImported';
@@ -105,7 +105,7 @@ sub real_import_repo {
     return $result;
 }
 
-sub real_sync_repo {
+sub real_sync_hub {
     my $self   = shift;
     my $id     = shift || die caller;
     my $prefix = shift;
@@ -119,11 +119,13 @@ sub real_sync_repo {
     $db->do("CREATE TEMPORARY TABLE $tmp(id INTEGER, ucount INTEGER)")
       if ( $prefix eq '' );
 
+    $on_update->( 'matching: ' . $prefix2 ) if $on_update;
+
     my @refs = $db->xarrays(
         select => [qw/rm.prefix rm.hash/],
-        from   => 'repos_merkle rm',
+        from   => 'hubs_merkle rm',
         where =>
-          [ 'rm.repo_id = ', qv($id), ' AND rm.prefix LIKE ', qv($prefix2) ],
+          [ 'rm.hub_id = ', qv($id), ' AND rm.prefix LIKE ', qv($prefix2) ],
     );
 
     my $here = { map { $_->[0] => $_->[1] } @refs };
@@ -134,8 +136,6 @@ sub real_sync_repo {
       unless $action eq 'MATCH'
       and $mprefix eq $prefix2
       and ref $there eq 'HASH';
-
-    $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
     my @next;
     my @missing;
@@ -160,10 +160,10 @@ sub real_sync_repo {
             insert_into => "$tmp(id,ucount)",
             select      => [ 'u.id', 'u.ucount' ],
             from        => 'updates u',
-            inner_join  => 'repo_related_updates rru',
+            inner_join  => 'hub_related_updates rru',
             on          => {
                 'rru.update_id' => \'u.id',
-                'rru.repo_id'   => $id,
+                'rru.hub_id'    => $id,
             },
             where => \@where,
         );
@@ -171,7 +171,7 @@ sub real_sync_repo {
 
     if (@next) {
         foreach my $next ( sort @next ) {
-            $self->real_sync_repo( $id, $next, $tmp );
+            $self->real_sync_hub( $id, $next, $tmp );
         }
     }
 
@@ -205,7 +205,7 @@ sub real_sync_repo {
         return $self->send_updates( $update_list, $total );
     };
 
-    my $r1 = $self->recv_repo_updates;
+    my $r1 = $self->recv_hub_updates;
     my $r2 = $send->join;
 
     if ( $r1 =~ m/^\d+$/ ) {
@@ -220,16 +220,16 @@ sub real_sync_repo {
     return $r1;
 }
 
-sub real_export_repo {
+sub real_export_hub {
     my $self = shift;
     my $id   = shift;
 
     my ($total) = $self->db->xarray(
         select     => 'sum(u.ucount)',
-        from       => 'repo_related_updates rru',
+        from       => 'hub_related_updates rru',
         inner_join => 'updates u',
         on         => 'u.id = rru.update_id',
-        where      => { 'rru.repo_id' => $id },
+        where      => { 'rru.hub_id' => $id },
     );
 
     $self->write( 'TOTAL', $total );
@@ -242,12 +242,12 @@ sub real_export_repo {
             'updates.email',               'updates.lang',
             'updates.message',             'updates.ucount',
         ],
-        from       => 'repo_related_updates AS rru',
+        from       => 'hub_related_updates AS rru',
         inner_join => 'updates',
         on         => 'updates.id = rru.update_id',
         left_join  => 'updates AS parents',
         on         => 'parents.id = updates.parent_id',
-        where      => { 'rru.repo_id' => $id },
+        where      => { 'rru.hub_id' => $id },
         order_by   => 'updates.id ASC',
     );
 

@@ -17,6 +17,7 @@ configure_requires:
   FindBin: '0'
   Path::Tiny: '0'
   Pod::Select: '0'
+  Time::Piece: '0'
 dynamic_config: '0'
 generated_by: 'Module::Install version 1.08, CPAN::Meta::Converter version 2.140640'
 license: gpl
@@ -38,6 +39,7 @@ no_index:
     - Bif::OK
     - Bif::Error
 requires:
+  AnyEvent: '0'
   Config::Tiny: '2.19'
   Coro: '0'
   Coro::Handle: '0'
@@ -50,6 +52,7 @@ requires:
   IO::Pager: '0.24'
   IO::Prompt::Tiny: '0'
   JSON: '0'
+  Log::Any: '0'
   Log::Any::Adapter: '0.11'
   Log::Any::Plugin::Levels: '0'
   OptArgs: v0.1.6
@@ -69,4 +72,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.0_15
+version: 0.1.0_16

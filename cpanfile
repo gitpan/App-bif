@@ -1,8 +1,9 @@
 on 'configure' => sub {
 
     # Required by the scripting in Makefile.PL
-    requires 'Cwd'     => 0;
-    requires 'FindBin' => 0;
+    requires 'Cwd'         => 0;
+    requires 'FindBin'     => 0;
+    requires 'Time::Piece' => 0;
 
     # These are all used by Module::Install::PRIVATE::App_bif
     requires 'File::Spec'  => 0;
@@ -11,6 +12,9 @@ on 'configure' => sub {
 };
 
 on 'runtime' => sub {
+
+    # General
+    requires 'Log::Any';
 
     # Bif::DB
     requires 'DBD::SQLite'   => '1.42';
@@ -50,6 +54,7 @@ on 'runtime' => sub {
     requires 'Log::Any::Plugin::Levels' => 0;
 
     # Synchronisation
+    requires 'AnyEvent';
     requires 'Coro';
     requires 'Coro::Handle';
     requires 'JSON';

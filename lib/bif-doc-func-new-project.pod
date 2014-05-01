@@ -4,7 +4,7 @@ bif-doc-func-new-project - add a new project to an update
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

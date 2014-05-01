@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 
@@ -109,19 +109,15 @@ bif commands and their arguments are listed below:
     bif reply ID.UID
     bif show ID [HUB]
     bif sql [STATEMENT...]
-    bif sync [ID] [HUB]
+    bif sync
     bif update ID [STATUS]
     bif upgrade [DIRECTORY]
 
 In addition to the above commands a few useful aliases are created by
 default:
 
-    bif l           # bif list topics --status open
-    bif lt          # bif list tasks --status open
-    bif lts         # bif list tasks --status stalled
-    bif li          # bif list issues --status open
-    bif lis         # bif list issues --status stalled
-    bif lp          # bif list projects --status active
+    bif ls          # bif list projects --status active
+    bif ll          # bif list topics --status open
 
 Reference documents for bif commands have titles like
 I<bif-command-name>, which can also be displayed by running C<bif doc

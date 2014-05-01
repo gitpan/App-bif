@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub run {
     my $ctx = shift;
@@ -26,7 +26,7 @@ sub run {
         push( @pinfo, $pinfo );
     }
 
-    my @locations = $db->get_repo_locations( $ctx->{hub} );
+    my @locations = $db->get_hub_locations( $ctx->{hub} );
     $ctx->err( 'HubNotFound', 'hub not found: %s', $ctx->{hub} )
       unless @locations;
 
@@ -117,7 +117,7 @@ sub run {
                             values      => {
                                 id        => $pinfo->{id},
                                 update_id => $ctx->{update_id},
-                                repo_uuid => $hub->{uuid},
+                                hub_uuid  => $hub->{uuid},
                             },
                         );
 
@@ -180,7 +180,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

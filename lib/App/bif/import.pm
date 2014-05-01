@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub run {
     my $ctx = shift;
@@ -16,7 +16,7 @@ sub run {
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
     my $db = $ctx->dbw;
 
-    my @locations = $db->get_repo_locations( $ctx->{hub} );
+    my @locations = $db->get_hub_locations( $ctx->{hub} );
     $ctx->err( 'HubNotFound', 'hub not found: %s', $ctx->{hub} )
       unless @locations;
 
@@ -138,7 +138,7 @@ bif-import -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

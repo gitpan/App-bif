@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -96,14 +96,14 @@ sub update_repo {
     my $dbw = shift;
     my $ref = shift;
 
-    my $repo = $dbw->get_topic( $dbw->get_local_repo_id );
-    my $uid  = $dbw->nextval('updates');
+    my $hub = $dbw->get_topic( $dbw->get_local_hub_id );
+    my $uid = $dbw->nextval('updates');
 
     $dbw->xdo(
         insert_into => 'updates',
         values      => {
             id        => $uid,
-            parent_id => $repo->{first_update_id},
+            parent_id => $hub->{first_update_id},
             author    => $ref->{author},
             email     => $ref->{email},
             message   => $ref->{message},
@@ -112,12 +112,12 @@ sub update_repo {
 
     $dbw->xdo(
         insert_into =>
-          [ 'repo_updates', qw/repo_id update_id related_update_uuid/ ],
-        select    => [ qv( $repo->{id} ), qv($uid), 'ru.uuid', ],
+          [ 'hub_updates', qw/hub_id update_id related_update_uuid/ ],
+        select    => [ qv( $hub->{id} ), qv($uid), 'hu.uuid', ],
         from      => '(select 1)',
-        left_join => 'topics ru',
+        left_join => 'topics hu',
         on        => {
-            'ru.id' => $ref->{related_update_id},
+            'hu.id' => $ref->{related_update_id},
         },
     );
 
@@ -140,7 +140,7 @@ Bif::DBW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

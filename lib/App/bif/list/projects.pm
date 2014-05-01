@@ -5,7 +5,7 @@ use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub _invalid_status {
     my $self = shift;
@@ -48,26 +48,26 @@ sub run {
     if ( $ctx->{hub} ) {
         require Path::Tiny;
         my $dir = Path::Tiny::path( $ctx->{hub} )->absolute if -d $ctx->{hub};
-        ( $ctx->{repo_id} ) = $db->xarray(
-            select       => 'r.id',
-            from         => 'repos r',
-            where        => { 'r.alias' => $ctx->{hub} },
-            union_select => 'r.id',
-            from         => 'repo_locations rl',
-            inner_join   => 'repos r',
-            on           => 'r.id = rl.repo_id',
-            where        => { 'rl.location' => $ctx->{hub} },
-            union_select => 'r.id',
-            from         => 'repo_locations rl',
-            inner_join   => 'repos r',
-            on           => 'r.id = rl.repo_id',
-            where        => { 'rl.location' => $dir },
+        ( $ctx->{hub_id} ) = $db->xarray(
+            select       => 'h.id',
+            from         => 'hubs h',
+            where        => { 'h.alias' => $ctx->{hub} },
+            union_select => 'h.id',
+            from         => 'hub_locations hl',
+            inner_join   => 'hubs h',
+            on           => 'h.id = hl.hub_id',
+            where        => { 'hl.location' => $ctx->{hub} },
+            union_select => 'h.id',
+            from         => 'hub_locations hl',
+            inner_join   => 'hubs h',
+            on           => 'h.id = hl.hub_id',
+            where        => { 'hl.location' => $dir },
             limit        => 1,
         );
 
         return $ctx->err( 'HubNotFound',
             'hub location/alias not registered: ' . $ctx->{hub} )
-          unless $ctx->{repo_id};
+          unless $ctx->{hub_id};
 
     }
 
@@ -120,8 +120,8 @@ sub _get_data {
         select => [
             'p.path',
             case (
-                when => 'r.id IS NOT NULL',
-                then => 'r.alias',
+                when => 'h.id IS NOT NULL',
+                then => 'h.alias',
                 else => qv(''),
               )->as('hub'),
             'p.title',
@@ -132,8 +132,8 @@ sub _get_data {
             'coalesce( p.local, 0 )',
         ],
         from       => 'projects p',
-        left_join  => 'repos r',
-        on         => 'r.id = p.repo_id',
+        left_join  => 'hubs h',
+        on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
         on         => do {
             if ( $ctx->{status} ) {
@@ -173,8 +173,8 @@ sub _get_data {
             inner_join => 'tasks',
             on         => 'tasks.status_id = task_status.id',
             where      => do {
-                if ( $ctx->{repo_id} ) {
-                    { 'p.repo_id' => $ctx->{repo_id} };
+                if ( $ctx->{hub_id} ) {
+                    { 'p.hub_id' => $ctx->{hub_id} };
                 }
                 else {
                     'p.local = 1';
@@ -207,8 +207,8 @@ sub _get_data {
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
             where      => do {
-                if ( $ctx->{repo_id} ) {
-                    { 'p.repo_id' => $ctx->{repo_id} };
+                if ( $ctx->{hub_id} ) {
+                    { 'p.hub_id' => $ctx->{hub_id} };
                 }
                 else {
                     'p.local = 1';
@@ -218,8 +218,8 @@ sub _get_data {
           )->as('total'),
         on    => 'p.id = total.id',
         where => do {
-            if ( $ctx->{repo_id} ) {
-                { 'p.repo_id' => $ctx->{repo_id} };
+            if ( $ctx->{hub_id} ) {
+                { 'p.hub_id' => $ctx->{hub_id} };
             }
             else {
                 'p.local = 1';
@@ -240,7 +240,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

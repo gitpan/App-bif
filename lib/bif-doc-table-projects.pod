@@ -4,7 +4,7 @@ bif-doc-table-projects - project current meta data
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 DEFINITION
 

@@ -10,12 +10,12 @@ run_in_tempdir {
 
     my $dbw = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
 
-    my ( $repo, $update, $project, $ps, $ts, $is, $task, $issue );
+    my ( $hub, $update, $project, $ps, $ts, $is, $task, $issue );
     $dbw->txn(
         sub {
             $dbw->deploy;
 
-            $repo = new_test_repo( $dbw, 1 );
+            $hub = new_test_hub( $dbw, 1 );
 
             $dbw->xdo(
                 insert_into => 'func_merge_updates',
@@ -154,9 +154,9 @@ run_in_tempdir {
         }
     };
 
-    # get_local_repo_id
-    subtest 'get_local_repo_id', sub {
-        is $db->get_local_repo_id, $repo->{id}, 'get_local_repo_id';
+    # get_local_hub_id
+    subtest 'get_local_hub_id', sub {
+        is $db->get_local_hub_id, $hub->{id}, 'get_local_hub_id';
     };
 
     # get_projects
@@ -235,10 +235,10 @@ run_in_tempdir {
         is_deeply $invalid, [ 'junky', 'more' ], "invalid @$invalid";
     };
 
-    subtest 'get_repo_locations', sub {
-        is_deeply [ $db->get_repo_locations ], [], 'get_repo_locations(undef)';
-        is_deeply [ $db->get_repo_locations('noalias') ], [],
-          'get_repo_locations(q{noalias})';
+    subtest 'get_hub_locations', sub {
+        is_deeply [ $db->get_hub_locations ], [], 'get_hub_locations(undef)';
+        is_deeply [ $db->get_hub_locations('noalias') ], [],
+          'get_hub_locations(q{noalias})';
     };
 };
 

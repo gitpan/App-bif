@@ -6,30 +6,50 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 sub run {
     my $opts = shift;
     $opts->{no_pager}++;    # causes problems with something in Coro?
     my $ctx = App::bif::Context->new($opts);
+    my $dbw = $ctx->dbw;
+
+    if ( $opts->{path} ) {
+        foreach my $path ( @{ $opts->{path} } ) {
+            my @p = $dbw->get_projects($path);
+            $ctx->err( 'ProjectNotFound', 'project not found: ' . $path )
+              unless @p;
+        }
+    }
+
+    if ( $opts->{hub} ) {
+        foreach my $alias ( @{ $opts->{hub} } ) {
+            my @rl = $dbw->get_hub_locations($alias);
+            $ctx->err( 'HubNotFound', 'hub not found: ' . $alias )
+              unless @rl;
+        }
+    }
 
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
-    my $dbw   = $ctx->dbw;
-    my @repos = $dbw->xhashes(
-        select     => [ 'r.id', 'r.alias', 'rl.location', 't.uuid' ],
-        from       => 'repos r',
+    my @hubs = $dbw->xhashes(
+        select     => [ 'h.id', 'h.alias', 'hl.location', 't.uuid' ],
+        from       => 'hubs h',
         inner_join => 'topics t',
-        on         => 't.id = r.id',
-        inner_join => 'repo_locations rl',
-        on    => 'rl.id = r.default_location_id',
-        where => 'r.local IS NULL',
+        on         => 't.id = h.id',
+        inner_join => 'hub_locations hl',
+        on    => 'hl.id = h.default_location_id',
+        where => {
+            'h.local' => undef,
+            $opts->{hub} ? ( 'h.alias' => $opts->{hub} ) : (),
+        },
     );
 
-    return $ctx->err( 'SyncNone', 'no hubs registered' ) unless @repos;
+    return $ctx->err( 'SyncNone', 'no (matching) hubs registered' )
+      unless @hubs;
 
     $|++;    # no buffering
 
-    foreach my $hub (@repos) {
+    foreach my $hub (@hubs) {
         my $error;
         my $cv = AE::cv;
         $ctx->lprint("$hub->{alias}: connecting...");
@@ -68,7 +88,7 @@ sub run {
                         );
 
                         my $previous = $dbw->get_max_update_id;
-                        my $status   = $client->sync_repo( $hub->{id} );
+                        my $status   = $client->sync_hub( $hub->{id} );
                         print "\n";
 
                         if (   $status eq 'RepoMatch'
@@ -78,8 +98,11 @@ sub run {
                                 select => [ 'p.id', 'p.path' ],
                                 from   => 'projects p',
                                 where  => {
-                                    'p.repo_id' => $hub->{id},
-                                    'p.local'   => 1,
+                                    'p.hub_id' => $hub->{id},
+                                    'p.local'  => 1,
+                                    $opts->{path}
+                                    ? ( 'p.path' => $opts->{path} )
+                                    : (),
                                 },
                                 order_by => 'p.path',
                             );
@@ -161,11 +184,11 @@ __END__
 
 =head1 NAME
 
-bif-sync -  exchange updates with repos
+bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 
@@ -178,7 +201,17 @@ as hubs in the local repository and exchanges updates.
 
 =head1 ARGUMENTS & OPTIONS
 
-To be documented.
+=over
+
+=item --hub, -H HUB
+
+Limit the hubs to sync with. This option can be used multiple times.
+
+=item --path, -p PATH
+
+Limit the projects to sync. This option can be used multiple times.
+
+=back
 
 =head1 SEE ALSO
 

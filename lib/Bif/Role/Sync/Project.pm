@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 my %import_functions = (
     NEW => {
@@ -134,6 +134,8 @@ sub real_sync_project {
     $db->do("CREATE TEMPORARY TABLE $tmp(id INTEGER, ucount INTEGER)")
       if ( $prefix eq '' );
 
+    $on_update->( 'matching: ' . $prefix2 ) if $on_update;
+
     my @refs = $db->xarrays(
         select => [qw/pm.prefix pm.hash/],
         from   => 'projects_merkle pm',
@@ -149,8 +151,6 @@ sub real_sync_project {
       unless $action eq 'MATCH'
       and $mprefix eq $prefix2
       and ref $there eq 'HASH';
-
-    $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
     my @next;
     my @missing;

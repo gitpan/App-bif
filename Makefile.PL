@@ -9,7 +9,7 @@ use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
 
-my $VERSION = '0.1.0_15';
+my $VERSION = '0.1.0_16';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -41,49 +41,52 @@ no_index package => 'Bif::Error';
 
 WriteAll;
 
-# Create a t/bif script for testing
+# Create t/bif and t/bifsync scripts for testing
 {
-    open( FH, '>', 't/bif' ) or die "open: $!";
-    print FH <<"END";
+    use Path::Tiny;
+    my $bif     = path( $Bin, 'bin', 'bif' );
+    my $bifsync = path( $Bin, 'bin', 'bif' );
+    my $lib     = path( $Bin, 'lib' );
+    my $share   = path( $Bin, 'share' );
+    my $t       = path( $Bin, 't' );
+    my $tbif    = $t->child('bif');
+    my $tbifsync = $t->child('bifsync');
+
+    $tbif->spew_utf8(<<EOF);
 #!$^X
 use strict;
-use lib "$Bin/lib";
+use lib "$lib";
 use OptArgs qw/dispatch/;
 
 # Make sure that any subcommands that call bifsync locally find the
 # local testing version in t/bifsync
-\$ENV{PATH} = "$Bin/t" .':'.\$ENV{PATH};
+\$ENV{PATH} = "$t" .':'.\$ENV{PATH};
 
-\$main::BIF_SHARE_DIR = "$Bin/share";
+\$main::BIF_SHARE_DIR = "$share";
 
 dispatch(qw/run App::bif/);
-END
-    close FH;
-    chmod 0755, 't/bif' or warn "chmod: $!";
+__END__
+EOF
+    chmod 0755, $tbif or warn "chmod: $!";
 
-    use Path::Tiny;
-    my $pod = path('bin/bif')->slurp_utf8;
+    my $pod = $bif->slurp_utf8;
     $pod =~ s/.*__END__//sm;
-    path('t/bif')->append_utf8($pod);
-}
+    $tbif->append_utf8($pod);
 
-# Create a t/bifsync script for testing
-{
-    open( FH, '>', 't/bifsync' ) or die "open: $!";
-    print FH <<"END";
+    $tbifsync->spew_utf8(<<EOF);
 #!$^X
 use strict;
-use lib "$Bin/lib";
+use lib "$lib";
 use OptArgs qw/dispatch/;
 
 dispatch(qw/run App::bifsync/);
-END
-    close FH;
-    chmod 0755, 't/bifsync' or warn "chmod: $!";
+__END__
+EOF
+    chmod 0755, $tbifsync or warn "chmod: $!";
 
-    my $pod = path('bin/bifsync')->slurp_utf8;
+    $pod = $bifsync->slurp_utf8;
     $pod =~ s/.*__END__//sm;
-    path('t/bifsync')->append_utf8($pod);
+    $tbifsync->append_utf8($pod);
 }
 
 # Setup App::bif::Build if we are a developer
@@ -97,10 +100,10 @@ chomp $branch;
 my $t    = gmtime;
 my $when = $t->ymd . ' ' . $t->hms;
 
-open( FH, '>', 'lib/App/bif/Build.pm' ) or die "open: $!";
-
-my $str = <<"THE_END";
+my $str = <<EOF;
 HIDDENpackage App::bif::Build;
+HIDDENuse strict;
+HIDDENuse warnings;
 HIDDEN\$App::bif::Build::VERSION = '$VERSION';
 HIDDEN\$App::bif::Build::COMMIT = '$commit';
 HIDDEN\$App::bif::Build::BRANCH = '$branch';
@@ -114,7 +117,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_15 (2014-04-25)
+HIDDEN0.1.0_16 (2014-05-01)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN
@@ -175,10 +178,8 @@ HIDDENunder the terms of the GNU General Public License as published by the
 HIDDENFree Software Foundation; either version 3 of the License, or (at your
 HIDDENoption) any later version.
 HIDDEN
-THE_END
+EOF
 
 $str =~ s/^HIDDEN//mg;
-
-print FH $str;
-close FH;
+path(qw/lib App bif Build.pm/)->spew_utf8($str);
 

@@ -8,7 +8,7 @@ use Exporter::Tidy default => [
       debug_on
       debug_off
       new_test_update
-      new_test_repo
+      new_test_hub
       new_test_project
       new_test_project_status
       new_test_task_status
@@ -109,7 +109,7 @@ sub new_test_update {
 
 my $location = 0;
 
-sub new_test_repo {
+sub new_test_hub {
     my $dbw    = shift;
     my $local  = shift;
     my $update = new_test_update($dbw);
@@ -125,25 +125,25 @@ sub new_test_repo {
     };
 
     $dbw->xdo(
-        insert_into => 'func_new_repo',
+        insert_into => 'func_new_hub',
         values      => $ref,
     );
 
     $dbw->xdo(
-        insert_into => 'func_new_repo_location',
+        insert_into => 'func_new_hub_location',
         values      => {
             update_id => $update->{id},
-            repo_id   => $id,
+            hub_id    => $id,
             id        => $lid,
             location  => 'location' . $location++,
         },
     );
 
     $dbw->xdo(
-        insert_into => 'repo_updates',
+        insert_into => 'hub_updates',
         values      => {
             update_id           => $update->{id},
-            repo_id             => $id,
+            hub_id              => $id,
             default_location_id => $lid,
         },
     );

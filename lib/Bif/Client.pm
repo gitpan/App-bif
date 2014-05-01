@@ -8,7 +8,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 with 'Bif::Role::Sync';
 
@@ -86,32 +86,32 @@ sub register {
     my $self = shift;
     my $info = shift;
 
-    $self->write( 'IMPORT', 'repo' );
+    $self->write( 'IMPORT', 'hub' );
 
     my ( $action, $type ) = $self->read;
-    if ( $action eq 'EXPORT' and $type eq 'repo' ) {
-        return $self->real_import_repo;
+    if ( $action eq 'EXPORT' and $type eq 'hub' ) {
+        return $self->real_import_hub;
     }
     return $action;
 }
 
-sub sync_repo {
+sub sync_hub {
     my $self = shift;
     my $id   = shift;
 
-    my $repo = $self->db->xhash(
-        select     => [ 'r.hash', 't.uuid' ],
-        from       => 'repos r',
+    my $hub = $self->db->xhash(
+        select     => [ 'h.hash', 't.uuid' ],
+        from       => 'hubs h',
         inner_join => 'topics t',
-        on         => 't.id = r.id',
-        where => { 'r.id' => $id },
+        on         => 't.id = h.id',
+        where => { 'h.id' => $id },
     );
 
-    $self->write( 'SYNC', 'repo', $repo->{uuid}, $repo->{hash} );
+    $self->write( 'SYNC', 'hub', $hub->{uuid}, $hub->{hash} );
 
     my ( $action, $type ) = $self->read;
-    if ( $action eq 'SYNC' and $type eq 'repo' ) {
-        return $self->real_sync_repo($id);
+    if ( $action eq 'SYNC' and $type eq 'hub' ) {
+        return $self->real_sync_hub($id);
     }
     elsif ( $action eq 'RepoMatch' ) {
         $self->on_update->('no changes');

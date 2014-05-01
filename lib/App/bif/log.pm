@@ -5,7 +5,7 @@ use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 my $NOW;
 my $bold;
@@ -45,7 +45,7 @@ sub run {
         return $func->( $ctx, $info );
     }
     else {
-        return _log_repo( $ctx, $db->get_topic( $db->get_local_repo_id ) );
+        return _log_hub( $ctx, $db->get_topic( $db->get_local_hub_id ) );
     }
 
     my $sth = $db->xprepare(
@@ -74,14 +74,14 @@ sub run {
             issue_updates.id,
             task_updates.id,
             project_updates.id,
-            repo_updates.id
+            hub_updates.id
             ) AS update_order',
         ],
         from      => 'updates',
-        left_join => 'repo_updates',
-        on        => 'repo_updates.update_id = updates.id',
-        left_join => 'repos',
-        on        => 'repos.id = repo_updates.repo_id',
+        left_join => 'hub_updates',
+        on        => 'hub_updates.update_id = updates.id',
+        left_join => 'hubs',
+        on        => 'hubs.id = hub_updates.hub_id',
         left_join => 'project_updates',
         on        => 'project_updates.update_id = updates.id AND
                       project_updates.new IS NULL',
@@ -96,7 +96,7 @@ sub run {
         left_join => 'issues',
         on        => 'issues.id = issue_updates.issue_id',
         left_join => 'topics',
-        on        => 'topics.id = repo_updates.repo_id OR
+        on        => 'topics.id = hub_updates.hub_id OR
                        topics.id = project_updates.project_id OR
                        topics.id = task_updates.task_id OR
                        topics.id = issue_updates.issue_id',
@@ -337,7 +337,7 @@ sub _log_comment {
     }
 }
 
-sub _log_repo {
+sub _log_hub {
     my $ctx  = shift;
     my $db   = $ctx->db;
     my $info = shift;
@@ -349,10 +349,10 @@ sub _log_repo {
             q{strftime('%H:%M:%S',u.mtime,'unixepoch','localtime') AS mtime},
             'u.message',
         ],
-        from       => 'repo_updates ru',
+        from       => 'hub_updates hu',
         inner_join => 'updates u',
-        on         => 'u.id = ru.update_id',
-        where      => { 'ru.repo_id' => $info->{id} },
+        on         => 'u.id = hu.update_id',
+        where      => { 'hu.hub_id' => $info->{id} },
         group_by   => [qw/weekday mdate mtime/],
         order_by   => 'u.id DESC',
     );
@@ -454,6 +454,7 @@ sub _log_issue {
             'updates.author',
             'updates.email',
             'updates.message',
+            'updates.ucount',
             'issue_status.status',
             'issue_status.status',
             'issue_updates.new',
@@ -487,7 +488,64 @@ sub _log_issue {
     $ctx->start_pager;
 
     _log_item( $ctx, scalar $sth->hash, 'issue' );
-    _log_comment( $ctx, $_ ) for $sth->hashes;
+
+    while ( my $row = $sth->hash ) {
+        my @data;
+        push(
+            @data,
+            _header(
+                $dark . $yellow . ( $row->{depth} > 1 ? 'reply' : 'update' ),
+                $dark . $yellow . $row->{update_id},
+                $row->{update_uuid}
+            ),
+            _header( 'From', $row->{author},          $row->{email} ),
+            _header( 'When', _new_ago( $row->{mtime}, $row->{mtimetz} ) ),
+        );
+
+        my @r = ($row);
+        if ( $row->{ucount} > 2 ) {
+            push( @r, $sth->hash ) for ( 1 .. ( $row->{ucount} - 2 ) );
+        }
+
+        my $i;
+        foreach my $row (@r) {
+            $path = $row->{path} if $row->{path};
+
+            push(
+                @data,
+                _header(
+                    $dark
+                      . $yellow
+                      . ( $row->{depth} > 1 ? 'reply' : 'update' ),
+                    $dark . $yellow . $row->{update_id},
+                    $row->{update_uuid}
+                )
+            ) if $i++;
+
+            if ( $row->{title} ) {
+                $title = $row->{title} if $row->{title};
+                push( @data, _header( 'Subject', "[$path] $title" ) );
+            }
+            elsif ( $row->{status} ) {
+                push( @data,
+                    _header( 'Subject', "[$path][$row->{status}] Re: $title" )
+                );
+            }
+            else {
+                push( @data, _header( 'Subject', "[$path] Re: $title" ) );
+            }
+
+        }
+
+        $row = pop @r;
+
+        print $ctx->render_table( 'l  l', undef, \@data,
+            4 * ( $row->{depth} - 1 ) )
+          . "\n";
+
+        print _reformat( $row->{message}, $row->{depth} ), "\n";
+
+    }
 
     $ctx->end_pager;
     return $ctx->ok('LogIssue');
@@ -556,7 +614,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

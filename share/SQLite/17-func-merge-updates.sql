@@ -40,11 +40,11 @@ BEGIN
     ;
 
     /*
-        The following updates the repos_merkle table
+        The following updates the hubs_merkle table
     */
 
     UPDATE
-        repo_related_updates
+        hub_related_updates
     SET
         merkled = 1
     WHERE
@@ -52,8 +52,8 @@ BEGIN
     ;
 
 
-    UPDATE repo_tomerge              SET resolve = 1;
-    UPDATE repo_locations_tomerge    SET resolve = 1;
+    UPDATE hub_tomerge              SET resolve = 1;
+    UPDATE hub_locations_tomerge    SET resolve = 1;
     UPDATE projects_tomerge          SET resolve = 1;
     UPDATE project_status_tomerge   SET resolve = 1;
     UPDATE task_status_tomerge      SET resolve = 1;

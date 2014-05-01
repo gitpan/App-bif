@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 my $NOW;
 my $bold;
@@ -104,8 +104,8 @@ sub _show_project {
             'updates.author',        'updates.email',
             'updates.message',       'project_status.status',
             'project_status.status', 'projects.local',
-            'r.alias AS hub',        't2.uuid AS hub_uuid',
-            'rl.location',
+            'h.alias AS hub',        't2.uuid AS hub_uuid',
+            'hl.location',
         ],
         from       => 'projects',
         inner_join => 'topics',
@@ -114,12 +114,12 @@ sub _show_project {
         on         => 'updates.id = topics.first_update_id',
         inner_join => 'project_status',
         on         => 'project_status.id = projects.status_id',
-        left_join  => 'repos r',
-        on         => 'r.id = projects.repo_id',
-        left_join  => 'repo_locations rl',
-        on         => 'rl.id = r.default_location_id',
+        left_join  => 'hubs h',
+        on         => 'h.id = projects.hub_id',
+        left_join  => 'hub_locations hl',
+        on         => 'hl.id = h.default_location_id',
         left_join  => 'topics t2',
-        on         => 't2.id = r.id',
+        on         => 't2.id = h.id',
         where      => { 'projects.id' => $info->{id} },
     );
 
@@ -245,8 +245,8 @@ sub _show_task {
             'topics.id AS id',
             'substr(topics.uuid,1,8) as uuid',
             'projects.path',
-            'r.alias AS hub',
-            'rl.location',
+            'h.alias AS hub',
+            'hl.location',
             'substr(topics2.uuid,1,8) AS project_uuid',
             'tasks.title AS title',
             'topics.mtime AS mtime',
@@ -268,10 +268,10 @@ sub _show_task {
         on         => 'task_status.id = tasks.status_id',
         inner_join => 'projects',
         on         => 'projects.id = task_status.project_id',
-        left_join  => 'repos r',
-        on         => 'r.id = projects.repo_id',
-        left_join  => 'repo_locations rl',
-        on         => 'rl.id = r.default_location_id',
+        left_join  => 'hubs h',
+        on         => 'h.id = projects.hub_id',
+        left_join  => 'hub_locations hl',
+        on         => 'hl.id = h.default_location_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'updates AS updates2',
@@ -345,8 +345,8 @@ sub _show_issue {
             'project_issues.id AS id',
             'substr(topics.uuid,1,8) as uuid',
             'projects.path',
-            'r.alias AS hub',
-            'rl.location AS location',
+            'h.alias AS hub',
+            'hl.location AS location',
             'projects.title AS project_title',
             'substr(topics2.uuid,1,8) AS project_uuid',
             'issues.title AS title',
@@ -373,10 +373,10 @@ sub _show_issue {
         on         => 'project_issues.issue_id = topics.id',
         inner_join => 'projects',
         on         => 'projects.id = project_issues.project_id',
-        left_join  => 'repos r',
-        on         => 'r.id = projects.repo_id',
-        left_join  => 'repo_locations rl',
-        on         => 'rl.id = r.default_location_id',
+        left_join  => 'hubs h',
+        on         => 'h.id = projects.hub_id',
+        left_join  => 'hub_locations hl',
+        on         => 'hl.id = h.default_location_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'issue_status',
@@ -386,7 +386,7 @@ sub _show_issue {
         where      => { 'topics.id' => $info->{id} },
         order_by   => [
             "project_issues.id = $info->{project_issue_id} DESC",
-            "r.local ASC",
+            "h.local ASC",
             "updates2.mtime ASC",
         ],
     );
@@ -451,7 +451,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 with 'Bif::Role::Sync';
 
@@ -45,11 +45,11 @@ my %METHODS = (
         project => 'import_project',
     },
     IMPORT => {
-        repo    => 'export_repo',
+        hub     => 'export_hub',
         project => 'sync_project',
     },
     SYNC => {
-        repo    => 'sync_repo',
+        hub     => 'sync_hub',
         project => 'sync_project',
     },
     QUIT => {},
@@ -122,10 +122,10 @@ sub run {
     }
 }
 
-sub export_repo {
+sub export_hub {
     my $self = shift;
     my $db   = $self->db;
-    my $id   = shift || $db->get_local_repo_id;
+    my $id   = shift || $db->get_local_hub_id;
 
     my ($uuid) = $db->xarray(
         select => 't.uuid',
@@ -133,35 +133,35 @@ sub export_repo {
         where  => { 't.id' => $id },
     );
 
-    $self->write( 'EXPORT', 'repo', $uuid );
-    return $self->real_export_repo($id);
+    $self->write( 'EXPORT', 'hub', $uuid );
+    return $self->real_export_hub($id);
 }
 
-sub sync_repo {
+sub sync_hub {
     my $self = shift;
     my $uuid = shift || 'unknown';
     my $hash = shift || 'unknown';
 
-    my $db   = $self->db;
-    my $repo = $db->xhash(
-        select     => [ 'r.id', 'r.hash' ],
+    my $db  = $self->db;
+    my $hub = $db->xhash(
+        select     => [ 'h.id', 'h.hash' ],
         from       => 'topics t',
-        inner_join => 'repos r',
-        on         => 'r.id = t.id',
+        inner_join => 'hubs h',
+        on         => 'h.id = t.id',
         where => { 't.uuid' => $uuid },
     );
 
-    if ( !$repo ) {
-        $self->write( 'RepoNotFound', 'repo uuid not found here' );
+    if ( !$hub ) {
+        $self->write( 'RepoNotFound', 'hub uuid not found here' );
         return 'RepoNotFound';
     }
-    elsif ( $repo->{hash} eq $hash ) {
+    elsif ( $hub->{hash} eq $hash ) {
         $self->write( 'RepoMatch', 'no changes to exchange' );
         return 'RepoMatch';
     }
 
-    $self->write( 'SYNC', 'repo', $uuid, $repo->{hash} );
-    return $self->real_sync_repo( $repo->{id} );
+    $self->write( 'SYNC', 'hub', $uuid, $hub->{hash} );
+    return $self->real_sync_hub( $hub->{id} );
 }
 
 sub import_project {

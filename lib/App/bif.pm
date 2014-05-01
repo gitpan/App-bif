@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_15';
+our $VERSION = '0.1.0_16';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -655,20 +655,23 @@ subcmd(
     comment => 'exchange updates with a hub',
 );
 
-arg id => (
-    isa     => 'Str',
-    comment => 'topic ID or project PATH',
+opt path => (
+    isa     => 'ArrayRef',
+    alias   => 'p',
+    comment => 'limit sync to a particular project',
 );
 
-arg hub => (
-    isa     => 'Str',
-    comment => 'hub repository address or alias',
+opt hub => (
+    isa     => 'ArrayRef',
+    alias   => 'H',
+    comment => 'limit sync to a particular hub',
 );
 
 opt message => (
     isa     => 'Str',
     alias   => 'm',
     default => '',
+    hidden  => 1,
     comment => 'message for multiple test script updates / second ',
 );
 
@@ -756,7 +759,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_15 (2014-04-25)
+0.1.0_16 (2014-05-01)
 
 =head1 SYNOPSIS
 

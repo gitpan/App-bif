@@ -1,0 +1,349 @@
+CREATE TABLE projects (
+    id INTEGER NOT NULL PRIMARY KEY,
+    parent_id INTEGER,
+    name VARCHAR(40) NOT NULL,
+    title VARCHAR(1024) NOT NULL,
+    path VARCHAR collate nocase,
+    status_id INTEGER NOT NULL DEFAULT -1,
+    hub_id INTEGER,
+    local INTEGER,
+    hash VARCHAR,
+    num_updates INTEGER,
+    FOREIGN KEY(id) REFERENCES topics(id)
+        ON DELETE CASCADE
+    FOREIGN KEY(parent_id) REFERENCES projects(id)
+        ON DELETE CASCADE,
+    FOREIGN KEY(hub_id) REFERENCES hubs(id)
+        ON DELETE CASCADE
+    FOREIGN KEY(status_id,id) REFERENCES project_status(id,project_id)
+        DEFERRABLE INITIALLY DEFERRED
+);
+
+CREATE UNIQUE INDEX projects_path_hub_id ON projects(path,hub_id);
+
+CREATE TRIGGER ad_projects_1
+AFTER DELETE ON
+    projects
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        OLD.id
+    );
+
+    DELETE FROM
+        projects_tomerge
+    WHERE
+        project_id = OLD.id
+    ;
+
+    DELETE FROM
+        updates
+    WHERE
+        id = (
+            SELECT
+                first_update_id
+            FROM
+                topics
+            WHERE
+                id = OLD.id
+        )
+    ;
+
+END;
+
+CREATE TRIGGER bd_projects_1
+BEFORE DELETE ON
+    projects
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        OLD.id
+    );
+END;
+
+CREATE TRIGGER tree_ai_projects_1
+AFTER INSERT ON
+    projects
+FOR EACH ROW 
+BEGIN
+
+    
+
+    INSERT INTO
+        projects_tree (
+            parent,
+            child,
+            depth
+        )
+    VALUES (
+        NEW.id,
+        NEW.id,
+        0
+    );
+
+    
+
+    INSERT INTO
+        projects_tree (
+            parent,
+            child,
+            depth
+        )
+    SELECT
+        x.parent,
+        NEW.id,
+        x.depth + 1
+    FROM
+        projects_tree x
+    WHERE
+        x.child = NEW.parent_id
+    ;
+
+END;
+
+CREATE TRIGGER tree_ai_projects_2
+AFTER INSERT ON
+    projects
+FOR EACH ROW WHEN
+    NEW.parent_id IS NULL
+BEGIN
+
+    UPDATE
+        projects
+    SET
+        path = name
+    WHERE
+        id = NEW.id
+    ;
+
+END;
+
+CREATE TRIGGER tree_ai_projects_3
+AFTER INSERT ON
+    projects
+FOR EACH ROW WHEN
+    NEW.parent_id IS NOT NULL
+BEGIN
+
+    UPDATE
+        projects
+    SET
+        path = (
+            SELECT
+                path || '/' || NEW.name
+            FROM
+                projects
+            WHERE
+                id = NEW.parent_id
+        )
+    WHERE
+        id = NEW.id
+    ;
+
+END;
+
+CREATE TRIGGER tree_au_projects_1
+AFTER UPDATE OF
+    name
+ON
+    projects
+FOR EACH ROW WHEN
+    OLD.name != NEW.name
+BEGIN
+
+    
+
+    UPDATE
+        projects
+    SET
+        path = 
+            CASE WHEN
+                NEW.parent_id IS NOT NULL
+            THEN
+                (SELECT
+                    path
+                 FROM
+                    projects
+                 WHERE
+                    id = NEW.parent_id
+                ) || '/' || name
+            ELSE
+                name
+            END
+    WHERE
+        id = OLD.id
+    ;
+
+    
+
+    UPDATE
+        projects
+    SET
+        path = (
+            SELECT
+                path
+            FROM
+                projects
+            WHERE
+                id = OLD.id
+        ) || SUBSTR(path, LENGTH(OLD.path) + 1)
+    WHERE
+        id IN (
+            SELECT
+                child
+            FROM
+                projects_tree
+            WHERE
+                parent = OLD.id AND depth > 0
+        )
+    ;
+
+END;
+
+CREATE TRIGGER tree_au_projects_2
+AFTER UPDATE OF
+    parent_id
+ON
+    projects
+FOR EACH ROW WHEN
+    OLD.parent_id IS NOT NULL
+BEGIN
+    UPDATE
+        projects
+    SET
+        path = substr(path, (
+            SELECT
+                length(path || '/') + 1
+            FROM
+                projects
+            WHERE
+                id = OLD.parent_id
+        ))
+    WHERE
+        id IN (
+            SELECT
+                child
+            FROM
+                projects_tree
+            WHERE
+                parent = OLD.parent_id AND depth > 0
+        )
+    ;
+
+END;
+
+CREATE TRIGGER tree_au_projects_3
+AFTER UPDATE OF
+    parent_id
+ON
+    projects
+FOR EACH ROW WHEN
+    OLD.parent_id IS NOT NULL AND 
+    ( NEW.parent_id IS NULL OR NEW.parent_id != OLD.parent_id)
+BEGIN
+    DELETE FROM
+        projects_tree
+    WHERE
+        treeid IN (
+            SELECT
+                r2.treeid
+            FROM
+                projects_tree r1
+            INNER JOIN
+                projects_tree r2
+            ON
+                r1.child = r2.child AND r2.depth > r1.depth
+            WHERE
+                r1.parent = NEW.id
+        )
+    ;
+END;
+
+CREATE TRIGGER tree_au_projects_4
+AFTER UPDATE OF
+    parent_id
+ON
+    projects
+FOR EACH ROW WHEN
+    NEW.parent_id IS NOT NULL AND 
+    ( OLD.parent_id IS NULL OR NEW.parent_id != OLD.parent_id )
+BEGIN
+
+    INSERT INTO
+        projects_tree (parent, child, depth)
+    SELECT
+        r1.parent, r2.child, r1.depth + r2.depth + 1
+    FROM
+        projects_tree r1
+    INNER JOIN
+        projects_tree r2
+    ON
+        r2.parent = NEW.id
+    WHERE
+        r1.child = NEW.parent_id
+    ;
+
+END;
+
+CREATE TRIGGER tree_au_projects_5
+AFTER UPDATE OF
+    parent_id
+ON
+    projects
+FOR EACH ROW WHEN
+    NEW.parent_id IS NOT NULL AND
+    ( OLD.parent_id IS NULL OR NEW.parent_id != OLD.parent_id )
+BEGIN
+
+    UPDATE
+        projects
+    SET
+        path = (
+            SELECT
+                path
+            FROM
+                projects
+            WHERE
+                id = NEW.parent_id
+        ) || '/' || path
+    WHERE
+        id IN (
+            SELECT
+                child
+            FROM
+                projects_tree
+            WHERE parent = NEW.parent_id AND depth > 0
+        )
+    ;
+
+END;
+
+CREATE TRIGGER tree_bu_projects_1
+BEFORE UPDATE OF
+    id
+ON
+    projects
+FOR EACH ROW WHEN
+    OLD.id != NEW.id
+BEGIN
+    SELECT RAISE (ABORT, 'Changing ids is forbidden.');
+END;
+
+CREATE TRIGGER tree_bu_projects_2
+BEFORE UPDATE OF
+    parent_id
+ON
+    projects
+FOR EACH ROW WHEN
+    NEW.parent_id IS NOT NULL AND
+    (SELECT
+        COUNT(child) > 0
+     FROM
+        projects_tree
+     WHERE
+        child = NEW.parent_id AND parent = NEW.id
+    )
+BEGIN
+    SELECT RAISE (ABORT,
+        'Update blocked, because it would create loop in tree.');
+END;
