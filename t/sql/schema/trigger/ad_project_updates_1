@@ -1,0 +1,30 @@
+CREATE TRIGGER ad_project_updates_1
+AFTER DELETE ON
+    project_updates
+FOR EACH ROW
+BEGIN
+
+    SELECT debug(
+        'TRIGGER ad_project_updates_1',
+        OLD.project_id,
+        OLD.name,
+        OLD.status_id,
+        OLD.parent_id
+    );
+
+    INSERT OR IGNORE INTO
+        projects_tomerge(project_id) VALUES (OLD.project_id);
+
+    UPDATE
+        projects_tomerge
+    SET
+        parent_id = parent_id + (OLD.parent_id IS NOT NULL),
+        name      = name + (OLD.name IS NOT NULL),
+        title     = title + (OLD.title IS NOT NULL),
+        status_id = status_id + (OLD.status_id IS NOT NULL),
+        hub_id   = hub_id + (OLD.hub_uuid IS NOT NULL)
+    WHERE
+        project_id = OLD.project_id
+    ;
+
+END;

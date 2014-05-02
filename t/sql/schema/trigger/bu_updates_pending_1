@@ -1,0 +1,37 @@
+CREATE TRIGGER bu_updates_pending_1
+BEFORE UPDATE ON
+    updates_pending
+FOR EACH ROW WHEN
+    NEW.resolve = 1
+BEGIN
+
+    SELECT debug(
+        'TRIGGER bu_updates_pending_1',
+        NEW.update_id,
+        NEW.terms
+    );
+
+    UPDATE
+        updates
+    SET
+        uuid = sha1_hex(NEW.terms)
+    WHERE
+        id = NEW.update_id
+    ;
+
+    UPDATE
+        updates
+    SET
+        prefix = SUBSTR(uuid, 1, 5)
+    WHERE
+        id = NEW.update_id
+    ;
+
+    DELETE FROM
+        updates_pending
+    WHERE
+        update_id = NEW.update_id
+    ;
+
+    SELECT RAISE(IGNORE);
+END;

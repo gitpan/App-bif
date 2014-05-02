@@ -1,0 +1,28 @@
+CREATE TRIGGER ad_hub_location_updates_1
+AFTER DELETE ON
+    hub_location_updates
+FOR EACH ROW
+BEGIN
+
+    SELECT debug(
+        'TRIGGER ad_hub_location_updates_1',
+        OLD.update_id,
+        OLD.hub_location_id,
+        OLD.location
+    );
+
+    INSERT OR IGNORE INTO
+        hub_locations_tomerge(hub_location_id)
+    VALUES
+        (OLD.hub_location_id)
+    ;
+
+    UPDATE
+        hub_locations_tomerge
+    SET
+        location = location + (OLD.location IS NOT NULL)
+    WHERE
+        hub_location_id = OLD.hub_location_id
+    ;
+
+END;

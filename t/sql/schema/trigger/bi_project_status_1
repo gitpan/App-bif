@@ -1,0 +1,13 @@
+CREATE TRIGGER bi_project_status_1
+BEFORE INSERT ON
+    project_status
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        'TRIGGER bi_project_status_1',
+        NEW.id,
+        NEW.project_id,
+        NEW.status,
+        NEW.rank
+    );
+END;

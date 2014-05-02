@@ -1,4 +1,5 @@
 CREATE TABLE func_import_issue_update(
+    update_uuid VARCHAR(40) NOT NULL,
     issue_uuid VARCHAR(40),
     project_uuid VARCHAR(40),
     issue_status_uuid VARCHAR(40),
@@ -14,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'bi_func_import_issue_update_1',
+        NEW.update_uuid,
         NEW.issue_uuid,
         NEW.project_uuid,
         NEW.issue_status_uuid,
@@ -23,18 +24,24 @@ BEGIN
 
     INSERT INTO
         func_update_issue(
+            update_id,
             id,
             project_id,
             status_id,
             title
         )
     SELECT
+        u.id,
         issues.id,
         projects.id,
         issue_status.id,
         NEW.title
     FROM
         (SELECT 1)
+    INNER JOIN
+        updates u
+    ON
+        u.uuid = NEW.update_uuid
     LEFT JOIN
         topics AS issues
     ON

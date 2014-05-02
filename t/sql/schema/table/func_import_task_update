@@ -1,0 +1,6 @@
+CREATE TABLE func_import_task_update(
+    update_uuid VARCHAR(40) NOT NULL,
+    task_uuid VARCHAR(40),
+    task_status_uuid VARCHAR(40),
+    title VARCHAR(1024)
+);

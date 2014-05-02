@@ -1,4 +1,5 @@
 CREATE TABLE func_import_project_update(
+    update_uuid VARCHAR(40) NOT NULL,
     project_uuid VARCHAR(40) NOT NULL,
     parent_uuid VARCHAR(40),
     status_uuid VARCHAR(40),
@@ -16,7 +17,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_import_project_update_1',
+        NEW.update_uuid,
         NEW.project_uuid,
         NEW.parent_uuid,
         NEW.status_uuid,
@@ -27,6 +28,7 @@ BEGIN
 
     INSERT INTO
         func_update_project(
+            update_id,
             id,
             parent_id,
             status_id,
@@ -35,6 +37,7 @@ BEGIN
             title
         )
     SELECT
+        u.id,
         projects.id,
         parents.id,
         project_status.id,
@@ -43,6 +46,10 @@ BEGIN
         NEW.title
     FROM
         topics AS projects
+    INNER JOIN
+        updates u
+    ON
+        u.uuid = NEW.update_uuid
     LEFT JOIN
         topics AS parents
     ON

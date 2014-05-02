@@ -1,0 +1,4 @@
+CREATE TABLE func_import_hub(
+    update_uuid VARCHAR(40) NOT NULL,
+    location VARCHAR(40) NOT NULL
+);

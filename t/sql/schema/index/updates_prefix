@@ -1,0 +1,1 @@
+CREATE INDEX updates_prefix ON updates(prefix) ;

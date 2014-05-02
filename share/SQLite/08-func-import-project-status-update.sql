@@ -1,4 +1,5 @@
 CREATE TABLE func_import_project_status_update(
+    update_uuid VARCHAR(40) NOT NULL,
     project_status_uuid VARCHAR(40) NOT NULL,
     status VARCHAR(40),
     rank INTEGER,
@@ -14,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_import_project_status_update_1',
+        NEW.update_uuid,
         NEW.project_status_uuid,
         NEW.status,
         NEW.rank,
@@ -23,17 +24,23 @@ BEGIN
 
     INSERT INTO
         func_update_project_status(
+            update_id,
             status,
             rank,
             def
         )
     SELECT
+        u.id,
         project_status.id,
         NEW.status,
         NEW.rank,
         NEW.def
     FROM
         topics AS project_status
+    INNER JOIN
+        updates u
+    ON
+        u.uuid = NEW.update_uuid
     WHERE
         project_status.uuid = NEW.project_status_uuid
     ;

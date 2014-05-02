@@ -1,0 +1,39 @@
+CREATE TRIGGER tree_ai_projects_1
+AFTER INSERT ON
+    projects
+FOR EACH ROW 
+BEGIN
+
+    
+
+    INSERT INTO
+        projects_tree (
+            parent,
+            child,
+            depth
+        )
+    VALUES (
+        NEW.id,
+        NEW.id,
+        0
+    );
+
+    
+
+    INSERT INTO
+        projects_tree (
+            parent,
+            child,
+            depth
+        )
+    SELECT
+        x.parent,
+        NEW.id,
+        x.depth + 1
+    FROM
+        projects_tree x
+    WHERE
+        x.child = NEW.parent_id
+    ;
+
+END;

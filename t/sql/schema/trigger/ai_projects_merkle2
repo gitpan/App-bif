@@ -1,0 +1,20 @@
+CREATE TRIGGER ai_projects_merkle2
+AFTER INSERT ON
+    projects_merkle
+FOR EACH ROW WHEN
+    NEW.num_updates = 0
+BEGIN
+    SELECT debug(
+        'ai_projects_merkle2',
+        NEW.project_id,
+        NEW.prefix,
+        NEW.hash,
+        NEW.num_updates
+    );
+
+    DELETE FROM
+        projects_merkle
+    WHERE
+        project_id = NEW.project_id AND prefix = NEW.prefix
+    ;
+END;

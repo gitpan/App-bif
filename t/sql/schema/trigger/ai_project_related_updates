@@ -1,0 +1,28 @@
+CREATE TRIGGER ai_project_related_updates
+AFTER INSERT ON
+    project_related_updates
+FOR EACH ROW WHEN
+    NEW.project_only = 1
+BEGIN
+    SELECT debug(
+        'ai_project_related_updates',
+        NEW.update_id,
+        NEW.project_id,
+        NEW.project_only
+    );
+
+    INSERT INTO
+        hub_related_updates(
+            hub_id,
+            update_id
+        )
+    SELECT
+        p.hub_id,
+        NEW.update_id
+    FROM
+        projects p
+    WHERE
+        p.id = NEW.project_id AND
+        p.hub_id IS NOT NULL
+    ;
+END;

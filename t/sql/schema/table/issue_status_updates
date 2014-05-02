@@ -1,0 +1,15 @@
+CREATE TABLE issue_status_updates (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('update_order')),
+    update_id INTEGER NOT NULL,
+    issue_status_id INTEGER NOT NULL,
+    new INTEGER,
+    status VARCHAR,
+    rank INTEGER,
+    def INTEGER,
+    UNIQUE(update_id,issue_status_id), -- one change per update
+    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE
+    FOREIGN KEY(issue_status_id) REFERENCES issue_status(id) ON DELETE CASCADE,
+    CONSTRAINT def_constraint CHECK (
+        def = 1 OR def IS NULL
+    )
+) WITHOUT ROWID;

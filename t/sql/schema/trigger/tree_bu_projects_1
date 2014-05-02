@@ -1,0 +1,10 @@
+CREATE TRIGGER tree_bu_projects_1
+BEFORE UPDATE OF
+    id
+ON
+    projects
+FOR EACH ROW WHEN
+    OLD.id != NEW.id
+BEGIN
+    SELECT RAISE (ABORT, 'Changing ids is forbidden.');
+END;

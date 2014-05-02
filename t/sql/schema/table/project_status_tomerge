@@ -1,0 +1,9 @@
+CREATE TABLE project_status_tomerge(
+    project_status_id INTEGER NOT NULL UNIQUE,
+    parent_id INTEGER DEFAULT 0,
+    status INTEGER DEFAULT 0,
+    rank INTEGER DEFAULT 0,
+    resolve INTEGER,
+    FOREIGN KEY(project_status_id) REFERENCES project_status(id)
+        ON DELETE CASCADE
+);

@@ -1,0 +1,53 @@
+CREATE TRIGGER bu_task_status_tomerge_4
+BEFORE UPDATE OF
+    resolve
+ON
+    task_status_tomerge
+FOR EACH ROW WHEN
+    NEW.resolve = 1 AND
+    OLD.def != 0
+BEGIN
+
+    SELECT debug(
+        'TRIGGER bu_task_status_tomerge_4',
+        OLD.task_status_id
+    );
+
+    UPDATE
+        task_status
+    SET
+        def = 1
+    WHERE
+        id = (
+            SELECT
+                all_updates.task_status_id
+            FROM
+                task_status_updates
+            INNER JOIN
+                task_status
+            ON
+                task_status.id = task_status_updates.task_status_id
+            INNER JOIN
+                task_status AS all_status
+            ON
+                all_status.project_id = task_status.project_id
+            INNER JOIN
+                task_status_updates AS all_updates
+            ON
+                all_updates.task_status_id = all_status.id AND
+                all_updates.def = 1
+            INNER JOIN
+                updates
+            ON
+                updates.id = all_updates.update_id
+            WHERE
+                task_status_updates.task_status_id = OLD.task_status_id
+            ORDER BY
+                updates.mtime DESC,
+                updates.uuid
+            LIMIT
+                1
+        )
+    ;
+
+END;

@@ -1,0 +1,18 @@
+CREATE TRIGGER tree_bu_projects_2
+BEFORE UPDATE OF
+    parent_id
+ON
+    projects
+FOR EACH ROW WHEN
+    NEW.parent_id IS NOT NULL AND
+    (SELECT
+        COUNT(child) > 0
+     FROM
+        projects_tree
+     WHERE
+        child = NEW.parent_id AND parent = NEW.id
+    )
+BEGIN
+    SELECT RAISE (ABORT,
+        'Update blocked, because it would create loop in tree.');
+END;

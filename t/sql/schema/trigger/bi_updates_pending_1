@@ -1,0 +1,11 @@
+CREATE TRIGGER bi_updates_pending_1
+BEFORE INSERT ON
+    updates_pending
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        'TRIGGER bi_updates_pending_1',
+        NEW.update_id,
+        NEW.terms
+    );
+END;

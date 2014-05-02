@@ -10,8 +10,6 @@ CREATE TABLE func_import_update(
 );
 
 
--- TODO Can all of these func_imports be BEFORE INSERT triggers?
--- The question is how far up the stack a RAISE(IGNORE) goes.
 CREATE TRIGGER
     bi_func_import_update_1
 BEFORE INSERT ON

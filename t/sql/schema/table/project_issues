@@ -1,0 +1,12 @@
+CREATE TABLE project_issues (
+    id INTEGER NOT NULL PRIMARY KEY,
+    issue_id INTEGER NOT NULL,
+    project_id INTEGER NOT NULL,
+    status_id INTEGER NOT NULL,
+    update_id INTEGER NOT NULL,
+    UNIQUE (issue_id,project_id),
+    FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE,
+    FOREIGN KEY(project_id,status_id) REFERENCES issue_status(project_id,id)
+        ON DELETE CASCADE,
+    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE
+);

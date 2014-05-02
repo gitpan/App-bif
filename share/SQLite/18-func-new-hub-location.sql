@@ -15,6 +15,7 @@ BEGIN
     SELECT debug(
         'TRIGGER bi_func_new_hub_location_1',
         NEW.id,
+        NEW.update_id,
         NEW.hub_id,
         NEW.location
     );

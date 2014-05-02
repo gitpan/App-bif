@@ -65,10 +65,13 @@ run_in_tempdir {
                     insert_into => 'func_import_project',
                     values      => $xdb->xhash(
                         select => [
+                            'u.uuid AS update_uuid',
                             'project_updates.name AS name',
                             'project_updates.title AS title',
                         ],
-                        from => 'project_updates',
+                        from       => 'project_updates',
+                        inner_join => 'updates u',
+                        on         => 'u.id = project_updates.update_id',
                         where =>
                           { 'project_updates.project_id' => $project->{id} },
                         order_by => 'project_updates.id ASC',
@@ -80,11 +83,14 @@ run_in_tempdir {
                     insert_into => 'func_import_project_status',
                     values      => $xdb->xhash(
                         select => [
+                            'u.uuid AS update_uuid',
                             'project_status_updates.status AS status',
                             'project_status_updates.rank AS rank',
                             'topics.uuid AS project_uuid',
                         ],
                         from       => 'project_status_updates',
+                        inner_join => 'updates u',
+                        on         => 'u.id = project_status_updates.update_id',
                         inner_join => 'project_status',
                         on         => {
                             'project_status.id' => \
@@ -103,10 +109,13 @@ run_in_tempdir {
                     insert_into => 'func_import_project_update',
                     values      => $xdb->xhash(
                         select => [
+                            'u.uuid AS update_uuid',
                             'projects.uuid AS project_uuid',
                             'status.uuid AS status_uuid',
                         ],
                         from       => 'project_updates',
+                        inner_join => 'updates u',
+                        on         => 'u.id = project_updates.update_id',
                         inner_join => 'topics AS projects',
                         on => 'projects.id = project_updates.project_id',
                         inner_join => 'topics AS status',

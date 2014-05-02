@@ -1,0 +1,25 @@
+CREATE TRIGGER ad_issue_updates_2
+AFTER DELETE ON
+    issue_updates
+FOR EACH ROW WHEN
+    OLD.status_id IS NOT NULL
+BEGIN
+
+    SELECT debug(
+        OLD.update_id,
+        OLD.issue_id,
+        OLD.status_id,
+        OLD.title
+    );
+
+    INSERT OR IGNORE INTO
+        project_issues_tomerge(
+            issue_id,
+            project_id
+        )
+    VALUES(
+        OLD.issue_id,
+        OLD.project_id
+    );
+
+END;

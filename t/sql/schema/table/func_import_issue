@@ -1,0 +1,5 @@
+CREATE TABLE func_import_issue(
+    update_uuid VARCHAR(40) NOT NULL,
+    issue_status_uuid VARCHAR(40),
+    title VARCHAR(1024)
+);

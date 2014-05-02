@@ -1,0 +1,30 @@
+CREATE TRIGGER ad_tasks_1
+AFTER DELETE ON
+    tasks
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        OLD.id,
+        OLD.status_id
+    );
+
+    DELETE FROM
+        tasks_tomerge
+    WHERE
+        task_id = OLD.id
+    ;
+
+    DELETE FROM
+        updates
+    WHERE
+        id = (
+            SELECT
+                first_update_id
+            FROM
+                topics
+            WHERE
+                id = OLD.id
+        )
+    ;
+
+END;

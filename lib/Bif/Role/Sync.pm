@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_16';
+our $VERSION = '0.1.0_17';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -76,12 +76,15 @@ sub send_updates {
                 'hubs.uuid',    # for update
                 'hl.uuid AS default_location_uuid',
                 'hub_updates.related_update_uuid',
-                5,
+                'u.uuid AS update_uuid',
                 6,
                 qv(undef)->as('int_filler'),
+                8,
                 'hub_updates.id AS update_order',
             ],
             from       => 'hub_updates',
+            inner_join => 'updates u',
+            on         => 'u.id = hub_updates.update_id',
             inner_join => 'topics AS hubs',
             on         => 'hubs.id = hub_updates.hub_id',
             left_join  => 'topics AS hl',
@@ -90,9 +93,11 @@ sub send_updates {
 
             # hub_locations
             union_all_select => [
-                qv('hub_location')->as('kind'),
-                'hlu.new', 'h.uuid', 'hl2.uuid', 'hlu.location', 5, 6, 7,
-                'hlu.id AS update_order',
+                qv('hub_location')->as('kind'), 'hlu.new',
+                'h.uuid',                       'hl2.uuid',
+                'hlu.location',                 'u.uuid AS update_uuid',
+                6,                              7,
+                8,                              'hlu.id AS update_order',
             ],
             from       => 'updates u',
             inner_join => 'hub_location_updates hlu',
@@ -115,9 +120,12 @@ sub send_updates {
                 'project_updates.title',
                 'status.uuid',      # for update
                 'project_updates.hub_uuid',
+                'u.uuid AS update_uuid',
                 'project_updates.id AS update_order',
             ],
             from       => 'project_updates',
+            inner_join => 'updates u',
+            on         => 'u.id = project_updates.update_id',
             inner_join => 'topics AS projects',
             on         => 'projects.id = project_updates.project_id',
             left_join  => 'topics AS parents',
@@ -136,6 +144,7 @@ sub send_updates {
                 qv(undef)->as('varchar_filler'),
                 qv(undef)->as('varchar_filler2'),
                 'project_status_updates.rank',
+                'updates.uuid AS update_uuid',
                 'project_status_updates.id AS update_order',
             ],
             from       => 'updates',
@@ -164,6 +173,7 @@ sub send_updates {
                 'task_status_updates.def',
                 qv(undef)->as('varchar_filler2'),
                 'task_status_updates.rank',
+                'updates.uuid AS update_uuid',
                 'task_status_updates.id AS update_order',
             ],
             from       => 'updates',
@@ -191,6 +201,7 @@ sub send_updates {
                 'issue_status_updates.def',
                 qv(undef)->as('varchar_filler2'),
                 'issue_status_updates.rank',
+                'updates.uuid AS update_uuid',
                 'issue_status_updates.id AS update_order',
             ],
             from       => 'updates',
@@ -215,9 +226,10 @@ sub send_updates {
                 'tasks.uuid',          # for new
                 'status.uuid',         # for update
                 'task_updates.title',
-                qv(undef)->as('varchar_filler'),
-                qv(undef)->as('varchar_filler2'),
-                qv(undef)->as('int_filler'),
+                'updates.uuid AS update_uuid',
+                6,
+                7,
+                8,
                 'task_updates.id AS update_order',
             ],
             from       => 'updates',
@@ -241,8 +253,9 @@ sub send_updates {
                 'issue_status.uuid',    # for update
                 'issue_updates.title',
                 'projects.uuid',
-                qv(undef)->as('varchar_filler2'),
-                qv(undef)->as('int_filler'),
+                'updates.uuid AS update_uuid',
+                7,
+                8,
                 'issue_updates.id AS update_order',
             ],
             from       => 'updates',
@@ -296,6 +309,7 @@ sub write_parts {
                         hub_uuid              => $part->[2],
                         default_location_uuid => $part->[3],
                         related_update_uuid   => $part->[4],
+                        update_uuid           => $part->[5],
                     }
 
                 );
@@ -307,8 +321,9 @@ sub write_parts {
                     'NEW',
                     'hub_location',
                     {
-                        hub_uuid => $part->[2],
-                        location => $part->[4],
+                        hub_uuid    => $part->[2],
+                        location    => $part->[4],
+                        update_uuid => $part->[5],
                     }
                 );
             }
@@ -319,6 +334,7 @@ sub write_parts {
                     {
                         hub_location_uuid => $part->[3],
                         location          => $part->[4],
+                        update_uuid       => $part->[5],
                     }
                 );
             }
@@ -332,6 +348,7 @@ sub write_parts {
                         parent_uuid => $part->[3],
                         name        => $part->[4],
                         title       => $part->[5],
+                        update_uuid => $part->[8],
                     }
                 );
             }
@@ -346,6 +363,7 @@ sub write_parts {
                         title        => $part->[5],
                         status_uuid  => $part->[6],
                         hub_uuid     => $part->[7],
+                        update_uuid  => $part->[8],
                     }
                 );
             }
@@ -359,6 +377,7 @@ sub write_parts {
                         project_uuid => $part->[2],
                         status       => $part->[4],
                         rank         => $part->[7],
+                        update_uuid  => $part->[8],
                     }
                 );
             }
@@ -370,6 +389,7 @@ sub write_parts {
                         project_status_uuid => $part->[3],
                         status              => $part->[4],
                         rank                => $part->[7],
+                        update_uuid         => $part->[8],
                     }
                 );
             }
@@ -384,6 +404,7 @@ sub write_parts {
                         status       => $part->[4],
                         def          => $part->[5],
                         rank         => $part->[7],
+                        update_uuid  => $part->[8],
                     }
                 );
             }
@@ -396,6 +417,7 @@ sub write_parts {
                         status           => $part->[4],
                         def              => $part->[5],
                         rank             => $part->[7],
+                        update_uuid      => $part->[8],
                     }
                 );
             }
@@ -410,6 +432,7 @@ sub write_parts {
                         status       => $part->[4],
                         def          => $part->[5],
                         rank         => $part->[7],
+                        update_uuid  => $part->[8],
                     }
                 );
             }
@@ -422,6 +445,7 @@ sub write_parts {
                         status            => $part->[4],
                         def               => $part->[5],
                         rank              => $part->[7],
+                        update_uuid       => $part->[8],
                     }
                 );
             }
@@ -433,6 +457,7 @@ sub write_parts {
                     {
                         task_status_uuid => $part->[3],
                         title            => $part->[4],
+                        update_uuid      => $part->[5],
                     }
                 );
             }
@@ -443,6 +468,7 @@ sub write_parts {
                         task_uuid        => $part->[2],
                         task_status_uuid => $part->[3],
                         title            => $part->[4],
+                        update_uuid      => $part->[5],
                     }
                 );
             }
@@ -454,6 +480,7 @@ sub write_parts {
                     {
                         issue_status_uuid => $part->[3],
                         title             => $part->[4],
+                        update_uuid       => $part->[6],
                     }
                 );
             }
@@ -465,6 +492,7 @@ sub write_parts {
                         issue_status_uuid => $part->[3],
                         title             => $part->[4],
                         project_uuid      => $part->[5],
+                        update_uuid       => $part->[6],
                     }
                 );
             }

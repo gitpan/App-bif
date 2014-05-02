@@ -1,0 +1,13 @@
+CREATE TRIGGER bi_hub_related_updates
+BEFORE INSERT ON
+    hub_related_updates
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        'bi_hub_related_updates',
+        NEW.hub_id,
+        NEW.update_id,
+        NEW.merkled
+    );
+
+END;

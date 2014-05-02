@@ -1,0 +1,9 @@
+CREATE TRIGGER bu_topics
+BEFORE UPDATE OF
+    ctime,ctimetz,first_update_id
+ON
+    topics
+FOR EACH ROW
+BEGIN
+    SELECT RAISE(ABORT, 'cannot modify topics.ctime*,first_update_id');
+END;

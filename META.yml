@@ -72,4 +72,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.0_16
+version: 0.1.0_17

@@ -1,0 +1,12 @@
+CREATE TABLE task_updates (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('update_order')),
+    update_id INTEGER NOT NULL,
+    task_id INTEGER NOT NULL,
+    new INTEGER,
+    status_id INTEGER,
+    title VARCHAR(1024),
+    UNIQUE(update_id,task_id), -- one change per update
+    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE,
+    FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
+    FOREIGN KEY(status_id) REFERENCES task_status(id)--,
+) WITHOUT ROWID;

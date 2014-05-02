@@ -1,0 +1,12 @@
+CREATE TRIGGER bd_topics_1
+BEFORE DELETE ON topics
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        'TRIGGER bd_topics_1',
+        OLD.id,
+        OLD.first_update_id,
+        OLD.kind
+    );
+
+END;

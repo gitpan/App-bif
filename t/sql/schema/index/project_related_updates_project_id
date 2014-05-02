@@ -1,0 +1,4 @@
+CREATE INDEX project_related_updates_project_id
+ON
+    project_related_updates(project_id)
+;

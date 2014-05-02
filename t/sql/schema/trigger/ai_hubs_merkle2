@@ -1,0 +1,20 @@
+CREATE TRIGGER ai_hubs_merkle2
+AFTER INSERT ON
+    hubs_merkle
+FOR EACH ROW WHEN
+    NEW.num_updates = 0
+BEGIN
+    SELECT debug(
+        'ai_hubs_merkle2',
+        NEW.hub_id,
+        NEW.prefix,
+        NEW.hash,
+        NEW.num_updates
+    );
+
+    DELETE FROM
+        hubs_merkle
+    WHERE
+        hub_id = NEW.hub_id AND prefix = NEW.prefix
+    ;
+END;

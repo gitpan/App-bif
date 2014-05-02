@@ -1,8 +1,8 @@
 CREATE TABLE func_new_hub(
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
+    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
     alias VARCHAR(40),
-    local INTEGER,
-    update_id INTEGER NOT NULL DEFAULT (currval('updates'))
+    local INTEGER
 );
 
 CREATE TRIGGER

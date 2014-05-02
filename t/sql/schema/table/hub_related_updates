@@ -1,0 +1,9 @@
+CREATE TABLE hub_related_updates(
+    hub_id INTEGER NOT NULL,
+    update_id INTEGER NOT NULL,
+    merkled INTEGER NOT NULL DEFAULT 0,
+    UNIQUE(hub_id,update_id) ON CONFLICT IGNORE,
+    CHECK (merkled = 0 OR merkled = 1),
+    FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE,
+    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE
+);

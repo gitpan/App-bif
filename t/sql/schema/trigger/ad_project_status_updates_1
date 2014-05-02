@@ -1,0 +1,30 @@
+CREATE TRIGGER ad_project_status_updates_1
+AFTER DELETE ON
+    project_status_updates
+FOR EACH ROW
+BEGIN
+
+    SELECT debug(
+        'TRIGGER ad_project_status_updates_1',
+        OLD.update_id,
+        OLD.project_status_id,
+        OLD.status,
+        OLD.rank
+    );
+
+    INSERT OR IGNORE INTO
+        project_status_tomerge(project_status_id)
+    VALUES
+        (OLD.project_status_id)
+    ;
+
+    UPDATE
+        project_status_tomerge
+    SET
+        status = status + (OLD.status IS NOT NULL),
+        rank   = rank + (OLD.rank IS NOT NULL)
+    WHERE
+        project_status_id = OLD.project_status_id
+    ;
+
+END;

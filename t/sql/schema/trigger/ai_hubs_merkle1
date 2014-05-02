@@ -1,0 +1,133 @@
+CREATE TRIGGER ai_hubs_merkle1
+AFTER INSERT ON
+    hubs_merkle
+FOR EACH ROW WHEN
+    length(NEW.prefix) = 5
+BEGIN
+    SELECT debug(
+        'ai_hubs_merkle1',
+        NEW.hub_id,
+        NEW.prefix,
+        NEW.hash,
+        NEW.num_updates
+    );
+
+    INSERT INTO
+        hubs_merkle(hub_id,prefix,hash,num_updates)
+    SELECT
+        NEW.hub_id,
+        substr(NEW.prefix,1,4) as prefix,
+        substr(agg_sha1_hex(hash, hash),1,8),
+        sum(num_updates) AS sum_num_updates
+    FROM
+        (SELECT
+            hash,num_updates
+        FROM
+            hubs_merkle
+        WHERE
+            hub_id = NEW.hub_id AND
+            prefix LIKE substr(NEW.prefix,1,4) || '_'
+        )
+    GROUP BY
+        NEW.hub_id,prefix
+    HAVING
+        sum_num_updates > 0
+    ;
+
+    INSERT INTO
+        hubs_merkle(hub_id,prefix,hash,num_updates)
+    SELECT
+        NEW.hub_id,
+        substr(NEW.prefix,1,3) as prefix,
+        substr(agg_sha1_hex(hash, hash),1,8),
+        sum(num_updates) AS sum_num_updates
+    FROM
+        (SELECT
+            hash,num_updates
+        FROM
+            hubs_merkle
+        WHERE
+            hub_id = NEW.hub_id AND
+            prefix LIKE substr(NEW.prefix,1,3) || '_'
+        )
+    GROUP BY
+        NEW.hub_id,prefix
+    HAVING
+        sum_num_updates > 0
+    ;
+
+    INSERT INTO
+        hubs_merkle(hub_id,prefix,hash,num_updates)
+    SELECT
+        NEW.hub_id,
+        substr(NEW.prefix,1,2) as prefix,
+        substr(agg_sha1_hex(hash, hash),1,8),
+        sum(num_updates) AS sum_num_updates
+    FROM
+        (SELECT
+            hash,num_updates
+        FROM
+            hubs_merkle
+        WHERE
+            hub_id = NEW.hub_id AND
+            prefix LIKE substr(NEW.prefix,1,2) || '_'
+        )
+    GROUP BY
+        NEW.hub_id,prefix
+    HAVING
+        sum_num_updates > 0
+    ;
+
+    INSERT INTO
+        hubs_merkle(hub_id,prefix,hash,num_updates)
+    SELECT
+        NEW.hub_id,
+        substr(NEW.prefix,1,1) as prefix,
+        substr(agg_sha1_hex(hash, hash),1,8),
+        sum(num_updates) AS sum_num_updates
+    FROM
+        (SELECT
+            hash,num_updates
+        FROM
+            hubs_merkle
+        WHERE
+            hub_id = NEW.hub_id AND
+            prefix LIKE substr(NEW.prefix,1,1) || '_'
+        )
+    GROUP BY
+        NEW.hub_id,prefix
+    HAVING
+        sum_num_updates > 0
+    ;
+    UPDATE
+        hubs
+    SET
+        hash = (
+            SELECT
+                substr(agg_sha1_hex(hash, hash),1,8)
+            FROM
+                (SELECT
+                      hash
+                FROM
+                    hubs_merkle
+                WHERE
+                    hub_id = NEW.hub_id AND
+                    prefix LIKE '_'
+                )
+            GROUP BY
+                NULL
+        ),
+        num_updates = (
+            SELECT
+                sum(num_updates)
+            FROM
+                hubs_merkle
+            WHERE
+                hub_id = NEW.hub_id AND
+                prefix LIKE '_'
+        )
+    WHERE
+        id = NEW.hub_id
+    ;
+
+END;

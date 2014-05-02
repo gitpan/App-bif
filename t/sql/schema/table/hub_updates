@@ -1,0 +1,12 @@
+CREATE TABLE hub_updates (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('update_order')),
+    update_id INTEGER NOT NULL DEFAULT NULL,
+    hub_id INTEGER NOT NULL,
+    related_update_uuid VARCHAR,
+    new INTEGER,
+    default_location_id INTEGER,
+    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE,
+    FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE,
+    FOREIGN KEY(default_location_id) REFERENCES hub_locations(id)
+        ON DELETE CASCADE
+) WITHOUT ROWID;

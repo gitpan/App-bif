@@ -1,0 +1,26 @@
+CREATE TRIGGER tree_au_projects_3
+AFTER UPDATE OF
+    parent_id
+ON
+    projects
+FOR EACH ROW WHEN
+    OLD.parent_id IS NOT NULL AND 
+    ( NEW.parent_id IS NULL OR NEW.parent_id != OLD.parent_id)
+BEGIN
+    DELETE FROM
+        projects_tree
+    WHERE
+        treeid IN (
+            SELECT
+                r2.treeid
+            FROM
+                projects_tree r1
+            INNER JOIN
+                projects_tree r2
+            ON
+                r1.child = r2.child AND r2.depth > r1.depth
+            WHERE
+                r1.parent = NEW.id
+        )
+    ;
+END;

@@ -1,0 +1,8 @@
+CREATE TABLE tasks_tomerge(
+    task_id INTEGER NOT NULL UNIQUE,
+    parent_id INTEGER DEFAULT 0,
+    status_id INTEGER DEFAULT 0,
+    title INTEGER DEFAULT 0,
+    resolve INTEGER,
+    FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
+);

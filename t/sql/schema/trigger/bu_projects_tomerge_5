@@ -1,0 +1,47 @@
+CREATE TRIGGER bu_projects_tomerge_5
+BEFORE UPDATE OF
+    resolve
+ON
+    projects_tomerge
+FOR EACH ROW WHEN
+    NEW.resolve = 1
+BEGIN
+
+    SELECT debug(
+        'TRIGGER bu_projects_tomerge_5',
+        OLD.project_id
+    );
+
+    UPDATE
+        topics
+    SET
+        mtime = (
+            SELECT
+                updates.mtime
+            FROM
+                project_updates
+            INNER JOIN
+                updates
+            ON
+                updates.id = project_updates.update_id
+            WHERE
+                project_updates.project_id = OLD.project_id
+            ORDER BY
+                updates.mtime DESC,
+                updates.uuid
+            LIMIT
+                1
+        )
+    WHERE
+        id = OLD.project_id
+    ;
+
+    DELETE FROM
+        projects_tomerge
+    WHERE
+        project_id = OLD.project_id
+    ;
+
+    SELECT RAISE(IGNORE);
+
+END;

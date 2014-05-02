@@ -1,0 +1,6 @@
+CREATE TABLE func_new_issue(
+    id INTEGER NOT NULL DEFAULT (nextval('topics')),
+    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
+    status_id INTEGER NOT NULL,
+    title VARCHAR(1024) NOT NULL DEFAULT ''
+);

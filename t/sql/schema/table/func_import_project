@@ -1,0 +1,6 @@
+CREATE TABLE func_import_project(
+    update_uuid VARCHAR(40) NOT NULL,
+    parent_uuid VARCHAR(40),
+    name VARCHAR(40) NOT NULL,
+    title VARCHAR(1024) NOT NULL
+);

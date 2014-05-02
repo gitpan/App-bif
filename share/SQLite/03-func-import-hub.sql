@@ -1,4 +1,5 @@
 CREATE TABLE func_import_hub(
+    update_uuid VARCHAR(40) NOT NULL,
     location VARCHAR(40) NOT NULL
 );
 
@@ -10,16 +11,22 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_import_hub_1',
+        NEW.update_uuid,
         NEW.location
     );
 
     -- DEFAULT VALUES doesn't work in a trigger?!?
     INSERT INTO
-        func_new_hub
-    VALUES(
-        null
-    );
+        func_new_hub(
+            update_id
+        )
+    SELECT
+        u.id
+    FROM
+        updates u
+    WHERE
+        u.uuid = NEW.update_uuid
+    ;
 
     SELECT RAISE(IGNORE);
 END;

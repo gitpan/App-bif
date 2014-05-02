@@ -1,0 +1,12 @@
+CREATE TABLE project_status_updates (
+    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('update_order')),
+    update_id INTEGER NOT NULL,
+    project_status_id INTEGER NOT NULL,
+    new INTEGER,
+    status VARCHAR,
+    rank INTEGER,
+    UNIQUE(update_id,project_status_id), -- one change per update
+    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE
+    FOREIGN KEY(project_status_id) REFERENCES project_status(id)
+        ON DELETE CASCADE
+) WITHOUT ROWID;

@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX projects_path_hub_id ON projects(path,hub_id);

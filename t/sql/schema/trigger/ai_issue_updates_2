@@ -1,0 +1,24 @@
+CREATE TRIGGER ai_issue_updates_2
+AFTER INSERT ON
+    issue_updates
+FOR EACH ROW WHEN
+    NEW.status_id IS NOT NULL
+BEGIN
+
+    SELECT debug(
+        'TRIGGER ai_issue_updates_2',
+        NEW.update_id,
+        NEW.issue_id,
+        NEW.project_id,
+        NEW.status_id,
+        NEW.title
+    );
+
+    INSERT OR IGNORE INTO
+        project_issues_tomerge(issue_id, project_id)
+    VALUES(
+        NEW.issue_id,
+        NEW.project_id
+    );
+
+END;
