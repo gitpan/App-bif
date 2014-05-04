@@ -8,8 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-
-my $VERSION = '0.1.0_17';
+my $VERSION = '0.1.0_18';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -49,10 +48,15 @@ WriteAll;
     my $lib     = path( $Bin, 'lib' );
     my $share   = path( $Bin, 'share' );
     my $t       = path( $Bin, 't' );
-    my $tbif    = $t->child('bif');
-    my $tbifsync = $t->child('bifsync');
 
-    system("ls -l $t");    # Tracking down MacOS issue
+    # MacOS has a case-preserving filesystem so we can't have t/Bif and
+    # t/bif together. Grrr.
+    my $tbif =
+      ( $^O eq 'darwin' or $^O eq 'MacOS' )
+      ? path( $Bin, 'bif' )
+      : $t->child('bif');
+
+    my $tbifsync = $t->child('bifsync');
 
     $tbif->spew_utf8(<<EOF);
 #!$^X
@@ -119,7 +123,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_17 (2014-05-02)
+HIDDEN0.1.0_18 (2014-05-04)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN

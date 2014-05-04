@@ -1,9 +1,0 @@
-CREATE TRIGGER tree_bu_updates_1
-BEFORE UPDATE OF
-    id, parent_id, mtime, mtimetz, author, email, lang
-ON
-    updates
-FOR EACH ROW
-BEGIN
-    SELECT RAISE (ABORT, 'Updates are immutable!');
-END;

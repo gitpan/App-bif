@@ -1,7 +1,0 @@
-CREATE TABLE func_update_task_status(
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
-    id INTEGER NOT NULL,
-    status VARCHAR(40),
-    rank INTEGER,
-    def INTEGER
-);

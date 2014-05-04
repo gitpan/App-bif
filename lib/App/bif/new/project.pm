@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -69,8 +69,8 @@ sub run {
             $db->xdo(
                 insert_into => 'func_new_project',
                 values      => {
-                    id        => $ctx->{id},
                     update_id => $ctx->{update_id},
+                    id        => $ctx->{id},
                     parent_id => $ctx->{parent_id},
                     name      => $ctx->{path},
                     title     => $ctx->{title},
@@ -81,10 +81,14 @@ sub run {
             $db->xdo(
                 insert_into => [
                     'func_new_project_status',
-                    qw/project_id status status rank/
+                    qw/update_id project_id status status rank/
                 ],
-                select => [ qv( $ctx->{id} ), qw/status status rank/, ],
-                from   => 'default_status',
+                select => [
+                    qv( $ctx->{update_id} ),
+                    qv( $ctx->{id} ),
+                    qw/status status rank/,
+                ],
+                from     => 'default_status',
                 where    => { kind => 'project' },
                 order_by => 'rank',
             );
@@ -120,10 +124,16 @@ sub run {
             );
 
             $db->xdo(
-                insert_into =>
-                  [ 'func_new_task_status', qw/project_id status rank def/ ],
-                select => [ qv( $ctx->{id} ), qw/status rank def/, ],
-                from   => 'default_status',
+                insert_into => [
+                    'func_new_task_status',
+                    qw/update_id project_id status rank def/
+                ],
+                select => [
+                    qv( $ctx->{update_id} ),
+                    qv( $ctx->{id} ),
+                    qw/status rank def/,
+                ],
+                from     => 'default_status',
                 where    => { kind => 'task' },
                 order_by => 'rank',
             );
@@ -131,10 +141,14 @@ sub run {
             $db->xdo(
                 insert_into => [
                     'func_new_issue_status',
-                    qw/project_id status status rank def/
+                    qw/update_id project_id status status rank def/
                 ],
-                select => [ qv( $ctx->{id} ), qw/status status rank def/, ],
-                from   => 'default_status',
+                select => [
+                    qv( $ctx->{update_id} ),
+                    qv( $ctx->{id} ),
+                    qw/status status rank def/,
+                ],
+                from     => 'default_status',
                 where    => { kind => 'issue' },
                 order_by => 'rank',
             );
@@ -149,6 +163,7 @@ sub run {
                     author  => $ctx->{user}->{name},
                     email   => $ctx->{user}->{email},
                     message => "new project $ctx->{id} [$ctx->{path}]",
+                    related_update_id => $ctx->{update_id},
                 }
             );
 
@@ -168,7 +183,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

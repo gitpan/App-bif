@@ -1,5 +1,5 @@
 CREATE TABLE func_new_project(
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     parent_id INTEGER,
     name VARCHAR(40),
@@ -82,6 +82,53 @@ BEGIN
         NEW.title,
         NEW.local
     );
+
+    INSERT INTO
+        updates(
+            id,
+            author,
+            email,
+            message
+        )
+    SELECT
+        nextval('updates'),
+        'bif system',
+        'bif system',
+        'Add project:' || p.uuid ||
+        ' to hub:' || ht.uuid
+    FROM
+        updates u
+    INNER JOIN
+        topics p
+    ON
+        p.id = NEW.id
+    INNER JOIN
+        hubs h
+    ON
+        h.local = 1
+    INNER JOIN
+        topics ht
+    ON
+        ht.id = h.id
+    WHERE
+        u.id = NEW.update_id
+    ;
+
+    INSERT INTO
+        hub_updates(
+            update_id,
+            hub_id,
+            project_id
+        )
+    SELECT
+        currval('updates'),
+        h.id,
+        NEW.id
+    FROM
+        hubs h
+    WHERE
+        h.local = 1
+    ;
 
     INSERT INTO
         project_updates(

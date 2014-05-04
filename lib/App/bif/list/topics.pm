@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -20,13 +20,20 @@ sub run {
     my @projects = $db->xarrays(
         select => [ 'projects.id', 'projects.path', 0 ],
         from   => 'projects',
-
-        #        inner_join => 'project_status',
-        #        on         => [
-        #            'projects.status_id = project_status.id AND ',
-        #            'project_status.status = ',
-        #            qv('active')
-        #        ],
+        do {
+            if ( $ctx->{project_status} ) {
+                (
+                    inner_join => 'project_status',
+                    on         => {
+                        'projects.status_id'    => \'project_status.id',
+                        'project_status.status' => $ctx->{project_status},
+                    }
+                );
+            }
+            else {
+                ();
+            }
+        },
         order_by => 'projects.path',
     );
 
@@ -125,7 +132,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

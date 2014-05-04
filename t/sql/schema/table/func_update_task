@@ -1,6 +1,0 @@
-CREATE TABLE func_update_task(
-    id INTEGER NOT NULL,
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
-    status_id INTEGER,
-    title VARCHAR
-);

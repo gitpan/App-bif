@@ -1,4 +1,0 @@
-CREATE INDEX issue_updates_issue_id_status_id
-ON
-    issue_updates(issue_id,status_id)
-;

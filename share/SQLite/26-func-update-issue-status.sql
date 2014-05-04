@@ -1,5 +1,5 @@
 CREATE TABLE func_update_issue_status(
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     status VARCHAR(40),
     rank INTEGER,

@@ -1,6 +1,6 @@
 CREATE TABLE func_new_task_status(
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
     project_id INTEGER,
     status VARCHAR(40) NOT NULL,
     rank INTEGER NOT NULL,

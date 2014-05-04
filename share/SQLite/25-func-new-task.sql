@@ -1,9 +1,9 @@
 CREATE TABLE func_new_task(
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     message text NOT NULL DEFAULT '',
     status_id INTEGER NOT NULL,
-    title VARCHAR(1024) NOT NULL DEFAULT '',
-    update_id INTEGER NOT NULL DEFAULT (currval('updates'))
+    title VARCHAR(1024) NOT NULL DEFAULT ''
 );
 
 

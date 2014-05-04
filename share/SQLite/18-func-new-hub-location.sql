@@ -1,6 +1,6 @@
 CREATE TABLE func_new_hub_location(
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
     hub_id INTEGER NOT NULL,
     location VARCHAR NOT NULL
 );

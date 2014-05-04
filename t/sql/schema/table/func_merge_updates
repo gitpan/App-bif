@@ -1,3 +1,0 @@
-CREATE TABLE func_merge_updates(
-    merge INTEGER NOT NULL
-);

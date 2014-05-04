@@ -34,6 +34,7 @@ run_in_tempdir {
                 insert_into => 'func_update_project',
                 values      => {
                     id        => $project->{id},
+                    update_id => $update->{id},
                     status_id => $ps->{id},
                 },
             );

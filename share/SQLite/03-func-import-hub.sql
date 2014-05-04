@@ -1,6 +1,5 @@
 CREATE TABLE func_import_hub(
-    update_uuid VARCHAR(40) NOT NULL,
-    location VARCHAR(40) NOT NULL
+    update_uuid VARCHAR(40) NOT NULL
 );
 
 CREATE TRIGGER
@@ -11,11 +10,9 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
-        NEW.location
+        NEW.update_uuid
     );
 
-    -- DEFAULT VALUES doesn't work in a trigger?!?
     INSERT INTO
         func_new_hub(
             update_id

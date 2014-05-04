@@ -5,7 +5,7 @@ use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub _invalid_status {
     my $self = shift;
@@ -70,6 +70,14 @@ sub run {
           unless $ctx->{hub_id};
 
     }
+    else {
+        ( $ctx->{hub_id} ) = $db->xarray(
+            select => 'h.id',
+            from   => 'hubs h',
+            where  => 'h.local = 1',
+        );
+        $ctx->{local} = 1;
+    }
 
     my $data = _get_data($ctx);
     return $ctx->ok('ListProjects') unless @$data;
@@ -131,7 +139,16 @@ sub _get_data {
             'sum( coalesce( total.closed, 0 ) )',
             'coalesce( p.local, 0 )',
         ],
-        from       => 'projects p',
+        from       => 'hub_related_projects hrp',
+        inner_join => 'projects p',
+        on         => do {
+            if ( $ctx->{local} ) {
+                'p.id = hrp.project_id AND p.local = 1';
+            }
+            else {
+                'p.id = hrp.project_id';
+            }
+        },
         left_join  => 'hubs h',
         on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
@@ -154,7 +171,16 @@ sub _get_data {
                 "sum(task_status.status = 'stalled') as stalled",
                 "sum(task_status.status = 'closed') as closed",
             ],
-            from => 'projects p',
+            from       => 'hub_related_projects hrp',
+            inner_join => 'projects p',
+            on         => do {
+                if ( $ctx->{local} ) {
+                    'p.id = hrp.project_id AND p.local = 1';
+                }
+                else {
+                    'p.id = hrp.project_id';
+                }
+            },
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
@@ -168,18 +194,11 @@ sub _get_data {
                     ();
                 }
             },
-            inner_join => 'task_status',
-            on         => 'task_status.project_id = p.id',
-            inner_join => 'tasks',
-            on         => 'tasks.status_id = task_status.id',
-            where      => do {
-                if ( $ctx->{hub_id} ) {
-                    { 'p.hub_id' => $ctx->{hub_id} };
-                }
-                else {
-                    'p.local = 1';
-                }
-            },
+            inner_join       => 'task_status',
+            on               => 'task_status.project_id = p.id',
+            inner_join       => 'tasks',
+            on               => 'tasks.status_id = task_status.id',
+            where            => { 'hrp.hub_id' => $ctx->{hub_id} },
             group_by         => 'p.id',
             union_all_select => [
                 'p.id',
@@ -187,7 +206,16 @@ sub _get_data {
                 "sum(issue_status.status = 'stalled') as stalled",
                 "sum(issue_status.status = 'closed') as closed",
             ],
-            from => 'projects p',
+            from       => 'hub_related_projects hrp',
+            inner_join => 'projects p',
+            on         => do {
+                if ( $ctx->{local} ) {
+                    'p.id = hrp.project_id AND p.local = 1';
+                }
+                else {
+                    'p.id = hrp.project_id';
+                }
+            },
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
@@ -206,25 +234,11 @@ sub _get_data {
             on         => 'issue_status.project_id = p.id',
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
-            where      => do {
-                if ( $ctx->{hub_id} ) {
-                    { 'p.hub_id' => $ctx->{hub_id} };
-                }
-                else {
-                    'p.local = 1';
-                }
-            },
-            group_by => 'p.id',
+            where      => { 'hrp.hub_id' => $ctx->{hub_id} },
+            group_by   => 'p.id',
           )->as('total'),
-        on    => 'p.id = total.id',
-        where => do {
-            if ( $ctx->{hub_id} ) {
-                { 'p.hub_id' => $ctx->{hub_id} };
-            }
-            else {
-                'p.local = 1';
-            }
-        },
+        on       => 'p.id = total.id',
+        where    => { 'hrp.hub_id' => $ctx->{hub_id} },
         group_by => [ 'p.path', 'p.title', 'project_status.status', ],
         order_by => 'p.path',
     );
@@ -240,7 +254,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub run {
     my $opts = shift;
@@ -188,7 +188,7 @@ bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

@@ -1,5 +1,5 @@
 CREATE TABLE func_update_project(
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     name VARCHAR(40),
     parent_id INTEGER,

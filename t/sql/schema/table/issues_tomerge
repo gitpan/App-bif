@@ -1,6 +1,0 @@
-CREATE TABLE issues_tomerge(
-    issue_id INTEGER NOT NULL UNIQUE,
-    title INTEGER DEFAULT 0,
-    resolve INTEGER,
-    FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE
-);

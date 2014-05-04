@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub run {
     my $ctx = shift;
@@ -136,17 +136,38 @@ sub run {
                         my $status = $client->export_project($pinfo);
                         print "\n";
 
-                        if ( $status eq 'ProjectExported' ) {
-                            print "Project exported: $pinfo->{path}\n";
-                        }
-                        elsif ( $status eq 'ProjectFound' ) {
+                        if ( $status eq 'ProjectFound' ) {
                             print "Project already exported: $pinfo->{path}\n";
                             $db->rollback;
                         }
-                        else {
+                        elsif ( $status ne 'ProjectExported' ) {
                             $db->rollback;
                             $error = $status;
                             last;
+                        }
+
+                    }
+
+                    if ( !$error ) {
+
+                        # Now get back the hub_related_updates that
+                        # exporting the projects just created
+
+                        $client->on_update(
+                            sub {
+                                $ctx->lprint("$hub->{alias} (meta): $_[0]");
+                            }
+                        );
+
+                        my $previous = $db->get_max_update_id;
+                        my $status   = $client->sync_hub( $hub->{id} );
+                        print "\n";
+
+                        unless ( $status eq 'RepoMatch'
+                            or $status eq 'RepoSync' )
+                        {
+                            $db->rollback;
+                            $error = $status;
                         }
                     }
 
@@ -167,7 +188,10 @@ sub run {
         return $cv->send( !$error );
     };
 
-    return $ctx->ok('Export') if $cv->recv;
+    if ( $cv->recv ) {
+        print "Project(s) exported: @{ $ctx->{path} }\n";
+        return $ctx->ok('Export');
+    }
     return $ctx->err( 'Unknown', $error );
 }
 
@@ -180,7 +204,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

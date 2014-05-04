@@ -1,6 +1,0 @@
-CREATE TABLE func_import_project_status(
-    update_uuid VARCHAR(40) NOT NULL,
-    project_uuid VARCHAR(40) NOT NULL,
-    status VARCHAR(40) NOT NULL,
-    rank INTEGER NOT NULL
-);

@@ -1,9 +1,0 @@
-CREATE TABLE issue_status_tomerge(
-    issue_status_id INTEGER NOT NULL UNIQUE,
-    parent_id INTEGER DEFAULT 0,
-    status INTEGER DEFAULT 0,
-    rank INTEGER DEFAULT 0,
-    def INTEGER DEFAULT 0,
-    resolve INTEGER,
-    FOREIGN KEY(issue_status_id) REFERENCES issue_status(id) ON DELETE CASCADE
-);

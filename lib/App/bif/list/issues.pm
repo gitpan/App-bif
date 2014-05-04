@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -103,7 +103,7 @@ bif-list-issues - list projects' issues
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

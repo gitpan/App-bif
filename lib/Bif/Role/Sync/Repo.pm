@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 my %import_functions = (
     NEW => {
@@ -14,7 +14,7 @@ my %import_functions = (
         issue_status   => 'func_import_issue_status',
         project        => 'func_import_project',
         project_status => 'func_import_project_status',
-        hub            => 'func_new_hub',
+        hub            => 'func_import_hub',
         hub_location   => 'func_import_hub_location',
         task           => 'func_import_task',
         task_status    => 'func_import_task_status',

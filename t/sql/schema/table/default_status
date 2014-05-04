@@ -1,9 +1,0 @@
-CREATE TABLE default_status (
-    project_type VARCHAR(40) NOT NULL DEFAULT 'default',
-    kind VARCHAR(40) NOT NULL,
-    status VARCHAR(40) NOT NULL,
-    rank INTEGER NOT NULL,
-    def INTEGER,
-    PRIMARY KEY (kind,status),
-    CHECK (def = 1 OR def IS NULL)
-);

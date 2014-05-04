@@ -1,7 +1,0 @@
-CREATE TABLE hub_locations_tomerge(
-    hub_location_id INTEGER NOT NULL UNIQUE,
-    location INTEGER DEFAULT 0,
-    resolve INTEGER,
-    FOREIGN KEY(hub_location_id) REFERENCES hub_locations(id)
-        ON DELETE CASCADE
-);

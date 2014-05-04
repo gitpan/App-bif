@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub new {
     my $proto = shift;
@@ -88,7 +88,8 @@ sub find_user_conf {
     $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
     $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
     $conf->{'user.alias'}->{ls} = 'list projects --status run';
-    $conf->{'user.alias'}->{ll} = 'list topics --status open';
+    $conf->{'user.alias'}->{ll} =
+      'list topics --status open --project-status run';
 
     print "Writing $file\n";
     $conf->write($file);
@@ -200,10 +201,12 @@ sub ok {
     return Bif::OK->new( {%$self}, $ok, @_ );
 }
 
+my $pager;
+
 sub start_pager {
     my $self  = shift;
     my $lines = shift;
-    return if $self->{_bif_no_pager} or exists $self->{_bif_pager};
+    return if $self->{_bif_no_pager} or $pager;
 
     if ($lines) {
         require Term::Size;
@@ -214,12 +217,10 @@ sub start_pager {
     local $ENV{'MORE'} = '-FXer' unless $^O =~ /^MSWin/;
 
     require IO::Pager;
-    my $pager = IO::Pager->new(*STDOUT);
-    $log->debug('ctx: start_pager');
-
+    $pager = IO::Pager->new(*STDOUT);
     $pager->binmode(':encoding(utf8)') if ref $pager;
 
-    $self->{_bif_pager} = $pager;
+    $log->debug('ctx: start_pager');
 
     $SIG{__DIE__} = sub {
         return if $^S or !defined $^S;
@@ -231,11 +232,11 @@ sub start_pager {
 
 sub end_pager {
     my $self = shift;
-    return unless $self->{_bif_pager};
+    return unless $pager;
 
     $log->debug('ctx: end_pager');
-    $self->{_bif_pager}->close;
-    delete $self->{_bif_pager};
+    $pager->close;
+    $pager = undef;
     delete $SIG{__DIE__};
     return;
 }
@@ -373,7 +374,7 @@ sub lprint {
     my $msg  = shift;
     my $old  = $self->{_bif_print} //= '';
 
-    if ( $self->{_bif_pager} or $self->{debug} ) {
+    if ( $pager or $self->{debug} ) {
         return print $msg . "\n";
     }
 
@@ -428,7 +429,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

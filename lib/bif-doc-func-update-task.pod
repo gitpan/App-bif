@@ -4,7 +4,7 @@ bif-doc-func-update-task - update a task topic
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

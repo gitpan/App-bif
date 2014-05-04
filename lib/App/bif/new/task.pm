@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_17';
+our $VERSION = '0.1.0_18';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -88,9 +88,10 @@ sub run {
 
             $db->update_repo(
                 {
-                    author  => $ctx->{user}->{name},
-                    email   => $ctx->{user}->{email},
-                    message => "new task $ctx->{id} [$pinfo->{path}]",
+                    author            => $ctx->{user}->{name},
+                    email             => $ctx->{user}->{email},
+                    message           => "new task $ctx->{id} [$pinfo->{path}]",
+                    related_update_id => $ctx->{update_id},
                 }
             );
 
@@ -110,7 +111,7 @@ bif-new-task - add a new task to a project
 
 =head1 VERSION
 
-0.1.0_17 (2014-05-02)
+0.1.0_18 (2014-05-04)
 
 =head1 SYNOPSIS
 

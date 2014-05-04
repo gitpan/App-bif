@@ -1,6 +1,0 @@
-CREATE TABLE updates_pending(
-    update_id INTEGER NOT NULL UNIQUE,
-    terms VARCHAR NOT NULL,
-    resolve INTEGER,
-    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE
-);

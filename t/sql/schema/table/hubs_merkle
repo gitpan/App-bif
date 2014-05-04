@@ -1,9 +1,0 @@
-CREATE TABLE hubs_merkle (
-    hub_id INTEGER,
-    prefix VARCHAR NOT NULL COLLATE NOCASE,
-    hash VARCHAR NOT NULL,
-    num_updates INTEGER NOT NULL,
-    FOREIGN KEY(hub_id) REFERENCES hubs(id)
-        ON DELETE CASCADE,
-    UNIQUE(hub_id,prefix)
-);

@@ -1,6 +1,6 @@
 CREATE TABLE func_update_issue(
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL, -- This is issues.id not project_issues.id!
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
     project_id INTEGER NOT NULL,
     status_id INTEGER,
     title VARCHAR

@@ -39,11 +39,10 @@ run_in_tempdir {
             $db->xdo(
                 insert_into => 'func_new_project',
                 values      => {
-                    id => $id,
-
-                    #                    update_id => $update_id,
-                    name  => 'name',
-                    title => 'title',
+                    id        => $id,
+                    update_id => $update_id,
+                    name      => 'name',
+                    title     => 'title',
                 }
             );
 
@@ -65,9 +64,9 @@ run_in_tempdir {
             $db->xdo(
                 insert_into => [
                     'func_new_project_status',
-                    qw/project_id status status rank/
+                    qw/update_id project_id status status rank/
                 ],
-                select => [ qv($id), qw/status status rank/, ],
+                select => [ qv($update_id), qv($id), qw/status status rank/, ],
                 from   => 'default_status',
                 where    => { kind => 'project' },
                 order_by => 'rank',
@@ -76,10 +75,11 @@ run_in_tempdir {
             $db->xdo(
                 insert_into => [
                     'func_new_task_status',
-                    qw/project_id status status rank def/
+                    qw/update_id project_id status status rank def/
                 ],
-                select => [ qv($id), qw/status status rank def/, ],
-                from   => 'default_status',
+                select =>
+                  [ qv($update_id), qv($id), qw/status status rank def/, ],
+                from     => 'default_status',
                 where    => { kind => 'task' },
                 order_by => 'rank',
             );
@@ -87,10 +87,11 @@ run_in_tempdir {
             $db->xdo(
                 insert_into => [
                     'func_new_issue_status',
-                    qw/project_id status status rank def/
+                    qw/update_id project_id status status rank def/
                 ],
-                select => [ qv($id), qw/status status rank def/, ],
-                from   => 'default_status',
+                select =>
+                  [ qv($update_id), qv($id), qw/status status rank def/, ],
+                from     => 'default_status',
                 where    => { kind => 'issue' },
                 order_by => 'rank',
             );
@@ -216,25 +217,16 @@ run_in_tempdir {
               ),
               [ $id, 'x' ], 'project_updates';
 
-            ok $db->xdo(
-                insert_into => 'func_new_project',
-                values      => {
-                    author => 'x',
-                    email  => 'x2',
-                    name   => 'x2',
-                },
-              ),
-              'insert project no IDs';
-
             eval {
                 $db->txn(
                     sub {
                         $db->xdo(
                             insert_into => 'func_new_project',
                             values      => {
-                                author => 'x',
-                                email  => 'x',
-                                name   => 'x2',
+                                update_id => $update_id,
+                                author    => 'x',
+                                email     => 'x',
+                                name      => 'x2',
                             },
                         );
                     }

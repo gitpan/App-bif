@@ -1,4 +1,0 @@
-CREATE INDEX hub_related_updates_update_id
-ON
-    hub_related_updates(update_id)
-;

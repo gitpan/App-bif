@@ -1,6 +1,6 @@
 CREATE TABLE func_new_hub(
+    update_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
-    update_id INTEGER NOT NULL DEFAULT (currval('updates')),
     alias VARCHAR(40),
     local INTEGER
 );

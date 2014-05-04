@@ -1,9 +1,0 @@
-CREATE TRIGGER bd_projects_1
-BEFORE DELETE ON
-    projects
-FOR EACH ROW
-BEGIN
-    SELECT debug(
-        OLD.id
-    );
-END;
