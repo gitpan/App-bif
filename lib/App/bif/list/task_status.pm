@@ -3,15 +3,13 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
     my $db  = $ctx->db;
 
-    my $pinfo = $ctx->get_project( $ctx->{path} )
-      || return $ctx->err( 'PathNotFound',
-        'project not found: ' . $ctx->{path} );
+    my $pinfo = $ctx->get_project( $ctx->{path} );
 
     DBIx::ThinSQL->import(qw/ qv case /);
 
@@ -49,7 +47,7 @@ bif-list-task-status - list valid task status/status values
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

@@ -114,17 +114,17 @@ BEGIN
             update_id
         )
     SELECT
-        t.id,
+        h.id,
         pru.update_id
     FROM
-        topics t
+        topics h
     INNER JOIN
         project_related_updates pru
     ON
         pru.project_id = NEW.project_id AND
         pru.project_only = 1
     WHERE
-        t.uuid = NEW.hub_uuid
+        h.uuid = NEW.hub_uuid
     ;
 
 END;

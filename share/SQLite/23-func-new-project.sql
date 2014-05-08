@@ -94,8 +94,8 @@ BEGIN
         nextval('updates'),
         'bif system',
         'bif system',
-        'Add project:' || p.uuid ||
-        ' to hub:' || ht.uuid
+        '[hub/project relation: ' || substr(ht.uuid,1,8) || '/' ||
+            substr(p.uuid,1,8) || ']'
     FROM
         updates u
     INNER JOIN

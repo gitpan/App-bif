@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -19,7 +19,7 @@ sub run {
 
     return $ctx->err( 'ProjectExists',
         'project already exists: ' . $ctx->{path} )
-      if $ctx->get_project( $ctx->{path} );
+      if eval { $ctx->get_project( $ctx->{path} ) };
 
     if ( $ctx->{path} =~ m/\// ) {
         my @parts = split( '/', $path );
@@ -27,7 +27,7 @@ sub run {
 
         my $parent_path = join( '/', @parts );
 
-        my $parent_pinfo = $ctx->get_project($parent_path)
+        my $parent_pinfo = eval { $ctx->get_project($parent_path) }
           || return $ctx->err( 'ParentProjectNotFound',
             'parent project not found: ' . $parent_path );
         $ctx->{parent_id} = $parent_pinfo->{id};
@@ -51,11 +51,21 @@ sub run {
 
     $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
     $ctx->{lang} ||= 'en';
-    $ctx->{id}        = $db->nextval('topics');
-    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
+            my $ruid = $db->nextval('updates');
+            $ctx->{id}        = $db->nextval('topics');
+            $ctx->{update_id} = $db->nextval('updates');
+
+            $ctx->update_repo(
+                {
+                    ruid    => $ruid,
+                    message => "new project $ctx->{id} [$ctx->{path}]",
+                    related_update_id => $ctx->{update_id},
+                }
+            );
+
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
@@ -108,6 +118,7 @@ sub run {
                     'default_status.status' => \'project_status.status',
                 },
                 where => do {
+
                     if ( $ctx->{status} ) {
                         {
                             'default_status.kind'   => 'project',
@@ -158,15 +169,6 @@ sub run {
                 values      => { merge => 1 },
             );
 
-            $db->update_repo(
-                {
-                    author  => $ctx->{user}->{name},
-                    email   => $ctx->{user}->{email},
-                    message => "new project $ctx->{id} [$ctx->{path}]",
-                    related_update_id => $ctx->{update_id},
-                }
-            );
-
         }
     );
 
@@ -183,7 +185,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

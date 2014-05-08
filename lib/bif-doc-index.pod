@@ -54,7 +54,11 @@
 
 =item * L<bif-log> - review the repository or topic history
 
+=item * L<bif-log-hub> - review a repository history
+
 =item * L<bif-show> - display a topics current status
+
+=item * L<bif-show-hub> - show a repository current status
 
 =back
 

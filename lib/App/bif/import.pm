@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
     my $ctx = shift;
@@ -71,12 +71,8 @@ sub run {
         eval {
             $db->txn(
                 sub {
-                    $db->update_repo(
+                    $ctx->update_repo(
                         {
-                            author => $ctx->{user}->{name},
-                            email  => $ctx->{user}->{email},
-
-            #                            related_update_id => $ctx->{update_id},
                             message =>
                               "import @{$ctx->{path}} $hub->{location}",
                         }
@@ -116,7 +112,11 @@ sub run {
             );
         };
 
-        $error .= $@ if $@;
+        if ($@) {
+            $error .= $@;
+            print "\n";
+        }
+
         $client->disconnect;
         return $cv->send( !$error );
     };
@@ -138,7 +138,7 @@ bif-import -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

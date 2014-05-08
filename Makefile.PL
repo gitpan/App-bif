@@ -8,7 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-my $VERSION = '0.1.0_18';
+my $VERSION = '0.1.0_19';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -44,7 +44,7 @@ WriteAll;
 {
     use Path::Tiny;
     my $bif     = path( $Bin, 'bin', 'bif' );
-    my $bifsync = path( $Bin, 'bin', 'bif' );
+    my $bifsync = path( $Bin, 'bin', 'bifsync' );
     my $lib     = path( $Bin, 'lib' );
     my $share   = path( $Bin, 'share' );
     my $t       = path( $Bin, 't' );
@@ -55,8 +55,6 @@ WriteAll;
       ( $^O eq 'darwin' or $^O eq 'MacOS' )
       ? path( $Bin, 'bif' )
       : $t->child('bif');
-
-    my $tbifsync = $t->child('bifsync');
 
     $tbif->spew_utf8(<<EOF);
 #!$^X
@@ -79,6 +77,7 @@ EOF
     $pod =~ s/.*__END__//sm;
     $tbif->append_utf8($pod);
 
+    my $tbifsync = $t->child('bifsync');
     $tbifsync->spew_utf8(<<EOF);
 #!$^X
 use strict;
@@ -123,7 +122,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_18 (2014-05-04)
+HIDDEN0.1.0_19 (2014-05-08)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN

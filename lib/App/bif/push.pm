@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -12,25 +12,17 @@ sub run {
     return $ctx->err( 'NotImplemented', '--copy not implemented yet' )
       if $ctx->{copy};
 
-    my $info = $db->get_topic( $ctx->{id} )
+    my $info = $ctx->get_topic( $ctx->{id} )
       || return $ctx->err( 'TopicNotFound', 'topic not found: ' . $ctx->{id} );
 
-    if ( $ctx->{hub} ) {
+    my $pinfo = $ctx->get_project( $ctx->{path}, $ctx->{hub} );
+
+    if ( $info->{kind} eq 'issue' ) {
+        return _push_issue( $ctx, $db, $info, $pinfo );
     }
-    else {
-        if ( $info->{kind} eq 'issue' ) {
-
-            my $pinfo = $ctx->get_project( $ctx->{path} )
-              || return $ctx->err( 'ProjectNotFound',
-                'project not found: ' . $ctx->{path} );
-
-            return _push_issue( $ctx, $db, $info, $pinfo );
-        }
-        elsif ( $info->{kind} eq 'task' ) {
-            return $ctx->err( 'NotImplemented',
-                'push not implemented: ' . $info->{kind} );
-        }
-
+    elsif ( $info->{kind} eq 'task' ) {
+        return $ctx->err( 'NotImplemented',
+            'push not implemented: ' . $info->{kind} );
     }
 
     return $ctx->err( 'PushInvalid',
@@ -68,6 +60,15 @@ sub _push_issue {
 
     $db->txn(
         sub {
+            $ctx->update_repo(
+                {
+                        message => 'push '
+                      . $info->{kind} . ' '
+                      . $info->{id} . ' '
+                      . $ctx->{path},
+                }
+            );
+
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
@@ -112,16 +113,6 @@ sub _push_issue {
                 values      => { merge => 1 },
             );
 
-            $db->update_repo(
-                {
-                    author  => $ctx->{user}->{name},
-                    email   => $ctx->{user}->{email},
-                    message => 'push '
-                      . $info->{kind} . ' '
-                      . $info->{id} . ' '
-                      . $ctx->{path},
-                }
-            );
         }
     );
 
@@ -138,7 +129,7 @@ bif-push - push a thread to another project
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

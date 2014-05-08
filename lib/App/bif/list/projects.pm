@@ -5,7 +5,7 @@ use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub _invalid_status {
     my $self = shift;
@@ -254,7 +254,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

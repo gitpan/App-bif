@@ -3,16 +3,12 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->dbw;
-
-    my $info =
-         $db->get_topic( $ctx->{id} )
-      || $ctx->get_project( $ctx->{id} )
-      || return $ctx->err( 'TopicNotFound', 'topic not found: ' . $ctx->{id} );
+    my $ctx  = App::bif::Context->new(shift);
+    my $db   = $ctx->dbw;
+    my $info = $ctx->get_topic( $ctx->{id} );
 
     $info->{update_id} = $info->{first_update_id};
 
@@ -50,6 +46,15 @@ sub _update_project {
 
     $db->txn(
         sub {
+            $ctx->update_repo(
+                {
+                    related_update_id => $ctx->{update_id},
+                    message           => 'update project '
+                      . "$info->{id} [$ctx->{id}]"
+                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
+                }
+            );
+
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
@@ -76,16 +81,6 @@ sub _update_project {
                 values      => { merge => 1 },
             );
 
-            $db->update_repo(
-                {
-                    author            => $ctx->{user}->{name},
-                    email             => $ctx->{user}->{email},
-                    related_update_id => $ctx->{update_id},
-                    message           => 'update project '
-                      . "$info->{id} [$ctx->{id}]"
-                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
-                }
-            );
         }
     );
 
@@ -153,10 +148,8 @@ sub _update_issue {
                 where  => { 'p.id' => $info->{project_id} },
             );
 
-            $db->update_repo(
+            $ctx->update_repo(
                 {
-                    author            => $ctx->{user}->{name},
-                    email             => $ctx->{user}->{email},
                     related_update_id => $ctx->{update_id},
                     message           => 'update issue '
                       . $info->{project_issue_id}
@@ -240,10 +233,8 @@ sub _update_task {
                 where      => { 't.id' => $ctx->{id} },
             );
 
-            $db->update_repo(
+            $ctx->update_repo(
                 {
-                    author            => $ctx->{user}->{name},
-                    email             => $ctx->{user}->{email},
                     related_update_id => $ctx->{update_id},
                     message           => 'update task '
                       . $ctx->{id}
@@ -272,7 +263,7 @@ bif-update - update or comment a topic
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

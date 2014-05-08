@@ -8,7 +8,7 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub new {
     my $proto = shift;
@@ -28,7 +28,7 @@ sub new {
 
     if ( $opts->{debug} ) {
         require Log::Any::Adapter;
-        Log::Any::Adapter->set('Stdout');
+        $self->{_bif_log_any_adapter} = Log::Any::Adapter->set('Stdout');
         $self->start_pager();
     }
 
@@ -87,7 +87,7 @@ sub find_user_conf {
 
     $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
     $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
-    $conf->{'user.alias'}->{ls} = 'list projects --status run';
+    $conf->{'user.alias'}->{ls} = 'list projects local --status run';
     $conf->{'user.alias'}->{ll} =
       'list topics --status open --project-status run';
 
@@ -282,6 +282,22 @@ sub dbw {
     return $dbw;
 }
 
+sub uuid2id {
+    my $self = shift;
+    my $try  = shift;
+
+    return $try unless exists $self->{uuid} && $self->{uuid};
+    my @list = $self->db->uuid2id($try);
+
+    return $self->err( 'UuidNotFound', "uuid not found: $try" )
+      unless @list;
+
+    return $self->err( 'UuidAmbiguous', "ambiguious uuid: $try" )
+      if @list > 1;
+
+    return $list[0]->[0];
+}
+
 sub get_project {
     my $self  = shift;
     my $path  = shift;
@@ -290,8 +306,19 @@ sub get_project {
     my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
     my @matches = $db->get_projects( $path, $alias );
 
-    return $self->err( 'AmbiguousPath', "ambiguous path: $path" )
-      if @matches > 1;
+    if ( !@matches ) {
+        if ($alias) {
+            return $self->err( 'HubNotFound', "hub not found: $alias" )
+              unless scalar $db->get_hub_locations($alias);
+
+            return $self->err( 'ProjectNotFound',
+                "project not found: $path ($alias)" );
+        }
+        return $self->err( 'ProjectNotFound', "project not found: $path" );
+    }
+    elsif ( @matches > 1 ) {
+        return $self->err( 'AmbiguousPath', "ambiguous path: $path" );
+    }
 
     return $matches[0];
 }
@@ -385,6 +412,106 @@ sub lprint {
     return $chars;
 }
 
+sub get_topic {
+    my $self = shift;
+    my $token = shift // return;
+
+    my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
+
+    CORE::state $have_qv = DBIx::ThinSQL->import(qw/ qv bv /);
+
+    if ( $token =~ m/^\d+$/ ) {
+        my $data = $db->xhash(
+            select => [
+                'topics.id',
+                'topics.kind',
+                'topics.uuid',
+                'topics.first_update_id',
+                qv(undef)->as('project_issue_id'),
+                qv(undef)->as('project_id'),
+            ],
+            from  => 'topics',
+            where => [
+                'topics.id = ',         bv($token),
+                ' AND topics.kind != ', qv('issue')
+            ],
+            union_all_select => [
+                'topics.id',
+                'topics.kind',
+                'topics.uuid',
+                'topics.first_update_id',
+                'project_issues.id AS project_issue_id',
+                'project_issues.project_id',
+            ],
+            from       => 'project_issues',
+            inner_join => 'topics',
+            on         => 'topics.id = project_issues.issue_id',
+            where      => { 'project_issues.id' => $token },
+        );
+
+        return $data if $data;
+    }
+
+    my $pinfo = eval { $self->get_project($token) };
+    return $pinfo if $pinfo;
+
+    return $self->err( 'TopicNotFound',
+        'topic, update or path not found: ' . $token );
+}
+
+sub update_repo {
+    my $self = shift;
+    my $ref  = shift;
+    my $dbw  = $self->{_bif_dbw} || $self->db;
+
+    $ref->{author} ||= $self->{user}->{name};
+    $ref->{email}  ||= $self->{user}->{email};
+    $ref->{ruid}   ||= $dbw->nextval('updates');
+    my $hub = $self->get_topic( $dbw->get_local_hub_id );
+
+    $dbw->xdo(
+        insert_into => 'updates',
+        values      => {
+            id        => $ref->{ruid},
+            parent_id => $hub->{first_update_id},
+            author    => $ref->{author},
+            email     => $ref->{email},
+            message   => $ref->{message},
+        },
+    );
+
+    # TODO related_update_uuid is useless because we now do the
+    # update_repo generally before the actual update and uuid isn't
+    # calculated. Get rid of it.
+
+    CORE::state $have_qv = DBIx::ThinSQL->import(qw/ qv /);
+    $dbw->xdo(
+        insert_into =>
+          [ 'hub_updates', qw/hub_id update_id related_update_uuid/ ],
+        select    => [ qv( $hub->{id} ), qv( $ref->{ruid} ), 'u.uuid', ],
+        from      => '(select 1)',
+        left_join => 'updates u',
+        on        => {
+            'u.id' => $ref->{related_update_id},
+        },
+    );
+
+    # TODO this will update other updates which we may not wish to
+    # happen... remove?
+    $dbw->xdo(
+        insert_into => 'func_merge_updates',
+        values      => { merge => 1 },
+    );
+
+    return;
+}
+
+sub DESTROY {
+    my $self = shift;
+    Log::Any::Adapter->remove( $self->{_bif_log_any_adapter} )
+      if $self->{_bif_log_any_adapter};
+}
+
 package Bif::OK;
 use overload
   bool     => sub { 1 },
@@ -429,7 +556,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 
@@ -560,6 +687,12 @@ You should manually import any L<DBIx::ThinSQL> functions you need only
 after calling C<$ctx->dbw>, in order to keep startup time short for
 cases such as when the repository is not found.
 
+=item uuid2id( $try ) -> Int
+
+Returns C<$try> unless a C<< $ctx->{uuid} >> option has been set.
+Returns C<< Bif::DB->uuid2id($try) >> if the lookup succeeds or else
+raises an error.
+
 =item get_project( $path, [ $hub ]) -> HashRef
 
 Calls C<get_projects> from C<Bif::DB> and raises an error if more than
@@ -585,6 +718,43 @@ If a pager is not active this method prints C<$msg> to STDOUT and
 returns the cursor to the beginning of the line.  The next call
 over-writes the previously printed text before printing the new
 C<$msg>. In this way a continually updating status can be displayed.
+
+=item get_topic( $TOKEN ) -> HashRef
+
+Looks up the topic identified by C<$TOKEN> and returns undef or a hash
+reference containg the following keys:
+
+=over
+
+=item * id - the topic ID
+
+=item * first_update_id - the update_id that created the topic
+
+=item * kind - the type of the topic
+
+=item * uuid - the universally unique identifier of the topic
+
+=back
+
+If the found topic is an issue then the following keys will also
+contain valid values:
+
+=over
+
+=item * project_issue_id - the project-specific topic ID
+
+=item * project_id - the project ID matching the project_issue_id
+
+=back
+
+
+=item update_repo($hashref)
+
+Create an update of the local repo from a hashref containing a ruid (an
+update_id), user name, a user email, and a message. C<$hashref> can
+optionally contain an update_id which will be converted into a uuid,
+used for uniqueness in the event that multiple calls to update_repo
+with the same values occur in the same second.
 
 =back
 

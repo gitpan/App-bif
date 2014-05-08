@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -61,54 +61,23 @@ use DBIx::ThinSQL qw/ qv bv /;
 
 our @ISA = ('DBIx::ThinSQL::db');
 
-sub get_topic {
-    my $self = shift;
-    my $token = shift || return;
-
-    if ( $token =~ m/^\d+$/ ) {
-        my $data = $self->xhash(
-            select => [
-                'topics.id',
-                'topics.kind',
-                'topics.uuid',
-                'topics.first_update_id',
-                qv(undef)->as('project_issue_id'),
-                qv(undef)->as('project_id'),
-            ],
-            from  => 'topics',
-            where => [
-                'topics.id = ',         bv($token),
-                ' AND topics.kind != ', qv('issue')
-            ],
-            union_all_select => [
-                'topics.id',
-                'topics.kind',
-                'topics.uuid',
-                'topics.first_update_id',
-                'project_issues.id AS project_issue_id',
-                'project_issues.project_id',
-            ],
-            from       => 'project_issues',
-            inner_join => 'topics',
-            on         => 'topics.id = project_issues.issue_id',
-            where      => { 'project_issues.id' => $token },
-        );
-
-        return $data;
-    }
-    return;
-}
-
 sub uuid2id {
     my $self = shift;
     my $uuid = shift || return;
 
-    my ($id) = $self->xarray(
+    if ( length($uuid) == 40 ) {
+        return $self->xarrays(
+            select => 't.id',
+            from   => 'topics t',
+            where  => { 't.uuid' => $uuid },
+        );
+    }
+
+    return $self->xarrays(
         select => 't.id',
         from   => 'topics t',
-        where  => { 't.uuid' => $uuid },
+        where  => [ 't.uuid LIKE ', qv( $uuid . '%' ) ],
     );
-    return $id;
 }
 
 sub get_update {
@@ -239,6 +208,8 @@ sub get_hub_locations {
     my $alias = shift || return;
 
     return $self->xhashes(
+
+        # TODO get rid of this select once everything uses ctx->uuid2id
         select => [
             'h.id AS id',
             't.uuid AS uuid',
@@ -255,6 +226,21 @@ sub get_hub_locations {
             'h.alias' => $alias,
         },
         union_all_select => [
+            'h.id AS id',
+            't.uuid AS uuid',
+            'h.alias AS alias',
+            'hl.location AS location',
+            'h.default_location_id = hl.id AS is_default'
+        ],
+        from       => 'hubs h',
+        inner_join => 'topics t',
+        on         => 't.id = h.id',
+        inner_join => 'hub_locations hl',
+        on         => 'hl.hub_id = h.id',
+        where      => {
+            'h.id' => $alias,
+        },
+        union_all_select => [
             'h.id', 't.uuid', 'h.alias',
             'hl.location', 'h.default_location_id = hl.id AS is_default'
         ],
@@ -268,7 +254,7 @@ sub get_hub_locations {
         where      => {
             'hl2.location' => $alias,
         },
-        order_by => 'is_default ASC',
+        order_by => [qw/alias location/],
     );
 }
 
@@ -294,7 +280,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 
@@ -306,7 +292,7 @@ Bif::DB - helper methods for a read-only bif database
     my $db = Bif::DB->connect( $dsn );
 
     # Read only operations on a bif database:
-    my $id = $db->uuid2id( $uuid );
+    my @ids = $db->uuid2id( $uuid );
 
 =head1 DESCRIPTION
 
@@ -319,41 +305,10 @@ parts are separated for performance reasons.
 
 =over
 
-=item uuid2id( $UUID ) -> Int | Undef
+=item uuid2id( $UUID ) -> List[Int]
 
-Returns the integer ID matching a topic C<$UUID>, or C<undef> if no
-match is found.
-
-=item get_topic( $ID ) -> HashRef
-
-Looks up the topic identified by C<$ID> and returns undef or a hash
-reference containg the following keys:
-
-=over
-
-=item * id - the topic ID
-
-=item * first_update_id - the update_id that created the topic
-
-=item * kind - the type of the topic
-
-=item * uuid - the universally unique identifier of the topic
-
-=back
-
-If C<$ID> has a length of 40 characters the search will be performed on
-the basis that it is a UUID.
-
-If the found topic is an issue then the following keys will also
-contain valid values:
-
-=over
-
-=item * project_issue_id - the project-specific topic ID
-
-=item * project_id - the project ID matching the project_issue_id
-
-=back
+Returns the (possibly multiple) integer ID(s) matching a topic
+C<$UUID>.
 
 =item get_update( "$ID.$UPDATE_ID" ) -> HashRef
 
@@ -436,7 +391,8 @@ identified by C<$alias>, each with the following keys:
 
 =back
 
-Returns C<undef> if C<$alias> is not found.
+Returns C<undef> if C<$alias> (an alias, an ID, or a location) is not
+found.
 
 =item get_max_update_id
 

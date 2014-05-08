@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
     my $opts = shift;
@@ -74,6 +74,13 @@ sub run {
         eval {
             $dbw->txn(
                 sub {
+                    $ctx->update_repo(
+                        {
+                            message => "register $ctx->{alias} "
+                              . "($ctx->{location})",
+                        }
+                    );
+
                     $client->on_update(
                         sub {
                             $ctx->lprint("$ctx->{alias} (meta): $_[0]");
@@ -113,22 +120,17 @@ sub run {
                         where  => { id => $id },
                     );
 
-                    $dbw->update_repo(
-                        {
-                            author => $ctx->{user}->{name},
-                            email  => $ctx->{user}->{email},
-                            message =>
-"register $ctx->{alias} ($ctx->{location}) [+$delta]",
-                        }
-                    );
-
                     print "Hub registered: $ctx->{alias}\n";
                     return $status;
                 }
             );
         };
 
-        $error .= $@ if $@;
+        if ($@) {
+            $error .= $@;
+            print "\n";
+        }
+
         $client->disconnect;
         return $cv->send( !$error );
     };
@@ -147,7 +149,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

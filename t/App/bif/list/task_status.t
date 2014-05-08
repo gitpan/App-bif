@@ -15,7 +15,7 @@ run_in_tempdir {
     isa_ok bif(qw/list task-status todo/), 'ARRAY';
 
     isa_ok exception { bif(qw/list task-status noproject/) },
-      'Bif::Error::PathNotFound';
+      'Bif::Error::ProjectNotFound';
 };
 
 done_testing();

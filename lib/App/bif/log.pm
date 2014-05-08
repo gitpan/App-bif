@@ -5,19 +5,16 @@ use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
-my $NOW;
-my $bold;
-my $yellow;
-my $dark;
-my $reset;
-my $white;
+our $NOW;
+our $bold;
+our $yellow;
+our $dark;
+our $reset;
+our $white;
 
-sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->db();
-
+sub init {
     $NOW = time;
 
     require POSIX;
@@ -30,13 +27,16 @@ sub run {
     $dark   = Term::ANSIColor::color('dark');
     $reset  = Term::ANSIColor::color('reset');
     $white  = Term::ANSIColor::color('white');
+}
+
+sub run {
+    my $ctx = App::bif::Context->new(shift);
+    my $db  = $ctx->db();
+
+    init();
 
     if ( $ctx->{id} ) {
-        my $info =
-             $db->get_topic( $ctx->{id} )
-          || $ctx->get_project( $ctx->{id} )
-          || return $ctx->err( 'TopicNotFound',
-            'topic not found: ' . $ctx->{id} );
+        my $info = $ctx->get_topic( $ctx->{id} );
 
         my $func = __PACKAGE__->can( '_log_' . $info->{kind} )
           || return $ctx->err( 'LogUnimplemented',
@@ -45,7 +45,7 @@ sub run {
         return $func->( $ctx, $info );
     }
     else {
-        return _log_hub( $ctx, $db->get_topic( $db->get_local_hub_id ) );
+        return _log_hub( $ctx, $ctx->get_topic( $db->get_local_hub_id ) );
     }
 
     my $sth = $db->xprepare(
@@ -498,29 +498,34 @@ sub _log_issue {
                 $dark . $yellow . $row->{update_id},
                 $row->{update_uuid}
             ),
-            _header( 'From', $row->{author},          $row->{email} ),
-            _header( 'When', _new_ago( $row->{mtime}, $row->{mtimetz} ) ),
         );
 
         my @r = ($row);
         if ( $row->{ucount} > 2 ) {
-            push( @r, $sth->hash ) for ( 1 .. ( $row->{ucount} - 2 ) );
+            for my $i ( 1 .. ( $row->{ucount} - 2 ) ) {
+                my $r = $sth->hash;
+                push(
+                    @data,
+                    _header(
+                        $dark
+                          . $yellow
+                          . ( $r->{depth} > 1 ? 'reply' : 'update' ),
+                        $dark . $yellow . $r->{update_id},
+                        $r->{update_uuid}
+                    ),
+                );
+                push( @r, $r );
+            }
         }
+
+        push( @data,
+            _header( 'From', $row->{author},          $row->{email} ),
+            _header( 'When', _new_ago( $row->{mtime}, $row->{mtimetz} ) ),
+        );
 
         my $i;
         foreach my $row (@r) {
             $path = $row->{path} if $row->{path};
-
-            push(
-                @data,
-                _header(
-                    $dark
-                      . $yellow
-                      . ( $row->{depth} > 1 ? 'reply' : 'update' ),
-                    $dark . $yellow . $row->{update_id},
-                    $row->{update_uuid}
-                )
-            ) if $i++;
 
             if ( $row->{title} ) {
                 $title = $row->{title} if $row->{title};
@@ -614,7 +619,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

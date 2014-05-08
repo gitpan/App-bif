@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -92,43 +92,6 @@ sub deploy {
     );
 }
 
-sub update_repo {
-    my $dbw = shift;
-    my $ref = shift;
-
-    my $hub = $dbw->get_topic( $dbw->get_local_hub_id );
-    my $uid = $dbw->nextval('updates');
-
-    $dbw->xdo(
-        insert_into => 'updates',
-        values      => {
-            id        => $uid,
-            parent_id => $hub->{first_update_id},
-            author    => $ref->{author},
-            email     => $ref->{email},
-            message   => $ref->{message},
-        },
-    );
-
-    $dbw->xdo(
-        insert_into =>
-          [ 'hub_updates', qw/hub_id update_id related_update_uuid/ ],
-        select    => [ qv( $hub->{id} ), qv($uid), 'u.uuid', ],
-        from      => '(select 1)',
-        left_join => 'updates u',
-        on        => {
-            'u.id' => $ref->{related_update_id},
-        },
-    );
-
-    $dbw->xdo(
-        insert_into => 'func_merge_updates',
-        values      => { merge => 1 },
-    );
-
-    return;
-}
-
 package Bif::DBW::st;
 our @ISA = ('Bif::DB::st');
 
@@ -140,7 +103,7 @@ Bif::DBW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 
@@ -159,14 +122,6 @@ Bif::DBW - read-write helper methods for a bif database
         $dbw->xdo(
             insert_into => 'updates',
             values      => $hashref,
-        );
-
-        $dbw->update_repo(
-            {
-                name  => $name,
-                email => $email,
-                message   => $message
-            }
         );
     });
 
@@ -193,14 +148,6 @@ Return the current value of the sequence <$name>.
 
 Deploys the current Bif distribution schema to the database, returning
 the previous (possibly 0) and newly deployed versions.
-
-=item update_repo($hashref)
-
-Create an update of the local repo from a hashref containing a user
-name, a user email, and a message. C<$hashref> can optionally contain
-an update_id which will be converted into a uuid, used for uniqueness
-in the event that multiple calls to update_repo with the same values
-occur in the same second.
 
 =back
 

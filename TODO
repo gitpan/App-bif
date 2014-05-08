@@ -1,9 +1,14 @@
+* Instead of magically matching arguments against an ID, ALIAS,
+LOCATION etc, require an option to specify exactly what the input is,
+like we are starting to do with UUIDs.
+
 * Make a code of conduct. How about borrowing Debian's:
     https://www.debian.org/vote/2014/vote_002
 
 * Put the protocol version number in the location uri?
 
     ssh+bs1://org@provider.com
+    bif1+ssh://org@provider.com
 
 * Bug: Given an issue in two projects, pushing either of those projets
 to a hub will fail because the second project doesn't exist at the hub.

@@ -22,7 +22,8 @@ run_in_tempdir {
     bif(qw/init hub --bare/);
     bif(qw/register hub/);
     isa_ok bif(qw/sync/), 'Bif::OK::Sync';
-    isa_ok exception { bif(qw/show todo hub/) }, 'Bif::Error::TopicNotFound';
+    isa_ok exception { bif(qw/show project todo hub/) },
+      'Bif::Error::ProjectNotFound';
 
     bif2(qw!register ../hub!);
     my $pinfo = bif2(qw/new project todo title -m m1/);
@@ -30,7 +31,7 @@ run_in_tempdir {
 
     isa_ok bif(qw/sync -m m2/), 'Bif::OK::Sync';
     isa_ok exception { bif(qw/show todo/) }, 'Bif::Error::TopicNotFound';
-    isa_ok bif(qw/show todo hub/), 'Bif::OK::ShowProject';
+    isa_ok bif(qw/show project todo hub/), 'Bif::OK::ShowProject';
 
     bif2(qw/update todo -m m3/);
 
@@ -65,8 +66,8 @@ run_in_tempdir {
         qq{select uuid from topics where id=$iinfo->{id}} );
     $iinfo->{uuid} = $x->[0][0];
     bif2( qw/update/, $iinfo->{id}, qw/-m m10/ );
-    isa_ok bif2(qw/sync -m m12/), 'Bif::OK::Sync';
-    isa_ok bif(qw/sync -m m13/),  'Bif::OK::Sync';
+    isa_ok bif2(qw/sync -m m13/), 'Bif::OK::Sync';
+    isa_ok bif(qw/sync -m m14/),  'Bif::OK::Sync';
     $ref1 = bif( qw/sql --noprint/,
         qq{select 1 from topics where uuid="$iinfo->{uuid}"} );
     ok $ref1->[0][0], 'issue sync';

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
     my $opts = shift;
@@ -81,6 +81,13 @@ sub run {
             eval {
                 $dbw->txn(
                     sub {
+                        $ctx->update_repo(
+                            {
+                                message => "sync $hub->{location} "
+                                  . $ctx->{message},
+                            }
+                        );
+
                         $client->on_update(
                             sub {
                                 $ctx->lprint("$hub->{alias} (meta): $_[0]");
@@ -144,21 +151,16 @@ sub run {
                         my $current = $dbw->get_max_update_id;
                         my $delta   = $current - $previous;
 
-                        $dbw->update_repo(
-                            {
-                                author  => $ctx->{user}->{name},
-                                email   => $ctx->{user}->{email},
-                                message => "sync $hub->{location} "
-                                  . "[+$delta] $ctx->{message}",
-                            }
-                        );
-
                         return;
                     }
                 );
             };
 
-            $error .= $@ if $@;
+            if ($@) {
+                $error .= $@;
+                print "\n";
+            }
+
             $client->disconnect;
             return $cv->send( !$error );
         };
@@ -188,7 +190,7 @@ bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -454,15 +454,15 @@ subcmd(
     comment => 'summarize the current status of a topic',
 );
 
-arg id => (
-    isa      => 'Str',
-    comment  => 'topic ID or project PATH',
+arg item => (
+    isa      => 'SubCmd',
+    comment  => '',
     required => 1,
-);
-
-arg hub => (
-    isa     => 'Str',
-    comment => 'search for PATH in a hub',
+    fallback => {
+        name    => 'id',
+        isa     => 'Str',
+        comment => 'topic ID or project PATH',
+    },
 );
 
 opt uuid => (
@@ -478,6 +478,39 @@ opt full => (
 );
 
 # ------------------------------------------------------------------------
+# bif show hub
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show hub/],
+    comment => 'summarize the current status of a hub',
+);
+
+arg alias => (
+    isa      => 'Str',
+    comment  => 'topic ID or hub ALIAS',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif show project
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show project/],
+    comment => 'display current project status',
+);
+
+arg id => (
+    isa      => 'Str',
+    comment  => 'topic ID or project PATH',
+    required => 1,
+);
+
+arg hub => (
+    isa     => 'Str',
+    comment => 'hub ALIAS or LOCATION',
+);
+
+# ------------------------------------------------------------------------
 # bif log
 # ------------------------------------------------------------------------
 subcmd(
@@ -485,9 +518,21 @@ subcmd(
     comment => 'review change history and comments',
 );
 
-arg id => (
-    isa     => 'Str',
-    comment => 'topic ID or project PATH',
+arg item => (
+    isa      => 'SubCmd',
+    comment  => '',
+    fallback => {
+        name    => 'id',
+        isa     => 'Str',
+        comment => 'topic ID or project PATH',
+        greedy  => 1,
+    },
+);
+
+opt uuid => (
+    isa     => 'Bool',
+    alias   => 'u',
+    comment => 'treat arguments as if they are a UUIDs',
 );
 
 opt filter => (
@@ -495,6 +540,20 @@ opt filter => (
     comment => 'only show entries of a particular type',
     alias   => 'f',
     default => [],
+);
+
+# ------------------------------------------------------------------------
+# bif log hub
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/log hub/],
+    comment => 'review history a hub',
+);
+
+arg alias => (
+    isa      => 'Str',
+    comment  => 'hub ID or ALIAS',
+    required => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -759,7 +818,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 
@@ -99,7 +99,9 @@ bif commands and their arguments are listed below:
         bif list task-status PATH
         bif list tasks
         bif list topics
-    bif log [ID]
+    bif log [ITEM]
+        bif log ID
+        bif log hub ALIAS
     bif new ITEM
         bif new issue [TITLE...]
         bif new project [PATH] [TITLE...]
@@ -107,7 +109,10 @@ bif commands and their arguments are listed below:
     bif push ID PATH [HUB]
     bif register LOCATION [ALIAS]
     bif reply ID.UID
-    bif show ID [HUB]
+    bif show ITEM
+        bif show ID
+        bif show hub ALIAS
+        bif show project PATH [HUB]
     bif sql [STATEMENT...]
     bif sync
     bif update ID [STATUS]

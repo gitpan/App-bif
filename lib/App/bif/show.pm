@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 my $NOW;
 my $bold;
@@ -11,6 +11,20 @@ my $yellow;
 my $dark;
 my $reset;
 my $white;
+
+sub _init {
+    $NOW = time;
+    require POSIX;
+    require Term::ANSIColor;
+    require Time::Piece;
+    require Time::Duration;
+
+    $bold   = Term::ANSIColor::color('bold');
+    $yellow = Term::ANSIColor::color('bold');
+    $dark   = Term::ANSIColor::color('dark');
+    $reset  = Term::ANSIColor::color('reset');
+    $white  = Term::ANSIColor::color('white');
+}
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -23,25 +37,11 @@ sub run {
           . "commit:  $App::bif::Build::COMMIT\n";
         return $ctx->ok('ShowVersion');
     }
-    elsif ( $ctx->{uuid} ) {
-        my $uuid = $ctx->{id};
-        $ctx->{id} = $ctx->db->uuid2id( $ctx->{id} )
-          || return $ctx->err( 'UuidNotFound', "uuid not found: $uuid" );
-    }
 
-    my $db   = $ctx->db();
-    my $info = $db->get_topic( $ctx->{id} )
-      || $ctx->get_project( $ctx->{id}, $ctx->{hub} );
+    $ctx->{id} = $ctx->uuid2id( $ctx->{id} );
 
-    if ( !$info && defined $info && $info < 0 ) {
-        return $ctx->err(
-            'AmbiguousID', "non-specific identifier:
-      $ctx->{id}"
-        );
-    }
-
-    return $ctx->err( 'TopicNotFound', 'topic not found: ' . $ctx->{id} )
-      unless $info;
+    my $db = $ctx->db();
+    my $info = $ctx->get_topic( $ctx->{id}, $ctx->{hub} );
 
     my $func = __PACKAGE__->can( '_show_' . $info->{kind} )
       || return $ctx->err( 'ShowUnimplemented',
@@ -137,28 +137,27 @@ sub _show_project {
       if $ref->{hub};
 
     if ( $ctx->{full} ) {
-        my @phases = $db->xarrays(
-            select => [
-                case (
-                    when => { status => $ref->{status} },
-                    then => 'UPPER(status)',
-                    else => 'status',
-                )->as('status'),
-            ],
-            from     => 'project_status',
-            where    => { project_id => $info->{id} },
-            order_by => 'rank',
-        );
-
         push( @data,
             _header( '  Creator', $ref->{author},          $ref->{email} ),
             _header( '  Created', _new_ago( $ref->{ctime}, $ref->{ctimetz} ) ),
-            _header( '  Phases', join( ', ', map { $_->[0] } @phases ) ),
         );
     }
-    else {
-        push( @data, _header( '  Phase', $ref->{status} ), );
-    }
+
+    my @phases = $db->xarrays(
+        select => [
+            case (
+                when => { status => $ref->{status} },
+                then => 'UPPER(status)',
+                else => 'status',
+            )->as('status'),
+        ],
+        from     => 'project_status',
+        where    => { project_id => $info->{id} },
+        order_by => 'rank',
+    );
+
+    push( @data,
+        _header( '  Phases', join( ', ', map { $_->[0] } @phases ) ), );
 
     if ( $ref->{local} ) {
         my ( $ai, $si, $ri, $ii ) = $db->xarray(
@@ -451,7 +450,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

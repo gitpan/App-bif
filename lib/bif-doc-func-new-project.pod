@@ -4,7 +4,7 @@ bif-doc-func-new-project - add a new project to an update
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 
@@ -14,8 +14,8 @@ bif-doc-func-new-project - add a new project to an update
     INSERT INTO updates(...);
 
     INSERT INTO func_new_project(
-        update_id,  -- integer NOT NULL DEFAULT (currval('updates')),
-        id,         -- integer NOT NULL DEFAULT (nextval('topics')),
+        update_id,  -- integer NOT NULL,
+        id,         -- integer NOT NULL,
         parent_id,  -- integer,
         name,       -- varchar(40),
         title       -- varchar(1024) NOT NULL DEFAULT ''
@@ -31,29 +31,77 @@ bif-doc-func-new-project - add a new project to an update
 
 =head1 DESCRIPTION
 
-func_new_project() adds a new project to an in-progress update by
-inserting a row into each of the L<topics|bif-doc-table-topics> and
-L<projects|bif-doc-table-projects> tables.
-
-The transaction will fail with a foreign key violation unless at least
-one call to
-L<func_new_project_status()|bif-doc-func-new-project-status> is also
-made and a row is inserted into
-L<project_updates|bif-doc-table-project-updates> resulting in
-C<projects.status_id> having a valid value.
-
-=head1 AFFECTED TABLES
-
-A successful call to func_new_project directly affects the following
-tables:
+The func_new_project() function creates a new project in the repository
+against an in-progress update #1 by taking the following actions:
 
 =over
 
-=item * L<topics|bif-doc-table-topics>
+=item * A row is inserted into the F<topics> table with a SHA1 hash of
+the values resulting in the project/topic UUID.
 
-=item * L<projects|bif-doc-table-projects>
+=item * A row is inserted into the F<projects> table.
+
+=item * Update #2 is started by inserting a new row into the
+F<updates> table.
+
+=item * A row is inserted into F<hub_updates> against update #2 for the
+local hub with project_id set to topics.id / projects.id, which kicks
+of the following trigger actions:
+
+=over
+
+=item * A row is inserted into F<hub_related_projects> connecting the
+project to the local hub.
+
+=item * A row is inserted into F<hub_related_updates> connecting the
+update to the local hub, which kicks off the following trigger actions:
+
+=over
+
+=item * A row is inserted into hubs_merkle taking into account the new
+update #2.
 
 =back
+
+=item * A row is inserted into F<hub_tomerge> but probably keeps zero
+values.
+
+=back
+
+=item * A row is inserted into F<project_updates> against update #1, which kicks off the
+following trigger actions:
+
+=over
+
+=item * A row is inserted into F<projects_tomerge>.
+
+=item * A row is inserted into F<project_related_updates> connecting
+update #1 to the project, which kicks off the following trigger
+actions:
+
+=over
+
+=item * A row is inserted into projects_merkle taking into account the new
+update #1.
+
+=back
+
+
+=item * If project_update.hub_uuid exists in the repository then every
+project-only update from F<project_related_updates> is added to 
+F<hub_related_updates> 
+
+=back
+
+=back
+
+The enclosing transaction will fail with a foreign key violation unless
+at least one call to
+L<func_new_project_status()|bif-doc-func-new-project-status> is also
+made and a row is inserted into
+L<project_updates|bif-doc-table-project-updates> resulting in
+C<projects.status_id> containing a valid foreign key value into the
+L<project_status|bif-doc-table-project-status> table.
 
 =head1 SEE ALSO
 

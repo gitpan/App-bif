@@ -41,8 +41,9 @@ run_in_tempdir {
 
     bif(qw/init bif2/);
     bif2( 'register', '../hub' );
-    isa_ok exception { bif2(qw/show todo/) }, 'Bif::Error::TopicNotFound';
-    isa_ok bif2(qw/show todo hub/), 'Bif::OK::ShowProject';
+    isa_ok exception { bif2(qw/show project todo/) },
+      'Bif::Error::ProjectNotFound';
+    isa_ok bif2(qw/show project todo hub/), 'Bif::OK::ShowProject';
 
     isa_ok exception { bif2( qw/show --uuid/, $tinfo->{uuid} ) },
       'Bif::Error::UuidNotFound';

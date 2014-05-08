@@ -35,6 +35,7 @@ lib/App/bif/list/task_status.pm
 lib/App/bif/list/tasks.pm
 lib/App/bif/list/topics.pm
 lib/App/bif/log.pm
+lib/App/bif/log/hub.pm
 lib/App/bif/new/issue.pm
 lib/App/bif/new/project.pm
 lib/App/bif/new/task.pm
@@ -42,6 +43,8 @@ lib/App/bif/push.pm
 lib/App/bif/register.pm
 lib/App/bif/reply.pm
 lib/App/bif/show.pm
+lib/App/bif/show/hub.pm
+lib/App/bif/show/project.pm
 lib/App/bif/sql.pm
 lib/App/bif/sync.pm
 lib/App/bif/update.pm
@@ -154,6 +157,7 @@ t/App/bif/list/task_status.t
 t/App/bif/list/tasks.t
 t/App/bif/list/topics.t
 t/App/bif/log.t
+t/App/bif/log/hub.t
 t/App/bif/new/issue.t
 t/App/bif/new/project.t
 t/App/bif/new/task.t
@@ -161,6 +165,8 @@ t/App/bif/push.t
 t/App/bif/register.t
 t/App/bif/reply.t
 t/App/bif/show.t
+t/App/bif/show/hub.t
+t/App/bif/show/project.t
 t/App/bif/sync.t
 t/App/bif/update.t
 t/App/bif/upgrade.t

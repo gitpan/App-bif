@@ -50,48 +50,6 @@ run_in_tempdir {
     my $db = Bif::DB->connect('dbi:SQLite:dbname=db.sqlite3');
     isa_ok $db, 'Bif::DB::db';
 
-    # get_topic
-    subtest 'get_topic', sub {
-        my $ref;
-        is_deeply $ref = $db->get_topic(undef), undef, 'get_topic undef';
-
-        is_deeply $ref = $db->get_topic(-1), undef, 'get_topic unknown ID';
-
-        is_deeply $ref = $db->get_topic( $project->{id} ), {
-            id              => $project->{id},
-            first_update_id => $project->{update_id},
-            kind            => 'project',
-            uuid             => $ref->{uuid},    # hard to know this in advance
-            project_issue_id => undef,
-            project_id       => undef,
-          },
-          'get_topic project ID';
-
-        my ($id) = $db->uuid2id( $ref->{uuid} );
-        is $id, $project->{id}, 'uuid2id()';
-
-        is_deeply $ref = $db->get_topic( $task->{id} ), {
-            id              => $task->{id},
-            first_update_id => $task->{update_id},
-            kind            => 'task',
-            uuid            => $ref->{uuid},      # hard to know this in advance
-            project_issue_id => undef,
-            project_id       => undef,
-          },
-          'get_topic task ID';
-
-        is_deeply $ref = $db->get_topic( $issue->{id} ), {
-            id              => $issue->{id},
-            first_update_id => $issue->{update_id},
-            kind            => 'issue',
-            uuid             => $ref->{uuid},     # hard to know this in advance
-            project_issue_id => $issue->{id},
-            project_id       => $project->{id},
-          },
-          'get_topic issue ID';
-
-    };
-
     # get_update
     subtest 'get_update', sub {
         my $ref;

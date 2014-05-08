@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_18';
+our $VERSION = '0.1.0_19';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -34,8 +34,7 @@ sub run {
         }
     }
 
-    return $ctx->err( 'ProjectNotFound', 'project not found: ' . $ctx->{path} )
-      unless my $pinfo = $ctx->get_project( $ctx->{path} );
+    my $pinfo = $ctx->get_project( $ctx->{path} );
 
     if ( $ctx->{status} ) {
         my ( $status_ids, $invalid ) =
@@ -56,11 +55,21 @@ sub run {
     }
 
     $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
-    $ctx->{id}        = $db->nextval('topics');
-    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
+            my $ruid = $db->nextval('updates');
+            $ctx->{id}        = $db->nextval('topics');
+            $ctx->{update_id} = $db->nextval('updates');
+
+            $ctx->update_repo(
+                {
+                    ruid              => $ruid,
+                    message           => "new task $ctx->{id} [$pinfo->{path}]",
+                    related_update_id => $ctx->{update_id},
+                }
+            );
+
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
@@ -86,15 +95,6 @@ sub run {
                 values      => { merge => 1 },
             );
 
-            $db->update_repo(
-                {
-                    author            => $ctx->{user}->{name},
-                    email             => $ctx->{user}->{email},
-                    message           => "new task $ctx->{id} [$pinfo->{path}]",
-                    related_update_id => $ctx->{update_id},
-                }
-            );
-
         }
     );
 
@@ -111,7 +111,7 @@ bif-new-task - add a new task to a project
 
 =head1 VERSION
 
-0.1.0_18 (2014-05-04)
+0.1.0_19 (2014-05-08)
 
 =head1 SYNOPSIS
 

@@ -18,7 +18,8 @@ run_in_tempdir {
     isa_ok exception { bif(qw/ push 99999 todo2/) },
       'Bif::Error::TopicNotFound';
 
-    isa_ok exception { bif(qw/ push todo todo2/) }, 'Bif::Error::TopicNotFound';
+    isa_ok exception { bif(qw/ push todo todo2/) },
+      'Bif::Error::ProjectNotFound';
 
     subtest 'issue', sub {
         my $i1 = bif(qw/ new issue todo --message message title --mtime 100/);

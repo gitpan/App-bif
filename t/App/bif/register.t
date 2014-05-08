@@ -69,10 +69,11 @@ run_in_tempdir {
     my $list = bif(qw/list hubs/);
     isa_ok $list, 'Bif::OK::ListHubs';    # TODO need to do better than this
 
-    isa_ok exception { bif(qw/show todo/) }, 'Bif::Error::TopicNotFound';
+    isa_ok exception { bif(qw/show project todo/) },
+      'Bif::Error::ProjectNotFound';
 
     # TODO   isa_ok bif(qw/show todo hub/), 'Bif::OK::ShowProject';
-    isa_ok bif(qw/show todo hub/), 'Bif::OK::ShowProject';
+    isa_ok bif(qw/show project todo hub/), 'Bif::OK::ShowProject';
 
     $ref = bif( qw/sql --noprint/,
         "select id from topics where uuid='$tinfo->{uuid}'" );
