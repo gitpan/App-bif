@@ -197,62 +197,67 @@ END
     };
 
     subtest 'get_topic', sub {
-        my $dbw = $ctx->dbw;
-        $dbw->txn(
-            sub {
-                my $update  = new_test_update($dbw);
-                my $project = new_test_project($dbw);
+        run_in_tempdir {
+            bif('init');
+            my $ctx = App::bif::Context->new( {} );
+            my $dbw = $ctx->dbw;
+            $dbw->txn(
+                sub {
+                    my $update  = new_test_update($dbw);
+                    my $project = new_test_project($dbw);
 
-                my $ps = new_test_project_status( $dbw, $project );
-                my $ts = new_test_task_status( $dbw, $project );
-                my $is = new_test_issue_status( $dbw, $project );
-                my $task = new_test_task( $dbw, $ts );
-                my $issue = new_test_issue( $dbw, $is );
+                    my $ps = new_test_project_status( $dbw, $project );
+                    my $ts = new_test_task_status( $dbw, $project );
+                    my $is = new_test_issue_status( $dbw, $project );
+                    my $task = new_test_task( $dbw, $ts );
+                    my $issue = new_test_issue( $dbw, $is );
 
-                my $ref;
+                    my $ref;
 
-                isa_ok exception { $ctx->get_topic(-1) },
-                  'Bif::Error::TopicNotFound';
+                    isa_ok exception { $ctx->get_topic(-1) },
+                      'Bif::Error::TopicNotFound';
 
-                is_deeply $ref = $ctx->get_topic( $project->{id} ), {
-                    id              => $project->{id},
-                    first_update_id => $project->{update_id},
-                    kind            => 'project',
-                    uuid => $ref->{uuid},    # hard to know this in advance
-                    project_issue_id => undef,
-                    project_id       => undef,
-                  },
-                  'get_topic project ID';
+                    is_deeply $ref = $ctx->get_topic( $project->{id} ), {
+                        id              => $project->{id},
+                        first_update_id => $project->{update_id},
+                        kind            => 'project',
+                        uuid => $ref->{uuid},    # hard to know this in advance
+                        project_issue_id => undef,
+                        project_id       => undef,
+                      },
+                      'get_topic project ID';
 
-                my @ids = $dbw->uuid2id( $ref->{uuid} );
-                is_deeply \@ids, [ [ $project->{id} ] ], 'uuid2id()';
+                    my @ids = $dbw->uuid2id( $ref->{uuid} );
+                    is_deeply \@ids, [ [ $project->{id} ] ], 'uuid2id()';
 
-                @ids = $dbw->uuid2id( substr( $ref->{uuid}, 0, 13 ) );
-                is_deeply \@ids, [ [ $project->{id} ] ], 'uuid2id() partial';
+                    @ids = $dbw->uuid2id( substr( $ref->{uuid}, 0, 13 ) );
+                    is_deeply \@ids, [ [ $project->{id} ] ],
+                      'uuid2id() partial';
 
-                is_deeply $ref = $ctx->get_topic( $task->{id} ), {
-                    id              => $task->{id},
-                    first_update_id => $task->{update_id},
-                    kind            => 'task',
-                    uuid => $ref->{uuid},    # hard to know this in advance
-                    project_issue_id => undef,
-                    project_id       => undef,
-                  },
-                  'get_topic task ID';
+                    is_deeply $ref = $ctx->get_topic( $task->{id} ), {
+                        id              => $task->{id},
+                        first_update_id => $task->{update_id},
+                        kind            => 'task',
+                        uuid => $ref->{uuid},    # hard to know this in advance
+                        project_issue_id => undef,
+                        project_id       => undef,
+                      },
+                      'get_topic task ID';
 
-                is_deeply $ref = $ctx->get_topic( $issue->{id} ), {
-                    id              => $issue->{id},
-                    first_update_id => $issue->{update_id},
-                    kind            => 'issue',
-                    uuid => $ref->{uuid},    # hard to know this in advance
-                    project_issue_id => $issue->{id},
-                    project_id       => $project->{id},
-                  },
-                  'get_topic issue ID';
+                    is_deeply $ref = $ctx->get_topic( $issue->{id} ), {
+                        id              => $issue->{id},
+                        first_update_id => $issue->{update_id},
+                        kind            => 'issue',
+                        uuid => $ref->{uuid},    # hard to know this in advance
+                        project_issue_id => $issue->{id},
+                        project_id       => $project->{id},
+                      },
+                      'get_topic issue ID';
 
-                $dbw->rollback;
-            }
-        );
+                    $dbw->rollback;
+                }
+            );
+        };
     };
 
 };

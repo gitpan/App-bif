@@ -7,8 +7,9 @@ use Config::Tiny;
 use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
+use feature 'state';
 
-our $VERSION = '0.1.0_19';
+our $VERSION = '0.1.0_20';
 
 sub new {
     my $proto = shift;
@@ -418,7 +419,7 @@ sub get_topic {
 
     my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
 
-    CORE::state $have_qv = DBIx::ThinSQL->import(qw/ qv bv /);
+    state $have_qv = DBIx::ThinSQL->import(qw/ qv bv /);
 
     if ( $token =~ m/^\d+$/ ) {
         my $data = $db->xhash(
@@ -484,7 +485,7 @@ sub update_repo {
     # update_repo generally before the actual update and uuid isn't
     # calculated. Get rid of it.
 
-    CORE::state $have_qv = DBIx::ThinSQL->import(qw/ qv /);
+    state $have_qv = DBIx::ThinSQL->import(qw/ qv /);
     $dbw->xdo(
         insert_into =>
           [ 'hub_updates', qw/hub_id update_id related_update_uuid/ ],
@@ -556,7 +557,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_19 (2014-05-08)
+0.1.0_20 (2014-05-08)
 
 =head1 SYNOPSIS
 

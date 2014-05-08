@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_19';
+our $VERSION = '0.1.0_20';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -46,7 +46,7 @@ bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
-0.1.0_19 (2014-05-08)
+0.1.0_20 (2014-05-08)
 
 =head1 SYNOPSIS
 

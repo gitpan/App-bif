@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_19';
+our $VERSION = '0.1.0_20';
 
 my %import_functions = (
     NEW => {

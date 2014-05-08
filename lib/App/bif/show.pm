@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_19';
+our $VERSION = '0.1.0_20';
 
 my $NOW;
 my $bold;
@@ -450,7 +450,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_19 (2014-05-08)
+0.1.0_20 (2014-05-08)
 
 =head1 SYNOPSIS
 

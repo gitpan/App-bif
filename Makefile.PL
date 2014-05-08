@@ -8,7 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-my $VERSION = '0.1.0_19';
+my $VERSION = '0.1.0_20';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -122,7 +122,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_19 (2014-05-08)
+HIDDEN0.1.0_20 (2014-05-08)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN
