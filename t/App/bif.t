@@ -7,7 +7,8 @@ use Test::More;
 
 run_in_tempdir {
 
-    like exception { bif() }, qr/usage/, 'usage';
+    isa_ok exception { bif() }, 'OptArgs::Usage';
+    debug_on if $^O eq 'MacOS';
     ok bif(qw/init/), 'init';
 
     like exception { bif( 'init', '--unknown-option' ) }, qr/usage/,

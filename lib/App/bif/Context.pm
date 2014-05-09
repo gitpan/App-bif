@@ -9,7 +9,7 @@ use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 use feature 'state';
 
-our $VERSION = '0.1.0_20';
+our $VERSION = '0.1.0_21';
 
 sub new {
     my $proto = shift;
@@ -35,69 +35,12 @@ sub new {
 
     $log->debugf( 'ctx: %s %s', (caller)[0], $opts );
 
-    $self->find_user_conf;
+    $self->load_user_conf;
     $self->find_repo;
 
     # Merge in the command line options with the (user/repo) config
     $self->{$_} = $opts->{$_} for keys %$opts;
     return $self;
-}
-
-sub find_user_conf {
-    my $self = shift;
-
-    my $config_dir =
-      File::HomeDir->my_app_config( 'bif-user', { create => 1 } );
-    my $file = path( $config_dir, 'config' );
-
-    $self->{_bif_user_config} = $file;
-    $log->debug( 'ctx: user_conf: ' . $file );
-
-    if ( -e $file ) {
-        my $conf = Config::Tiny->read($file)
-          || confess $Config::Tiny::errstr;
-
-        while ( my ( $k1, $v1 ) = each %$conf ) {
-            if ( ref $v1 eq 'HASH' ) {
-                while ( my ( $k2, $v2 ) = each %$v1 ) {
-                    if ( $k1 eq '_' ) {
-                        $self->{$k2} = $v2;
-                    }
-                    else {
-                        $self->{$k1}->{$k2} = $v2;
-                    }
-                }
-            }
-            else {
-                $self->{$k1} = $v1;
-            }
-        }
-        return;
-    }
-
-    require IO::Prompt::Tiny;
-    print "Initial Setup, please provide the following details:\n";
-
-    my $git_conf_file = path( File::HomeDir->my_home, '.gitconfig' );
-    my $git_conf = Config::Tiny->read($git_conf_file) || {};
-
-    my $conf = Config::Tiny->new;
-    ( my $name  = $git_conf->{user}->{name}  || 'Your Name' ) =~ s/(^")|("$)//g;
-    ( my $email = $git_conf->{user}->{email} || 'your@email.adddr' ) =~
-      s/(^")|("$)//g;
-
-    $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
-    $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
-    $conf->{'user.alias'}->{ls} = 'list projects local --status run';
-    $conf->{'user.alias'}->{ll} =
-      'list topics --status open --project-status run';
-
-    print "Writing $file\n";
-    $conf->write($file);
-
-    $self->{$_} ||= $conf->{$_} for keys %$conf;
-
-    return;
 }
 
 sub File::HomeDir::my_app_config {
@@ -131,6 +74,72 @@ sub File::HomeDir::my_app_config {
     require File::Path;
     File::Path::mkpath($etc);
     return $etc;
+}
+
+sub create_user_conf {
+    my $self     = shift;
+    my $conf_dir = File::HomeDir->my_app_config( 'bif-user', { create => 1 } );
+    my $file     = path( $conf_dir, 'config' );
+
+    return $file if -e $file;
+
+    require IO::Prompt::Tiny;
+    $log->debug( 'ctx: creating user_conf: ' . $file );
+
+    print "Initial Setup, please provide the following details:\n";
+
+    my $git_conf_file = path( File::HomeDir->my_home, '.gitconfig' );
+    my $git_conf = Config::Tiny->read($git_conf_file) || {};
+
+    my $name  = $git_conf->{user}->{name}  || 'Your Name';
+    my $email = $git_conf->{user}->{email} || 'your@email.adddr';
+
+    $name =~ s/(^")|("$)//g;
+    $email =~ s/(^")|("$)//g;
+
+    my $conf = Config::Tiny->new;
+    $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
+    $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
+    $conf->{'user.alias'}->{ls} = 'list projects local --status run';
+    $conf->{'user.alias'}->{ll} =
+      'list topics --status open --project-status run';
+
+    print "Writing $file\n";
+    $conf->write($file);
+
+    $self->{$_} ||= $conf->{$_} for keys %$conf;
+
+    return $file;
+}
+
+sub load_user_conf {
+    my $self = shift;
+    my $file = $self->create_user_conf;
+
+    my $conf = Config::Tiny->read($file)
+      || confess $Config::Tiny::errstr;
+
+    $log->debug( 'ctx: user_conf: ' . $file );
+
+    while ( my ( $k1, $v1 ) = each %$conf ) {
+        if ( ref $v1 eq 'HASH' ) {
+            while ( my ( $k2, $v2 ) = each %$v1 ) {
+                if ( $k1 eq '_' ) {
+                    $self->{$k2} = $v2;
+                }
+                else {
+                    $self->{$k1}->{$k2} = $v2;
+                }
+            }
+        }
+        else {
+            $self->{$k1} = $v1;
+        }
+    }
+
+    # Used by t/App/bif/Context.t
+    $self->{_bif_user_config} = $file;
+    return;
 }
 
 sub find_repo {
@@ -557,7 +566,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_20 (2014-05-08)
+0.1.0_21 (2014-05-09)
 
 =head1 SYNOPSIS
 

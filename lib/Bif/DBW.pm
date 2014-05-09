@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_20';
+our $VERSION = '0.1.0_21';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -103,7 +103,7 @@ Bif::DBW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_20 (2014-05-08)
+0.1.0_21 (2014-05-09)
 
 =head1 SYNOPSIS
 
