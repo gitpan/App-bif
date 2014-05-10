@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -18,15 +18,15 @@ sub run {
     DBIx::ThinSQL->import(qw/ qv concat coalesce/);
 
     my @projects = $db->xarrays(
-        select => [ 'projects.id', 'projects.path', 0 ],
-        from   => 'projects',
+        select => [ 'p.id', 'p.path', 0 ],
+        from   => 'projects p',
         do {
             if ( $ctx->{project_status} ) {
                 (
-                    inner_join => 'project_status',
+                    inner_join => 'project_status ps',
                     on         => {
-                        'projects.status_id'    => \'project_status.id',
-                        'project_status.status' => $ctx->{project_status},
+                        'p.status_id' => \' ps.id',
+                        'ps.status'   => $ctx->{project_status},
                     }
                 );
             }
@@ -34,7 +34,8 @@ sub run {
                 ();
             }
         },
-        order_by => 'projects.path',
+        where    => 'p.local = 1',
+        order_by => 'p.path',
     );
 
     return $ctx->ok('ListTopics') unless @projects;
@@ -132,7 +133,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

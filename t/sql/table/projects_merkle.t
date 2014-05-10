@@ -8,6 +8,9 @@ use Test::Bif;
 use Test::More;
 use Data::Dumper;
 
+plan skip_all => 'to be redone';
+exit;
+
 sub rehash {
     my $table = shift;
     my $row   = shift;    # id, prefix, hash, num_updates

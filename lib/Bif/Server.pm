@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 with 'Bif::Role::Sync';
 
@@ -17,6 +17,8 @@ has db => (
     is       => 'ro',
     required => 1,
 );
+
+has hub_id => ( is => 'rw', );
 
 has rh => ( is => 'rw' );
 
@@ -58,6 +60,7 @@ my %METHODS = (
 sub BUILD {
     my $self = shift;
     $self->json->pretty if $self->debug;
+    $self->hub_id( $self->db->get_local_hub_id );
 }
 
 sub run {
@@ -214,16 +217,19 @@ sub sync_project {
         $self->write( 'MissingUUID', 'uuid is required' );
         return 'MissingUUID';
     }
-    elsif ( !$hash ) {
+    elsif ( !defined $hash ) {
         $self->write( 'MissingHash', 'hash is required' );
         return 'MissingHash';
     }
 
     my $pinfo = $self->db->xhash(
-        select     => [ 't.id', 'p.hash' ],
+        select     => [ 't.id', 'hrp.hash' ],
         from       => 'topics t',
-        inner_join => 'projects p',
-        on         => 'p.id = t.id',
+        inner_join => 'hub_related_projects hrp',
+        on         => {
+            'hrp.project_id' => \'t.id',
+            'hrp.hub_id'     => $self->hub_id,
+        },
         where => { 't.uuid' => $uuid },
     );
 

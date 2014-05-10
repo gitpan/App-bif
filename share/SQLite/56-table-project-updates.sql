@@ -88,44 +88,14 @@ BEGIN
     ;
 
     INSERT INTO
-        project_related_updates(
+        project_meta_updates(
             update_id,
-            project_id,
-            project_only
+            project_id
         )
     VALUES(
         NEW.update_id,
-        NEW.project_id,
-        1
+        NEW.project_id
     );
-
-    /*
-        In the event that a project is exported to a hub, create a
-        matching set of repo-related updates from the project-(only)-
-        related updates.
-
-        TODO - do the reverse when NEW.hub_id is set to null, or
-        rather set to something else.
-    */
-
-    INSERT INTO
-        hub_related_updates(
-            hub_id,
-            update_id
-        )
-    SELECT
-        h.id,
-        pru.update_id
-    FROM
-        topics h
-    INNER JOIN
-        project_related_updates pru
-    ON
-        pru.project_id = NEW.project_id AND
-        pru.project_only = 1
-    WHERE
-        h.uuid = NEW.hub_uuid
-    ;
 
 END;
 

@@ -1,11 +1,12 @@
 CREATE TABLE projects_merkle (
-    project_id INTEGER,
+    project_id INTEGER NOT NULL,
+    hub_id INTEGER NOT NULL,
     prefix VARCHAR NOT NULL COLLATE NOCASE,
     hash VARCHAR NOT NULL,
     num_updates INTEGER NOT NULL,
-    FOREIGN KEY(project_id) REFERENCES projects(id)
-        ON DELETE CASCADE,
-    UNIQUE(project_id,prefix)
+    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE,
+    UNIQUE(project_id,hub_id,prefix)
 );
 
 -- -----------------------------------------------------------------------
@@ -21,8 +22,8 @@ FOR EACH ROW WHEN
     length(NEW.prefix) = 5
 BEGIN
     SELECT debug(
-        'bi_projects_merkle',
         NEW.project_id,
+        NEW.hub_id,
         NEW.prefix,
         NEW.hash,
         NEW.num_updates
@@ -32,6 +33,7 @@ BEGIN
         projects_merkle
     WHERE
         project_id = NEW.project_id AND
+        hub_id = NEW.hub_id AND
         prefix IN (
             substr(NEW.prefix,1,1),
             substr(NEW.prefix,1,2),
@@ -57,6 +59,7 @@ BEGIN
     SELECT debug(
         'ai_projects_merkle2',
         NEW.project_id,
+        NEW.hub_id,
         NEW.prefix,
         NEW.hash,
         NEW.num_updates
@@ -65,7 +68,9 @@ BEGIN
     DELETE FROM
         projects_merkle
     WHERE
-        project_id = NEW.project_id AND prefix = NEW.prefix
+        project_id = NEW.project_id AND
+        hub_id = NEW.hub_id AND
+        prefix = NEW.prefix
     ;
 END;
 
@@ -82,17 +87,24 @@ FOR EACH ROW WHEN
     length(NEW.prefix) = 5
 BEGIN
     SELECT debug(
-        'ai_projects_merkle1',
         NEW.project_id,
+        NEW.hub_id,
         NEW.prefix,
         NEW.hash,
         NEW.num_updates
     );
 
     INSERT INTO
-        projects_merkle(project_id,prefix,hash,num_updates)
+        projects_merkle(
+            project_id,
+            hub_id,
+            prefix,
+            hash,
+            num_updates
+        )
     SELECT
         NEW.project_id,
+        NEW.hub_id,
         substr(NEW.prefix,1,4) as prefix,
         substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
@@ -103,18 +115,28 @@ BEGIN
             projects_merkle
         WHERE
             project_id = NEW.project_id AND
+            hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,4) || '_'
         )
     GROUP BY
-        NEW.project_id,prefix
+        NEW.project_id,
+        NEW.hub_id,
+        prefix
     HAVING
         sum_num_updates > 0
     ;
 
     INSERT INTO
-        projects_merkle(project_id,prefix,hash,num_updates)
+        projects_merkle(
+            project_id,
+            hub_id,
+            prefix,
+            hash,
+            num_updates
+        )
     SELECT
         NEW.project_id,
+        NEW.hub_id,
         substr(NEW.prefix,1,3) as prefix,
         substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
@@ -125,18 +147,28 @@ BEGIN
             projects_merkle
         WHERE
             project_id = NEW.project_id AND
+            hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,3) || '_'
         )
     GROUP BY
-        NEW.project_id,prefix
+        NEW.project_id,
+        NEW.hub_id,
+        prefix
     HAVING
         sum_num_updates > 0
     ;
 
     INSERT INTO
-        projects_merkle(project_id,prefix,hash,num_updates)
+        projects_merkle(
+            project_id,
+            hub_id,
+            prefix,
+            hash,
+            num_updates
+        )
     SELECT
         NEW.project_id,
+        NEW.hub_id,
         substr(NEW.prefix,1,2) as prefix,
         substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
@@ -147,18 +179,28 @@ BEGIN
             projects_merkle
         WHERE
             project_id = NEW.project_id AND
+            hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,2) || '_'
         )
     GROUP BY
-        NEW.project_id,prefix
+        NEW.project_id,
+        NEW.hub_id,
+        prefix
     HAVING
         sum_num_updates > 0
     ;
 
     INSERT INTO
-        projects_merkle(project_id,prefix,hash,num_updates)
+        projects_merkle(
+            project_id,
+            hub_id,
+            prefix,
+            hash,
+            num_updates
+        )
     SELECT
         NEW.project_id,
+        NEW.hub_id,
         substr(NEW.prefix,1,1) as prefix,
         substr(agg_sha1_hex(hash, hash),1,8),
         sum(num_updates) AS sum_num_updates
@@ -169,18 +211,19 @@ BEGIN
             projects_merkle
         WHERE
             project_id = NEW.project_id AND
+            hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,1) || '_'
         )
     GROUP BY
-        NEW.project_id,prefix
+        NEW.project_id,
+        NEW.hub_id,
+        prefix
     HAVING
         sum_num_updates > 0
     ;
 
-    ----select debug('select * from projects_merkle where
-    --project_id = ? and prefix = ?', NEW.project_id, NEW.s0);
     UPDATE
-        projects
+        hub_related_projects
     SET
         hash = (
             SELECT
@@ -192,11 +235,12 @@ BEGIN
                     projects_merkle
                 WHERE
                     project_id = NEW.project_id AND
+                    hub_id = NEW.hub_id AND
                     prefix LIKE '_'
                 )
             GROUP BY
                 NULL
-        ),
+        ) /* ,
         num_updates = (
             SELECT
                 sum(num_updates)
@@ -204,10 +248,12 @@ BEGIN
                 projects_merkle
             WHERE
                 project_id = NEW.project_id AND
+                hub_id = NEW.hub_id AND
                 prefix LIKE '_'
-        )
+        ) */
     WHERE
-        id = NEW.project_id
+        hub_id = NEW.hub_id AND
+        project_id = NEW.project_id
     ;
 
 END;

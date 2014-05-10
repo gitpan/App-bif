@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -818,7 +818,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

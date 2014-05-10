@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub run {
     my $opts = shift;
@@ -48,7 +48,7 @@ sub run {
 
     my $client = Bif::Client->new(
         db       => $dbw,
-        hub      => $ctx->{location},
+        location => $ctx->{location},
         debug    => $ctx->{debug},
         debug_bs => $ctx->{debug_bs},
         on_error => sub {
@@ -149,7 +149,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

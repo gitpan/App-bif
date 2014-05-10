@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -54,12 +54,33 @@ sub _push_issue {
         "$ctx->{id} already has status $ctx->{path}:$existing" )
       if $existing;
 
-    $ctx->{update_id} = $db->nextval('updates');
-    $ctx->{message} ||= $ctx->prompt_edit(
-        txt => "[pushed from <WHERE> to $ctx->{path}<STATUS>]\n\n" );
+    $ctx->{message} ||= $ctx->prompt_edit;
 
     $db->txn(
         sub {
+            my $uid = $db->nextval('updates');
+            $db->xdo(
+                insert_into => 'updates',
+                values      => {
+                    id        => $uid,
+                    parent_id => $info->{first_update_id},
+                    email     => $ctx->{user}->{email},
+                    author    => $ctx->{user}->{name},
+                    message   => "[pushed from <WHERE>"
+                      . " to $ctx->{path}<STATUS>]\n\n",
+                },
+            );
+
+            $db->xdo(
+                insert_into => 'func_update_issue',
+                values      => {
+                    id         => $info->{id},
+                    project_id => $info->{project_id},
+                    update_id  => $uid,
+                },
+            );
+
+            $ctx->{update_id} = $db->nextval('updates');
             $ctx->update_repo(
                 {
                         message => 'push '
@@ -86,15 +107,6 @@ sub _push_issue {
                 where  => {
                     project_id => $pinfo->{id},
                     def        => 1,
-                },
-            );
-
-            $db->xdo(
-                insert_into => 'func_update_issue',
-                values      => {
-                    id         => $info->{id},
-                    project_id => $info->{project_id},
-                    update_id  => $ctx->{update_id},
                 },
             );
 
@@ -129,7 +141,7 @@ bif-push - push a thread to another project
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

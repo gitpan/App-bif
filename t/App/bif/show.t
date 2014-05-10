@@ -1,14 +1,18 @@
 use strict;
 use warnings;
 use lib 't/lib';
+use Path::Tiny;
 use Test::Bif;
 use Test::Fatal;
 use Test::More;
 
+my $have_version = path(qw/lib App bif Build/)->exists;
+
 run_in_tempdir {
 
     like exception { bif(qw/ show /) }, qr/usage:/, 'usage';
-    isa_ok bif(qw/ show VERSION/), 'Bif::OK::ShowVersion';
+    isa_ok bif(qw/ show VERSION/), 'Bif::OK::ShowVersion'
+      if $have_version;
 
     isa_ok exception { bif(qw/ show todo/) }, 'Bif::Error::RepoNotFound';
 

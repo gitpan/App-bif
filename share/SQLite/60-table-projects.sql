@@ -7,7 +7,7 @@ CREATE TABLE projects (
     status_id INTEGER NOT NULL DEFAULT -1,
     hub_id INTEGER,
     local INTEGER,
-    hash VARCHAR,
+    hash VARCHAR DEFAULT '',
     num_updates INTEGER,
     FOREIGN KEY(id) REFERENCES topics(id)
         ON DELETE CASCADE

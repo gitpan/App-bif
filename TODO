@@ -1,3 +1,9 @@
+* Hide IDs in show issue for projects that are not local.
+
+* Rename Bif::Client->debug_bs to debug_bifsync
+
+* Use Test::Kit[2]
+
 * Instead of magically matching arguments against an ID, ALIAS,
 LOCATION etc, require an option to specify exactly what the input is,
 like we are starting to do with UUIDs.

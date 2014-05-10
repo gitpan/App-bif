@@ -5,7 +5,7 @@ use App::bif::Context;
 use Pod::Perldoc;
 use Pod::Simple::Text;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -44,7 +44,7 @@ bif-doc -  display help information about bif
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

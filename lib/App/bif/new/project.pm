@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -57,14 +57,6 @@ sub run {
             my $ruid = $db->nextval('updates');
             $ctx->{id}        = $db->nextval('topics');
             $ctx->{update_id} = $db->nextval('updates');
-
-            $ctx->update_repo(
-                {
-                    ruid    => $ruid,
-                    message => "new project $ctx->{id} [$ctx->{path}]",
-                    related_update_id => $ctx->{update_id},
-                }
-            );
 
             $db->xdo(
                 insert_into => 'updates',
@@ -169,6 +161,14 @@ sub run {
                 values      => { merge => 1 },
             );
 
+            $ctx->update_repo(
+                {
+                    ruid       => $ruid,
+                    message    => "new project $ctx->{id} [$ctx->{path}]",
+                    project_id => $ctx->{id},
+                }
+            );
+
         }
     );
 
@@ -185,7 +185,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

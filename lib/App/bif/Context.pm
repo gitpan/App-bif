@@ -9,7 +9,7 @@ use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 use feature 'state';
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub new {
     my $proto = shift;
@@ -496,9 +496,15 @@ sub update_repo {
 
     state $have_qv = DBIx::ThinSQL->import(qw/ qv /);
     $dbw->xdo(
-        insert_into =>
-          [ 'hub_updates', qw/hub_id update_id related_update_uuid/ ],
-        select    => [ qv( $hub->{id} ), qv( $ref->{ruid} ), 'u.uuid', ],
+        insert_into => [
+            'hub_updates', qw/hub_id update_id project_id related_update_uuid/
+        ],
+        select => [
+            qv( $hub->{id} ),
+            qv( $ref->{ruid} ),
+            qv( $ref->{project_id} ),
+            'u.uuid',
+        ],
         from      => '(select 1)',
         left_join => 'updates u',
         on        => {
@@ -566,7 +572,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

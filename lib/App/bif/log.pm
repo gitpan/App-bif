@@ -5,7 +5,7 @@ use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 our $NOW;
 our $bold;
@@ -262,9 +262,10 @@ sub _log_item {
     $title = $row->{title};
     $path  = $row->{path};
 
+    ( my $id = $row->{update_id} ) =~ s/(.+)\./$yellow$1$dark\./;
     my @data = (
-        _header( $yellow . $type, $yellow . $row->{id}, $row->{update_uuid} ),
-        _header( 'From',          $row->{author},       $row->{email} ),
+        _header( $yellow . $type, $id,            $row->{update_uuid} ),
+        _header( 'From',          $row->{author}, $row->{email} ),
         _header( 'When', _new_ago( $row->{mtime}, $row->{mtimetz} ) ),
     );
 
@@ -619,7 +620,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

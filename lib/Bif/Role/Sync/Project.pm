@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 my %import_functions = (
     NEW => {
@@ -130,6 +130,7 @@ sub real_sync_project {
     my $prefix2   = $prefix . '_';
     my $db        = $self->db;
     my $on_update = $self->on_update;
+    my $hub_id    = $self->hub_id;
 
     $db->do("CREATE TEMPORARY TABLE $tmp(id INTEGER, ucount INTEGER)")
       if ( $prefix eq '' );
@@ -139,8 +140,11 @@ sub real_sync_project {
     my @refs = $db->xarrays(
         select => [qw/pm.prefix pm.hash/],
         from   => 'projects_merkle pm',
-        where =>
-          [ 'pm.project_id = ', qv($id), ' AND pm.prefix LIKE ', qv($prefix2) ],
+        where  => [
+            'pm.project_id = ',     qv($id),
+            ' AND pm.hub_id = ',    qv($hub_id),
+            ' AND pm.prefix LIKE ', qv($prefix2)
+        ],
     );
 
     my $here = { map { $_->[0] => $_->[1] } @refs };

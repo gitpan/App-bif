@@ -202,7 +202,6 @@ BEGIN
     /*
         First of all add the parents of the list of projects in
         update_projects for the current update
-    */
 
     INSERT INTO
         project_related_updates(
@@ -221,48 +220,7 @@ BEGIN
     WHERE
         project_related_updates.update_id = NEW.id
     ;
-
-    /*
-        Find the intersection between the projects of this update, and
-        the projects of other updates with the same prefix, and update
-        the projects_merkle table accordingly.
     */
-
-    INSERT INTO
-        projects_merkle(
-            project_id,
-            prefix,
-            hash,
-            num_updates
-        )
-    SELECT
-        project_id,
-        NEW.prefix,
-        substr(agg_sha1_hex(update_uuid, update_uuid),1,8) AS hash,
-        count(update_uuid) as num_updates
-    FROM
-        (
-        SELECT
-            project_related_updates.project_id,
-            updates.uuid AS update_uuid
-        FROM
-            updates
-        INNER JOIN
-            project_related_updates
-        ON
-            project_related_updates.update_id = updates.id
-        INNER JOIN
-            project_related_updates up2
-        ON
-            up2.update_id = NEW.id AND
-            up2.project_id = project_related_updates.project_id
-        WHERE
-            updates.prefix = NEW.prefix
-        )
-    GROUP BY
-        project_id,
-        NEW.prefix
-    ;
 
 END;
 

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub run {
     my $ctx = shift;
@@ -56,7 +56,7 @@ sub run {
 
     my $client = Bif::Client->new(
         db       => $db,
-        hub      => $hub->{location},
+        location => $hub->{location},
         debug    => $ctx->{debug},
         debug_bs => $ctx->{debug_bs},
         on_error => sub {
@@ -90,11 +90,33 @@ sub run {
                     );
 
                     foreach my $pinfo (@pinfo) {
-                        $ctx->{update_id} = $db->nextval('updates');
+                        my $uid = $db->nextval('updates');
+                        $db->xdo(
+                            insert_into => 'updates',
+                            values      => {
+                                id        => $uid,
+                                parent_id => $hub->{first_update_id},
+                                author    => $ctx->{user}->{name},
+                                email     => $ctx->{user}->{email},
+                                message   => "Imported $pinfo->{path}",
+                            },
+                        );
+
+                        $db->xdo(
+                            insert_into => 'hub_updates',
+                            values      => {
+                                update_id  => $uid,
+                                hub_id     => $hub->{id},
+                                project_id => $pinfo->{id},
+                            },
+                        );
+
                         my $msg = "[Exported to $hub->{location}]";
                         if ( $ctx->{message} ) {
                             $msg .= "\n\n$ctx->{message}\n";
                         }
+
+                        $ctx->{update_id} = $db->nextval('updates');
 
                         $db->xdo(
                             insert_into => 'updates',
@@ -128,42 +150,26 @@ sub run {
                             }
                         );
 
-                        my $status = $client->export_project($pinfo);
+                        my $status = $client->sync_hub( $hub->{id} );
                         print "\n";
 
-                        if ( $status eq 'ProjectFound' ) {
-                            print "Project already exported: $pinfo->{path}\n";
+                        unless ( $status eq 'RepoSync' ) {
                             $db->rollback;
-                        }
-                        elsif ( $status ne 'ProjectExported' ) {
-                            $db->rollback;
-                            $error = $status;
+                            $error = "unexpected status received: $status";
                             last;
                         }
 
-                    }
-
-                    if ( !$error ) {
-
-                        # Now get back the hub_related_updates that
-                        # exporting the projects just created
-
-                        $client->on_update(
-                            sub {
-                                $ctx->lprint("$hub->{alias} (meta): $_[0]");
-                            }
-                        );
-
-                        my $previous = $db->get_max_update_id;
-                        my $status   = $client->sync_hub( $hub->{id} );
+                        $status = $client->sync_project( $pinfo->{id} );
                         print "\n";
 
-                        unless ( $status eq 'RepoMatch'
-                            or $status eq 'RepoSync' )
+                        unless ( $status eq 'ProjectSync'
+                            or $status eq 'ProjectMatch' )
                         {
                             $db->rollback;
-                            $error = $status;
+                            $error = "unexpected status received: $status";
+                            last;
                         }
+
                     }
 
                     # Catch up on errors
@@ -203,7 +209,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

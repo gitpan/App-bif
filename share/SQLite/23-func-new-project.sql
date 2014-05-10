@@ -84,53 +84,6 @@ BEGIN
     );
 
     INSERT INTO
-        updates(
-            id,
-            author,
-            email,
-            message
-        )
-    SELECT
-        nextval('updates'),
-        'bif system',
-        'bif system',
-        '[hub/project relation: ' || substr(ht.uuid,1,8) || '/' ||
-            substr(p.uuid,1,8) || ']'
-    FROM
-        updates u
-    INNER JOIN
-        topics p
-    ON
-        p.id = NEW.id
-    INNER JOIN
-        hubs h
-    ON
-        h.local = 1
-    INNER JOIN
-        topics ht
-    ON
-        ht.id = h.id
-    WHERE
-        u.id = NEW.update_id
-    ;
-
-    INSERT INTO
-        hub_updates(
-            update_id,
-            hub_id,
-            project_id
-        )
-    SELECT
-        currval('updates'),
-        h.id,
-        NEW.id
-    FROM
-        hubs h
-    WHERE
-        h.local = 1
-    ;
-
-    INSERT INTO
         project_updates(
             update_id,
             project_id,

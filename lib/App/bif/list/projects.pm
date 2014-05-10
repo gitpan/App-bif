@@ -5,7 +5,7 @@ use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
 
-our $VERSION = '0.1.0_21';
+our $VERSION = '0.1.0_22';
 
 sub _invalid_status {
     my $self = shift;
@@ -45,6 +45,8 @@ sub run {
         }
     }
 
+    my $data;
+
     if ( $ctx->{hub} ) {
         require Path::Tiny;
         my $dir = Path::Tiny::path( $ctx->{hub} )->absolute if -d $ctx->{hub};
@@ -69,17 +71,13 @@ sub run {
             'hub location/alias not registered: ' . $ctx->{hub} )
           unless $ctx->{hub_id};
 
+        $data = _get_data($ctx);
+
     }
     else {
-        ( $ctx->{hub_id} ) = $db->xarray(
-            select => 'h.id',
-            from   => 'hubs h',
-            where  => 'h.local = 1',
-        );
-        $ctx->{local} = 1;
+        $data = _get_data2($ctx);
     }
 
-    my $data = _get_data($ctx);
     return $ctx->ok('ListProjects') unless @$data;
 
     require Term::ANSIColor;
@@ -141,14 +139,7 @@ sub _get_data {
         ],
         from       => 'hub_related_projects hrp',
         inner_join => 'projects p',
-        on         => do {
-            if ( $ctx->{local} ) {
-                'p.id = hrp.project_id AND p.local = 1';
-            }
-            else {
-                'p.id = hrp.project_id';
-            }
-        },
+        on         => 'p.id = hrp.project_id',
         left_join  => 'hubs h',
         on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
@@ -173,14 +164,7 @@ sub _get_data {
             ],
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
-            on         => do {
-                if ( $ctx->{local} ) {
-                    'p.id = hrp.project_id AND p.local = 1';
-                }
-                else {
-                    'p.id = hrp.project_id';
-                }
-            },
+            on         => 'p.id = hrp.project_id',
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
@@ -208,14 +192,7 @@ sub _get_data {
             ],
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
-            on         => do {
-                if ( $ctx->{local} ) {
-                    'p.id = hrp.project_id AND p.local = 1';
-                }
-                else {
-                    'p.id = hrp.project_id';
-                }
-            },
+            on         => 'p.id = hrp.project_id',
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
@@ -244,6 +221,101 @@ sub _get_data {
     );
 }
 
+sub _get_data2 {
+    my $ctx = shift;
+    return $ctx->db->xarrays(
+        select => [
+            'p.path',
+            case (
+                when => 'h.id IS NOT NULL',
+                then => 'h.alias',
+                else => qv(''),
+              )->as('hub'),
+            'p.title',
+            'project_status.status',
+            'sum( coalesce( total.open, 0 ) )',
+            'sum( coalesce( total.stalled, 0 ) )',
+            'sum( coalesce( total.closed, 0 ) )',
+            'coalesce( p.local, 0 )',
+        ],
+        from       => 'projects p',
+        left_join  => 'hubs h',
+        on         => 'h.id = p.hub_id',
+        inner_join => 'project_status',
+        on         => do {
+            if ( $ctx->{status} ) {
+                [
+                    'project_status.id = p.status_id AND ',
+                    'project_status.status = ',
+                    qv( $ctx->{status} )
+                ];
+            }
+            else {
+                'project_status.id = p.status_id';
+            }
+        },
+        left_join => sq(
+            select => [
+                'p.id',
+                "sum(task_status.status = 'open') as open",
+                "sum(task_status.status = 'stalled') as stalled",
+                "sum(task_status.status = 'closed') as closed",
+            ],
+            from => 'projects p',
+            do {
+                if ( $ctx->{status} ) {
+                    inner_join => 'project_status',
+                      on       => [
+                        'project_status.id = p.status_id AND ',
+                        'project_status.status = ',
+                        qv( $ctx->{status} )
+                      ];
+                }
+                else {
+                    ();
+                }
+            },
+            inner_join       => 'task_status',
+            on               => 'task_status.project_id = p.id',
+            inner_join       => 'tasks',
+            on               => 'tasks.status_id = task_status.id',
+            where            => 'p.local = 1',
+            group_by         => 'p.id',
+            union_all_select => [
+                'p.id',
+                "sum(issue_status.status = 'open') as open",
+                "sum(issue_status.status = 'stalled') as stalled",
+                "sum(issue_status.status = 'closed') as closed",
+            ],
+            from => 'projects p',
+            do {
+                if ( $ctx->{status} ) {
+                    inner_join => 'project_status',
+                      on       => [
+                        'project_status.id = p.status_id AND ',
+                        'project_status.status = ',
+                        qv( $ctx->{status} )
+                      ],
+                      ;
+                }
+                else {
+                    ();
+                }
+            },
+            inner_join => 'issue_status',
+            on         => 'issue_status.project_id = p.id',
+            inner_join => 'project_issues',
+            on         => 'project_issues.status_id = issue_status.id',
+            where      => 'p.local = 1',
+            group_by   => 'p.id',
+          )->as('total'),
+        on       => 'total.id = p.id',
+        where    => 'p.local = 1',
+        group_by => [ 'p.path', 'p.title', 'project_status.status', ],
+        order_by => 'p.path',
+    );
+}
+
 1;
 
 __END__
@@ -254,7 +326,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_21 (2014-05-09)
+0.1.0_22 (2014-05-10)
 
 =head1 SYNOPSIS
 

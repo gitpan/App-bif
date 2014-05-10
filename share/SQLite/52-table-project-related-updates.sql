@@ -1,58 +1,27 @@
 CREATE TABLE project_related_updates(
     project_id INTEGER NOT NULL,
+    real_project_id INTEGER NOT NULL,
     update_id INTEGER NOT NULL,
-    project_only INTEGER,
     merkled INTEGER NOT NULL DEFAULT 0,
     CONSTRAINT pru_merkled CHECK (
         merkled = 0 OR merkled = 1
     ),
-    CONSTRAINT pru_project_only CHECK (
-        project_only = 1 OR project_only IS NULL
-    ),
     UNIQUE(update_id,project_id) ON CONFLICT IGNORE
-    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE,
-    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY(real_project_id) REFERENCES projects(id) ON DELETE CASCADE,
+    FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE
 );
 
-CREATE INDEX
-    project_related_updates_project_id
-ON
-    project_related_updates(project_id)
-;
-
 /*
-    Project-only updates must also be recorded as hub-related updates.
+    TODO This needs to be measured with various combinations of
+    project_id, hub_id and update_id. I suspect update_id first is
+    best.
+CREATE INDEX
+    project_related_updates_project_id_hub_id
+ON
+    project_related_updates(project_id,hub_id)
+;
 */
-
-CREATE TRIGGER
-    ai_project_related_updates
-AFTER INSERT ON
-    project_related_updates
-FOR EACH ROW WHEN
-    NEW.project_only = 1
-BEGIN
-    SELECT debug(
-        NEW.update_id,
-        NEW.project_id,
-        NEW.project_only
-    );
-
-
-    INSERT INTO
-        hub_related_updates(
-            hub_id,
-            update_id
-        )
-    SELECT
-        hrp.hub_id,
-        NEW.update_id
-    FROM
-        hub_related_projects hrp
-    WHERE
-        hrp.project_id = NEW.project_id
-    ;
-END;
-
 
 CREATE TRIGGER
     bu_project_related_updates
@@ -64,8 +33,8 @@ FOR EACH ROW WHEN
     NEW.merkled = 1
 BEGIN
     SELECT debug(
-        'bu_project_related_updates',
         NEW.project_id,
+        NEW.real_project_id,
         NEW.update_id,
         NEW.merkled
     );
@@ -73,18 +42,21 @@ BEGIN
     INSERT INTO
         projects_merkle(
             project_id,
+            hub_id,
             prefix,
             hash,
             num_updates
         )
     SELECT
         NEW.project_id,
+        src.hub_id,
         src.prefix,
         substr(agg_sha1_hex(src.uuid, src.uuid),1,8) AS hash,
         count(src.uuid) as num_updates
     FROM
         (
         SELECT
+            hrp.hub_id,
             u2.prefix,
             u2.uuid
         FROM
@@ -96,12 +68,18 @@ BEGIN
         INNER JOIN
             project_related_updates pru
         ON
-            pru.update_id = u2.id AND pru.project_id = NEW.project_id
+            pru.update_id = u2.id AND
+            pru.project_id = NEW.project_id
+        INNER JOIN
+            hub_related_projects hrp
+        ON
+            hrp.project_id = pru.real_project_id
         WHERE
             u.id = NEW.update_id
         ) src
     GROUP BY
         NEW.project_id,
+        src.hub_id,
         src.prefix
     ;
 

@@ -98,19 +98,31 @@ BEGIN
 
     INSERT INTO
         project_related_updates(
-            update_id,
-            project_id
+            project_id,
+            real_project_id,
+            update_id
         )
     SELECT -- This catches the existing projects for the issue
-        NEW.update_id,
-        project_id
+        pi.project_id,
+        pi2.project_id,
+        NEW.update_id
     FROM
-        project_issues
+        project_issues pi
+    JOIN
+        (
+            SELECT
+                pi.project_id
+            FROM
+                project_issues pi
+            WHERE
+                pi.issue_id = NEW.issue_id
+        ) pi2
     WHERE
-        project_issues.issue_id = NEW.issue_id
+        pi.issue_id = NEW.issue_id
     UNION SELECT   -- This catches the (possibly new) project of this update
-        NEW.update_id,
-        NEW.project_id
+        NEW.project_id,
+        NEW.project_id,
+        NEW.update_id
     ;
 
     INSERT OR IGNORE INTO

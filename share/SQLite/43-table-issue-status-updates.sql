@@ -57,15 +57,13 @@ BEGIN
     ;
 
     INSERT INTO
-        project_related_updates(
+        project_meta_updates(
             update_id,
-            project_id,
-            project_only
+            project_id
         )
     SELECT
         NEW.update_id,
-        project_id,
-        1
+        project_id
     FROM
         issue_status
     WHERE

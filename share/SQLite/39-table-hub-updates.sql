@@ -67,21 +67,6 @@ BEGIN
         update_id = NEW.update_id
     ;
 
-    INSERT INTO hub_related_projects(
-        update_id,
-        hub_id,
-        project_id
-    )
-    SELECT
-        NEW.update_id,
-        NEW.hub_id,
-        NEW.project_id
-    FROM
-        hubs h
-    WHERE
-        NEW.project_id IS NOT NULL AND h.local = 1
-    ;
-
     INSERT INTO
         hub_related_updates(
             update_id,
@@ -92,6 +77,19 @@ BEGIN
         NEW.hub_id
     );
 
+    INSERT INTO
+        hub_related_projects(
+            hub_id,
+            project_id,
+            update_id
+        )
+    SELECT
+        NEW.hub_id,
+        NEW.project_id,
+        NEW.update_id
+    WHERE
+        NEW.project_id IS NOT NULL
+    ;
 
     INSERT OR IGNORE INTO
         hub_tomerge(hub_id) VALUES (NEW.hub_id);

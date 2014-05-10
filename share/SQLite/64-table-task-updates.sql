@@ -22,16 +22,18 @@ BEGIN
     -- This catches the current update project for the task
     INSERT INTO
         project_related_updates(
-            update_id,
-            project_id
+            project_id,
+            real_project_id,
+            update_id
         )
     SELECT
-        NEW.update_id,
-        project_id
+        ts.project_id,
+        ts.project_id,
+        NEW.update_id
     FROM
-        task_status
+        task_status ts
     WHERE
-        id = NEW.status_id
+        ts.id = NEW.status_id
     ;
 
 END;
@@ -83,20 +85,22 @@ BEGIN
     -- This catches the current project for the task
     INSERT INTO
         project_related_updates(
-            update_id,
-            project_id
+            project_id,
+            real_project_id,
+            update_id
         )
     SELECT
-        NEW.update_id,
-        task_status.project_id
+        ts.project_id,
+        ts.project_id,
+        NEW.update_id
     FROM
-        tasks
+        tasks t
     INNER JOIN
-        task_status
+        task_status ts
     ON
-        task_status.id = tasks.status_id
+        ts.id = t.status_id
     WHERE
-        tasks.id = NEW.task_id
+        t.id = NEW.task_id
     ;
 
     INSERT OR IGNORE INTO
