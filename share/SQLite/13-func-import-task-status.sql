@@ -8,7 +8,7 @@ CREATE TABLE func_import_task_status(
 
 
 CREATE TRIGGER
-    bi_func_import_task_status_1
+    func_import_task_status_bi_1
 BEFORE INSERT ON
     func_import_task_status
 FOR EACH ROW

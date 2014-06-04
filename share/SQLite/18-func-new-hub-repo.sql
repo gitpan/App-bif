@@ -1,4 +1,4 @@
-CREATE TABLE func_new_hub_location(
+CREATE TABLE func_new_hub_repo(
     update_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     hub_id INTEGER NOT NULL,
@@ -6,14 +6,14 @@ CREATE TABLE func_new_hub_location(
 );
 
 CREATE TRIGGER
-    bi_func_new_hub_location_1
+    func_new_hub_repo_bi_1
 BEFORE INSERT ON
-    func_new_hub_location
+    func_new_hub_repo
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_new_hub_location_1',
+        'TRIGGER func_new_hub_repo_bi_1',
         NEW.id,
         NEW.update_id,
         NEW.hub_id,
@@ -35,14 +35,14 @@ BEGIN
     SELECT
         NEW.id,
         NEW.update_id,
-        'hub_location',
+        'hub_repo',
         updates.mtime,
         updates.mtimetz,
         updates.mtime,
         updates.mtimetz,
         updates.lang,
         sha1_hex(
-            'hub_location',
+            'hub_repo',
             updates.author,
             updates.email,
             updates.lang,
@@ -63,7 +63,7 @@ BEGIN
     ;
 
     INSERT INTO
-        hub_locations(
+        hub_repos(
             id,
             hub_id,
             location
@@ -75,9 +75,9 @@ BEGIN
     );
 
     INSERT INTO
-        hub_location_updates(
+        hub_repo_deltas(
             update_id,
-            hub_location_id,
+            hub_repo_id,
             new,
             location
         )

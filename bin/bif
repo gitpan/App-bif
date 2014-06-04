@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -30,10 +30,10 @@ bif - distributed project management tool
 
 =head1 STATUS
 
-Bif is still at a very early stage of development.  Much of the
-functionality is missing, documentation is incomplete (or in some cases
-ahead of the implementation) and test coverage is lacking and/or
-failing.  B<DO NOT USE BIF FOR REAL DATA!>
+Bif is still under active development.  Much of the functionality is
+missing, documentation is incomplete (or in some cases ahead of the
+implementation) and test coverage is lacking and/or failing.  B<DO NOT
+USE BIF FOR REAL DATA!>
 
 =head1 DESCRIPTION
 
@@ -79,6 +79,10 @@ developers.
 
 =back
 
+Reference documents for bif commands have titles like
+I<bif-command-name>, which can also be displayed by running C<bif doc
+command name>.
+
 =head2 Command Structure
 
 Bif commands are structured where possible the same way an English
@@ -101,32 +105,29 @@ bif commands and their arguments are listed below:
         bif list topics
     bif log [ITEM]
         bif log ID
-        bif log hub ALIAS
+        bif log hub NAME
+        bif log issue ID
     bif new ITEM
         bif new issue [TITLE...]
         bif new project [PATH] [TITLE...]
         bif new task [TITLE...]
     bif push ID PATH [HUB]
-    bif register LOCATION [ALIAS]
+    bif register LOCATION
     bif reply ID.UID
     bif show ITEM
         bif show ID
-        bif show hub ALIAS
+        bif show hub NAME
         bif show project PATH [HUB]
     bif sql [STATEMENT...]
     bif sync
     bif update ID [STATUS]
     bif upgrade [DIRECTORY]
 
-In addition to the above commands a few useful aliases are created by
-default:
+In addition to the above commands a couple of useful aliases are
+created by default:
 
-    bif ls          # bif list projects --status active
-    bif ll          # bif list topics --status open
-
-Reference documents for bif commands have titles like
-I<bif-command-name>, which can also be displayed by running C<bif doc
-command name>.
+    bif l          # bif list projects --status run
+    bif ls         # bif list topics --status open
 
 =head2 Global Options
 
@@ -221,7 +222,7 @@ found in L<bif-doc-design>(3).
 
 =item Repository
 
-A repository is simply a configuration file and an SQLite database
+A bif repository is simply a configuration file and an SQLite database
 inside a directory named F<.bif>. All bif commands find the "current"
 repository by searching upwards through the file-system for such a
 directory. The database contains the history, status and relationships
@@ -233,9 +234,8 @@ interchangeably.
 Topic is is a catch-all term for any task, issue, bug or feature etc
 which has a conversation (the history) plus associated meta data
 (status). Topics are identified by an integer ID, which is unique to
-the local repository and/or project. The status associated with topics
-are generally not universal, but tied to the context of a particular
-project.
+the local repository and/or project. The status associated with a topic
+is can sometimes be project specific.
 
 =item Project
 
@@ -248,11 +248,12 @@ which includes the parent's path.
 
 =item Hub
 
-A hub is a type of repository that acts as a synchronisation point
-around which project activities can be exchanged. You can think of the
-term "hub" as being synonymous with "organisation." It is usually
-located on a remote server and accessed through a L<ssh>(1) tunnel.
-Hubs are identified either by their location URI or by an alias.
+A bif hub consists of one or more repositories that act as
+synchronisation points for exchanging project activities. Hub
+repositories are usually located on remote servers and accessed through
+a L<ssh>(1) tunnel. A hub can be referred to by its globally unique)
+name (typically an organisation's domain name) after it has been
+registered with the local repository.
 
 =back
 

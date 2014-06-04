@@ -1,4 +1,4 @@
-CREATE TABLE hubs_merkle (
+CREATE TABLE hub_related_updates_merkle (
     hub_id INTEGER,
     prefix VARCHAR NOT NULL COLLATE NOCASE,
     hash VARCHAR NOT NULL,
@@ -14,14 +14,14 @@ CREATE TABLE hubs_merkle (
 -- old version of this leaf.
 -- -----------------------------------------------------------------------
 CREATE TRIGGER
-    bi_hubs_merkle
+    hub_related_updates_merkle_bi_1
 BEFORE INSERT ON
-    hubs_merkle
+    hub_related_updates_merkle
 FOR EACH ROW WHEN
     length(NEW.prefix) = 5
 BEGIN
     SELECT debug(
-        'bi_hubs_merkle',
+        'hub_related_updates_merkle_bi_1',
         NEW.hub_id,
         NEW.prefix,
         NEW.hash,
@@ -30,7 +30,7 @@ BEGIN
 
     -- TODO: check if this fully uses the covering index 
     DELETE FROM
-        hubs_merkle
+        hub_related_updates_merkle
     WHERE
         hub_id = NEW.hub_id AND
         prefix IN (
@@ -49,14 +49,14 @@ END;
 -- (Remember SQLite triggers are LIFO)
 -- -----------------------------------------------------------------------
 CREATE TRIGGER
-    ai_hubs_merkle2
+    hub_related_updates_merkle_ai_2
 AFTER INSERT ON
-    hubs_merkle
+    hub_related_updates_merkle
 FOR EACH ROW WHEN
     NEW.num_updates = 0
 BEGIN
     SELECT debug(
-        'ai_hubs_merkle2',
+        'hub_related_updates_merkle_ai_2',
         NEW.hub_id,
         NEW.prefix,
         NEW.hash,
@@ -64,7 +64,7 @@ BEGIN
     );
 
     DELETE FROM
-        hubs_merkle
+        hub_related_updates_merkle
     WHERE
         hub_id = NEW.hub_id AND prefix = NEW.prefix
     ;
@@ -76,14 +76,14 @@ END;
 -- (Remember SQLite triggers are LIFO)
 -- -----------------------------------------------------------------------
 CREATE TRIGGER
-    ai_hubs_merkle1
+    hub_related_updates_merkle_ai_1
 AFTER INSERT ON
-    hubs_merkle
+    hub_related_updates_merkle
 FOR EACH ROW WHEN
     length(NEW.prefix) = 5
 BEGIN
     SELECT debug(
-        'ai_hubs_merkle1',
+        'hub_related_updates_merkle_ai_1',
         NEW.hub_id,
         NEW.prefix,
         NEW.hash,
@@ -91,7 +91,7 @@ BEGIN
     );
 
     INSERT INTO
-        hubs_merkle(hub_id,prefix,hash,num_updates)
+        hub_related_updates_merkle(hub_id,prefix,hash,num_updates)
     SELECT
         NEW.hub_id,
         substr(NEW.prefix,1,4) as prefix,
@@ -101,7 +101,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            hubs_merkle
+            hub_related_updates_merkle
         WHERE
             hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,4) || '_'
@@ -113,7 +113,7 @@ BEGIN
     ;
 
     INSERT INTO
-        hubs_merkle(hub_id,prefix,hash,num_updates)
+        hub_related_updates_merkle(hub_id,prefix,hash,num_updates)
     SELECT
         NEW.hub_id,
         substr(NEW.prefix,1,3) as prefix,
@@ -123,7 +123,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            hubs_merkle
+            hub_related_updates_merkle
         WHERE
             hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,3) || '_'
@@ -135,7 +135,7 @@ BEGIN
     ;
 
     INSERT INTO
-        hubs_merkle(hub_id,prefix,hash,num_updates)
+        hub_related_updates_merkle(hub_id,prefix,hash,num_updates)
     SELECT
         NEW.hub_id,
         substr(NEW.prefix,1,2) as prefix,
@@ -145,7 +145,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            hubs_merkle
+            hub_related_updates_merkle
         WHERE
             hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,2) || '_'
@@ -157,7 +157,7 @@ BEGIN
     ;
 
     INSERT INTO
-        hubs_merkle(hub_id,prefix,hash,num_updates)
+        hub_related_updates_merkle(hub_id,prefix,hash,num_updates)
     SELECT
         NEW.hub_id,
         substr(NEW.prefix,1,1) as prefix,
@@ -167,7 +167,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            hubs_merkle
+            hub_related_updates_merkle
         WHERE
             hub_id = NEW.hub_id AND
             prefix LIKE substr(NEW.prefix,1,1) || '_'
@@ -178,7 +178,7 @@ BEGIN
         sum_num_updates > 0
     ;
 
-    ----select debug('select * from hubs_merkle where
+    ----select debug('select * from hub_related_updates_merkle where
     --hub_id = ? and prefix = ?', NEW.hub_id, NEW.s0);
     UPDATE
         hubs
@@ -190,7 +190,7 @@ BEGIN
                 (SELECT
                       hash
                 FROM
-                    hubs_merkle
+                    hub_related_updates_merkle
                 WHERE
                     hub_id = NEW.hub_id AND
                     prefix LIKE '_'
@@ -202,7 +202,7 @@ BEGIN
             SELECT
                 sum(num_updates)
             FROM
-                hubs_merkle
+                hub_related_updates_merkle
             WHERE
                 hub_id = NEW.hub_id AND
                 prefix LIKE '_'

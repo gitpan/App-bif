@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -76,8 +76,16 @@ sub run {
                     parent_id => $ctx->{parent_id},
                     name      => $ctx->{path},
                     title     => $ctx->{title},
-                    local     => 1,
                 },
+            );
+
+            $db->xdo(
+                update => 'projects',
+                set    => {
+                    local  => 1,
+                    hub_id => $db->get_local_hub_id,
+                },
+                where => { id => $ctx->{id} },
             );
 
             $db->xdo(
@@ -97,7 +105,7 @@ sub run {
 
             $db->xdo(
                 insert_into =>
-                  [ 'project_updates', qw/update_id project_id status_id/, ],
+                  [ 'project_deltas', qw/update_id project_id status_id/, ],
                 select => [
                     qv( $ctx->{update_id} ),
                     qv( $ctx->{id} ),
@@ -163,9 +171,10 @@ sub run {
 
             $ctx->update_repo(
                 {
-                    ruid       => $ruid,
+                    id         => $ruid,
                     message    => "new project $ctx->{id} [$ctx->{path}]",
                     project_id => $ctx->{id},
+                    related_update_id => $ctx->{update_id},
                 }
             );
 
@@ -185,7 +194,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

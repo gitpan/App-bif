@@ -1,13 +1,13 @@
 CREATE TABLE hubs (
     id INTEGER NOT NULL PRIMARY KEY,
     default_location_id INTEGER NOT NULL DEFAULT -1,
-    alias VARCHAR(40) NOT NULL UNIQUE,
+    name VARCHAR(128) NOT NULL UNIQUE,
     local INTEGER UNIQUE,
     hash VARCHAR,
     num_updates INTEGER,
     FOREIGN KEY (id) REFERENCES topics(id) ON DELETE CASCADE,
     FOREIGN KEY (id,default_location_id)
-        REFERENCES hub_locations(hub_id,id)
+        REFERENCES hub_repos(hub_id,id)
         DEFERRABLE INITIALLY DEFERRED,
     CONSTRAINT local_constraint CHECK (
         local = 1 OR local IS NULL
@@ -15,7 +15,7 @@ CREATE TABLE hubs (
 );
 
 CREATE TRIGGER
-    ad_hubs_1
+    hubs_ad_1
 AFTER DELETE ON
     hubs
 FOR EACH ROW

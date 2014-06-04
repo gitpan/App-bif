@@ -8,7 +8,7 @@ CREATE TABLE project_issues_tomerge(
 );
 
 CREATE TRIGGER
-    bu_project_issues_tomerge_1
+    project_issues_tomerge_bu_1
 BEFORE UPDATE OF
     resolve
 ON
@@ -18,7 +18,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_project_issues_tomerge_1',
+        'TRIGGER project_issues_tomerge_bu_1',
         OLD.issue_id,
         OLD.project_id
     );
@@ -35,23 +35,23 @@ BEGIN
         COALESCE(project_issues.id, nextval('topics')),
         OLD.issue_id,
         OLD.project_id,
-        issue_updates.status_id,
+        issue_deltas.status_id,
         updates.id
     FROM
-        issue_updates
+        issue_deltas
     INNER JOIN
         updates
     ON
-        updates.id = issue_updates.update_id
+        updates.id = issue_deltas.update_id
     LEFT JOIN
         project_issues
     ON
         project_issues.issue_id = OLD.issue_id AND
         project_issues.project_id = OLD.project_id
     WHERE
-        issue_updates.issue_id = OLD.issue_id AND
-        issue_updates.project_id = OLD.project_id AND
-        issue_updates.status_id IS NOT NULL
+        issue_deltas.issue_id = OLD.issue_id AND
+        issue_deltas.project_id = OLD.project_id AND
+        issue_deltas.status_id IS NOT NULL
     ORDER BY
         updates.mtime DESC,
         updates.uuid

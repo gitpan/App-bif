@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -93,11 +93,6 @@ arg location => (
     isa      => 'Str',
     required => 1,
     comment  => 'location of a remote repository',
-);
-
-arg alias => (
-    isa     => 'Str',
-    comment => 'alias for future references to the hub',
 );
 
 opt debug_bs => (
@@ -485,9 +480,9 @@ subcmd(
     comment => 'summarize the current status of a hub',
 );
 
-arg alias => (
+arg name => (
     isa      => 'Str',
-    comment  => 'topic ID or hub ALIAS',
+    comment  => 'hub name',
     required => 1,
 );
 
@@ -547,12 +542,26 @@ opt filter => (
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/log hub/],
-    comment => 'review history a hub',
+    comment => 'review history of a hub',
 );
 
-arg alias => (
+arg name => (
     isa      => 'Str',
-    comment  => 'hub ID or ALIAS',
+    comment  => 'hub name',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif log issue
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/log issue/],
+    comment => 'review history of an issue',
+);
+
+arg id => (
+    isa      => 'Str',
+    comment  => 'issue ID',
     required => 1,
 );
 
@@ -818,7 +827,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

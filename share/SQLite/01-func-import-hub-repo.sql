@@ -1,4 +1,4 @@
-CREATE TABLE func_import_hub_location(
+CREATE TABLE func_import_hub_repo(
     update_uuid VARCHAR(40) NOT NULL,
     hub_uuid VARCHAR(40) NOT NULL,
     location VARCHAR NOT NULL
@@ -6,9 +6,9 @@ CREATE TABLE func_import_hub_location(
 
 
 CREATE TRIGGER
-    bi_func_import_hub_location_1
+    func_import_hub_repo_bi_1
 BEFORE INSERT ON
-    func_import_hub_location
+    func_import_hub_repo
 FOR EACH ROW
 BEGIN
 
@@ -19,7 +19,7 @@ BEGIN
     );
 
     INSERT INTO
-        func_new_hub_location(
+        func_new_hub_repo(
             update_id,
             hub_id,
             location

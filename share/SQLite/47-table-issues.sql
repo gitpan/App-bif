@@ -5,7 +5,7 @@ CREATE TABLE issues (
 );
 
 CREATE TRIGGER
-    ad_issues_1
+    issues_ad_1
 AFTER DELETE ON
     issues
 FOR EACH ROW

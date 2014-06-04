@@ -6,7 +6,7 @@ CREATE TABLE func_import_task(
 
 
 CREATE TRIGGER
-    bi_func_import_task_1
+    func_import_task_bi_1
 BEFORE INSERT ON
     func_import_task
 FOR EACH ROW

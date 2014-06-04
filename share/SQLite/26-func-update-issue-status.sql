@@ -8,13 +8,13 @@ CREATE TABLE func_update_issue_status(
 
 -- TODO  turn into a BEFORE trigger
 CREATE TRIGGER
-    bi_func_update_issue_status_1
+    func_update_issue_status_bi_1
 BEFORE INSERT ON
     func_update_issue_status
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_update_issue_status_1',
+        'TRIGGER func_update_issue_status_bi_1',
         NEW.id,
         NEW.update_id,
         NEW.status,
@@ -23,7 +23,7 @@ FOR EACH ROW BEGIN
     );
 
     INSERT INTO
-        issue_status_updates(
+        issue_status_deltas(
             id,
             issue_status_id,
             status,

@@ -32,14 +32,13 @@ WHERE
 ;
 
 CREATE TRIGGER
-    ai_updates_1
+    updates_ai_1
 AFTER INSERT ON
     updates
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER ai_updates_1',
         NEW.id,
         NEW.uuid,
         NEW.parent_id,
@@ -128,7 +127,27 @@ END;
 
 
 CREATE TRIGGER
-    tree_bu_updates_1
+    updates_bu_1
+BEFORE UPDATE OF
+    uuid
+ON
+    updates
+FOR EACH ROW WHEN
+    OLD.uuid != NEW.uuid AND OLD.uuid != ''
+BEGIN
+    SELECT debug(
+        'TRIGGER updates_bu_1',
+        OLD.uuid,
+        NEW.uuid,
+        NEW.message
+    );
+
+    SELECT RAISE(ABORT, 'Bif::Error::UuidMismatch');
+END;
+
+
+CREATE TRIGGER
+    updates_bu_2
 BEFORE UPDATE OF
     id, parent_id, mtime, mtimetz, author, email, lang
 ON
@@ -140,27 +159,7 @@ END;
 
 
 CREATE TRIGGER
-    bu_updates_1
-BEFORE UPDATE OF
-    uuid
-ON
-    updates
-FOR EACH ROW WHEN
-    OLD.uuid != NEW.uuid AND OLD.uuid != ''
-BEGIN
-    SELECT debug(
-        'TRIGGER bu_updates_1',
-        OLD.uuid,
-        NEW.uuid,
-        NEW.message
-    );
-
-    SELECT RAISE(ABORT, 'Bif::Error::UuidMismatch');
-END;
-
-
-CREATE TRIGGER
-    au_updates_1
+    updates_au_1
 AFTER UPDATE OF
     prefix
 ON
@@ -169,7 +168,6 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER au_updates_1',
         NEW.id,
         NEW.prefix
     );

@@ -6,20 +6,20 @@ CREATE TABLE updates_pending(
 );
 
 CREATE TRIGGER
-    bi_updates_pending_1
+    updates_pending_bi_1
 BEFORE INSERT ON
     updates_pending
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        'TRIGGER bi_updates_pending_1',
+        'TRIGGER updates_pending_bi_1',
         NEW.update_id,
         NEW.terms
     );
 END;
 
 CREATE TRIGGER
-    bu_updates_pending_1
+    updates_pending_bu_1
 BEFORE UPDATE ON
     updates_pending
 FOR EACH ROW WHEN
@@ -27,7 +27,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_updates_pending_1',
+        'TRIGGER updates_pending_bu_1',
         NEW.update_id,
         NEW.terms
     );

@@ -1,12 +1,13 @@
 CREATE TABLE hub_tomerge(
     hub_id INTEGER NOT NULL UNIQUE,
+    name INTEGER DEFAULT 0,
     default_location_id INTEGER DEFAULT 0,
     resolve INTEGER,
     FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER
-    bu_hub_tomerge_3
+    hub_tomerge_bu_3
 BEFORE UPDATE OF
     resolve
 ON
@@ -16,7 +17,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_hub_tomerge_3',
+        'TRIGGER hub_tomerge_bu_3',
         OLD.hub_id
     );
 
@@ -27,13 +28,13 @@ BEGIN
             SELECT
                 updates.mtime
             FROM
-                hub_updates
+                hub_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = hub_updates.update_id
+                updates.id = hub_deltas.update_id
             WHERE
-                hub_updates.hub_id = OLD.hub_id
+                hub_deltas.hub_id = OLD.hub_id
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -55,7 +56,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_hub_tomerge_2
+    hub_tomerge_bu_2
 BEFORE UPDATE OF
     resolve
 ON
@@ -66,7 +67,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_hub_tomerge_2',
+        'TRIGGER hub_tomerge_bu_2',
         OLD.hub_id
     );
 
@@ -75,16 +76,58 @@ BEGIN
     SET
         default_location_id = (
             SELECT
-                hub_updates.default_location_id
+                hub_deltas.default_location_id
             FROM
-                hub_updates
+                hub_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = hub_updates.update_id
+                updates.id = hub_deltas.update_id
             WHERE
-                hub_updates.hub_id = OLD.hub_id AND
-                hub_updates.default_location_id IS NOT NULL
+                hub_deltas.hub_id = OLD.hub_id AND
+                hub_deltas.default_location_id IS NOT NULL
+            ORDER BY
+                updates.mtime DESC,
+                updates.uuid
+            LIMIT
+                1
+        )
+    WHERE
+        id = OLD.hub_id
+    ;
+
+END;
+
+CREATE TRIGGER
+    hub_tomerge_bu_1
+BEFORE UPDATE OF
+    resolve
+ON
+    hub_tomerge
+FOR EACH ROW WHEN
+    NEW.resolve = 1 AND
+    OLD.name != 0
+BEGIN
+
+    SELECT debug(
+        OLD.hub_id
+    );
+
+    UPDATE
+        hubs
+    SET
+        name = (
+            SELECT
+                hub_deltas.name
+            FROM
+                hub_deltas
+            INNER JOIN
+                updates
+            ON
+                updates.id = hub_deltas.update_id
+            WHERE
+                hub_deltas.hub_id = OLD.hub_id AND
+                hub_deltas.name IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid

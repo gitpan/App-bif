@@ -1,4 +1,4 @@
-CREATE TABLE func_import_task_update(
+CREATE TABLE func_import_task_delta(
     update_uuid VARCHAR(40) NOT NULL,
     task_uuid VARCHAR(40),
     task_status_uuid VARCHAR(40),
@@ -7,9 +7,9 @@ CREATE TABLE func_import_task_update(
 
 
 CREATE TRIGGER
-    bi_func_import_task_update_1
+    func_import_task_delta_bi_1
 BEFORE INSERT ON
-    func_import_task_update
+    func_import_task_delta
 FOR EACH ROW
 BEGIN
 

@@ -24,7 +24,7 @@ ON
 */
 
 CREATE TRIGGER
-    bu_project_related_updates
+    project_related_updates_bu_1
 BEFORE UPDATE OF
     merkled
 ON
@@ -40,7 +40,7 @@ BEGIN
     );
 
     INSERT INTO
-        projects_merkle(
+        project_related_updates_merkle(
             project_id,
             hub_id,
             prefix,

@@ -20,10 +20,10 @@ Bif Project Management Tool
     Bif runs on any system that supports Perl and SQLite.
 
 Software Status
-    Bif is still at a very early stage of development. Much of the
-    functionality is missing, documentation is incomplete (or in some cases
-    ahead of the implementation) and test coverage is lacking and/or
-    failing. DO NOT USE BIF FOR REAL DATA!
+    Bif is still under active development. Much of the functionality is
+    missing, documentation is incomplete (or in some cases ahead of the
+    implementation) and test coverage is lacking and/or failing. DO NOT USE
+    BIF FOR REAL DATA!
 
     We are actively seeking contributors. See below for how you can help.
 

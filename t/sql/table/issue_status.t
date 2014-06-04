@@ -69,11 +69,11 @@ run_in_tempdir {
 
                 is_deeply $db->selectrow_arrayref(
                     'select issue_status_id,status,status,rank,def
-                     from issue_status_updates
+                     from issue_status_deltas
                      where id=?',
                     undef, $update_id
                   ),
-                  [ $id, qw/a_status a_status/, 10, 1 ], 'issue_status_updates';
+                  [ $id, qw/a_status a_status/, 10, 1 ], 'issue_status_deltas';
 
                 eval {
                     $db->txn(
@@ -118,7 +118,7 @@ run_in_tempdir {
                   'updated mtime';
 
                 is_deeply $db->selectrow_arrayref(
-                    'select count(id) from issue_status_updates
+                    'select count(id) from issue_status_deltas
                     where issue_status_id=?',
                     undef,
                     $id

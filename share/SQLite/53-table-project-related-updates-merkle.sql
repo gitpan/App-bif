@@ -1,4 +1,4 @@
-CREATE TABLE projects_merkle (
+CREATE TABLE project_related_updates_merkle (
     project_id INTEGER NOT NULL,
     hub_id INTEGER NOT NULL,
     prefix VARCHAR NOT NULL COLLATE NOCASE,
@@ -15,9 +15,9 @@ CREATE TABLE projects_merkle (
 -- old version of this leaf.
 -- -----------------------------------------------------------------------
 CREATE TRIGGER
-    bi_projects_merkle
+    project_related_updates_merkle_bi_1
 BEFORE INSERT ON
-    projects_merkle
+    project_related_updates_merkle
 FOR EACH ROW WHEN
     length(NEW.prefix) = 5
 BEGIN
@@ -30,7 +30,7 @@ BEGIN
     );
 
     DELETE FROM
-        projects_merkle
+        project_related_updates_merkle
     WHERE
         project_id = NEW.project_id AND
         hub_id = NEW.hub_id AND
@@ -50,14 +50,14 @@ END;
 -- (Remember SQLite triggers are LIFO)
 -- -----------------------------------------------------------------------
 CREATE TRIGGER
-    ai_projects_merkle2
+    project_related_updates_merkle_ai_2
 AFTER INSERT ON
-    projects_merkle
+    project_related_updates_merkle
 FOR EACH ROW WHEN
     NEW.num_updates = 0
 BEGIN
     SELECT debug(
-        'ai_projects_merkle2',
+        'project_related_updates_merkle_ai_2',
         NEW.project_id,
         NEW.hub_id,
         NEW.prefix,
@@ -66,7 +66,7 @@ BEGIN
     );
 
     DELETE FROM
-        projects_merkle
+        project_related_updates_merkle
     WHERE
         project_id = NEW.project_id AND
         hub_id = NEW.hub_id AND
@@ -80,9 +80,9 @@ END;
 -- (Remember SQLite triggers are LIFO)
 -- -----------------------------------------------------------------------
 CREATE TRIGGER
-    ai_projects_merkle1
+    project_related_updates_merkle_ai_1
 AFTER INSERT ON
-    projects_merkle
+    project_related_updates_merkle
 FOR EACH ROW WHEN
     length(NEW.prefix) = 5
 BEGIN
@@ -95,7 +95,7 @@ BEGIN
     );
 
     INSERT INTO
-        projects_merkle(
+        project_related_updates_merkle(
             project_id,
             hub_id,
             prefix,
@@ -112,7 +112,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            projects_merkle
+            project_related_updates_merkle
         WHERE
             project_id = NEW.project_id AND
             hub_id = NEW.hub_id AND
@@ -127,7 +127,7 @@ BEGIN
     ;
 
     INSERT INTO
-        projects_merkle(
+        project_related_updates_merkle(
             project_id,
             hub_id,
             prefix,
@@ -144,7 +144,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            projects_merkle
+            project_related_updates_merkle
         WHERE
             project_id = NEW.project_id AND
             hub_id = NEW.hub_id AND
@@ -159,7 +159,7 @@ BEGIN
     ;
 
     INSERT INTO
-        projects_merkle(
+        project_related_updates_merkle(
             project_id,
             hub_id,
             prefix,
@@ -176,7 +176,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            projects_merkle
+            project_related_updates_merkle
         WHERE
             project_id = NEW.project_id AND
             hub_id = NEW.hub_id AND
@@ -191,7 +191,7 @@ BEGIN
     ;
 
     INSERT INTO
-        projects_merkle(
+        project_related_updates_merkle(
             project_id,
             hub_id,
             prefix,
@@ -208,7 +208,7 @@ BEGIN
         (SELECT
             hash,num_updates
         FROM
-            projects_merkle
+            project_related_updates_merkle
         WHERE
             project_id = NEW.project_id AND
             hub_id = NEW.hub_id AND
@@ -232,7 +232,7 @@ BEGIN
                 (SELECT
                       hash
                 FROM
-                    projects_merkle
+                    project_related_updates_merkle
                 WHERE
                     project_id = NEW.project_id AND
                     hub_id = NEW.hub_id AND
@@ -245,7 +245,7 @@ BEGIN
             SELECT
                 sum(num_updates)
             FROM
-                projects_merkle
+                project_related_updates_merkle
             WHERE
                 project_id = NEW.project_id AND
                 hub_id = NEW.hub_id AND

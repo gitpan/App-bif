@@ -98,11 +98,11 @@ run_in_tempdir {
 
             is_deeply $db->selectrow_arrayref(
                 'select issue_id,status_id
-                 from issue_updates
+                 from issue_deltas
                  where id=?',
                 undef, $update_id
               ),
-              [ $id, $status_id ], 'issue_updates';
+              [ $id, $status_id ], 'issue_deltas';
 
             ok $db->xdo(
                 insert_into => 'func_new_issue',
@@ -168,11 +168,11 @@ run_in_tempdir {
 
     is_deeply $db->selectrow_arrayref(
         'select project_id,parent_id,name
-                 from project_updates
+                 from project_deltas
                  where id=?',
         undef, $child_update_id
       ),
-      [ $child_id, $id, 'y' ], 'issue_updates';
+      [ $child_id, $id, 'y' ], 'issue_deltas';
 
 =cut
 
@@ -217,15 +217,15 @@ run_in_tempdir {
                 'select
             project_issues.status_id,
             project_issues.update_id,
-            issue_updates.status_id
-         from issue_updates
+            issue_deltas.status_id
+         from issue_deltas
          inner join project_issues
-         on project_issues.issue_id = issue_updates.issue_id
-         where issue_updates.id=?',
+         on project_issues.issue_id = issue_deltas.issue_id
+         where issue_deltas.id=?',
                 undef, $update_id
               ),
               [ $needinfo_status_id, $update_id, $needinfo_status_id ],
-              'issue_updates';
+              'issue_deltas';
 
             my $new_update_id = $db->nextval('updates');
 
@@ -246,15 +246,15 @@ run_in_tempdir {
                 'select
             project_issues.status_id,
             project_issues.update_id,
-            issue_updates.status_id
-         from issue_updates
+            issue_deltas.status_id
+         from issue_deltas
          inner join project_issues
-         on project_issues.issue_id = issue_updates.issue_id
-         where issue_updates.id=?',
+         on project_issues.issue_id = issue_deltas.issue_id
+         where issue_deltas.id=?',
                 undef, $new_update_id
               ),
               [ $needinfo_status_id, $update_id, $status_id ],
-              'out of order issue_updates';
+              'out of order issue_deltas';
         }
     );
 };

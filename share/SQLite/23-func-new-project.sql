@@ -3,25 +3,23 @@ CREATE TABLE func_new_project(
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     parent_id INTEGER,
     name VARCHAR(40),
-    title VARCHAR(1024) NOT NULL DEFAULT '',
-    local INTEGER
+    title VARCHAR(1024) NOT NULL DEFAULT ''
 );
 
 CREATE TRIGGER
-    bi_func_new_project_1
+    func_new_project_bi_1
 BEFORE INSERT ON
     func_new_project
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_new_project_1',
+        'TRIGGER func_new_project_bi_1',
         NEW.id,
         NEW.update_id,
         NEW.parent_id,
         NEW.name,
-        NEW.title,
-        NEW.local
+        NEW.title
     );
 
     INSERT INTO
@@ -72,19 +70,17 @@ BEGIN
             id,
             parent_id,
             name,
-            title,
-            local
+            title
         )
     VALUES(
         NEW.id,
         NEW.parent_id,
         NEW.name,
-        NEW.title,
-        NEW.local
+        NEW.title
     );
 
     INSERT INTO
-        project_updates(
+        project_deltas(
             update_id,
             project_id,
             new,

@@ -6,7 +6,7 @@ CREATE TABLE issues_tomerge(
 );
 
 CREATE TRIGGER
-    bu_issues_tomerge_2
+    issues_tomerge_bu_2
 BEFORE UPDATE OF
     resolve
 ON
@@ -16,7 +16,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_issues_tomerge_2',
+        'TRIGGER issues_tomerge_bu_2',
         OLD.issue_id
     );
 
@@ -27,13 +27,13 @@ BEGIN
             SELECT
                 updates.mtime
             FROM
-                issue_updates
+                issue_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = issue_updates.update_id
+                updates.id = issue_deltas.update_id
             WHERE
-                issue_updates.issue_id = OLD.issue_id
+                issue_deltas.issue_id = OLD.issue_id
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -54,7 +54,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_issues_tomerge_1
+    issues_tomerge_bu_1
 BEFORE UPDATE OF
     resolve
 ON
@@ -65,7 +65,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_issues_tomerge_1',
+        'TRIGGER issues_tomerge_bu_1',
         OLD.issue_id
     );
 
@@ -74,16 +74,16 @@ BEGIN
     SET
         title = (
             SELECT
-                issue_updates.title
+                issue_deltas.title
             FROM
-                issue_updates
+                issue_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = issue_updates.update_id
+                updates.id = issue_deltas.update_id
             WHERE
-                issue_updates.issue_id = OLD.issue_id AND
-                issue_updates.title IS NOT NULL
+                issue_deltas.issue_id = OLD.issue_id AND
+                issue_deltas.title IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid

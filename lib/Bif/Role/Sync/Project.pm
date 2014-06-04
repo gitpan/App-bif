@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 my %import_functions = (
     NEW => {
@@ -19,18 +19,18 @@ my %import_functions = (
         update         => 'func_import_update',
     },
     UPDATE => {
-        issue          => 'func_import_issue_update',
-        issue_status   => 'func_import_issue_status_update',
-        project        => 'func_import_project_update',
-        project_status => 'func_import_project_status_update',
-        task           => 'func_import_task_update',
-        task_status    => 'func_import_task_status_update',
+        issue          => 'func_import_issue_delta',
+        issue_status   => 'func_import_issue_status_delta',
+        project        => 'func_import_project_delta',
+        project_status => 'func_import_project_status_delta',
+        task           => 'func_import_task_delta',
+        task_status    => 'func_import_task_status_delta',
     },
     QUIT   => {},
     CANCEL => {},
 );
 
-sub recv_project_updates {
+sub recv_project_deltas {
     my $self = shift;
     my $uuid = shift;
     my $db   = $self->db;
@@ -95,7 +95,7 @@ sub real_import_project {
     my $self = shift;
     my $uuid = shift;
 
-    my $result = $self->recv_project_updates;
+    my $result = $self->recv_project_deltas;
 
     if ( $result =~ m/^\d+$/ ) {
         my ($id) = $self->db->xarray(
@@ -139,7 +139,7 @@ sub real_sync_project {
 
     my @refs = $db->xarrays(
         select => [qw/pm.prefix pm.hash/],
-        from   => 'projects_merkle pm',
+        from   => 'project_related_updates_merkle pm',
         where  => [
             'pm.project_id = ',     qv($id),
             ' AND pm.hub_id = ',    qv($hub_id),
@@ -226,7 +226,7 @@ sub real_sync_project {
         return $self->send_updates( $update_list, $total );
     };
 
-    my $r1 = $self->recv_project_updates;
+    my $r1 = $self->recv_project_deltas;
     my $r2 = $send->join;
 
     if ( $r1 =~ m/^\d+$/ ) {

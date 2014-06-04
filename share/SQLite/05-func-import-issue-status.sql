@@ -8,7 +8,7 @@ CREATE TABLE func_import_issue_status(
 
 
 CREATE TRIGGER
-    bi_func_import_issue_status_1
+    func_import_issue_status_bi_1
 BEFORE INSERT ON
     func_import_issue_status
 FOR EACH ROW

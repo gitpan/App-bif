@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -116,8 +116,7 @@ sub run {
 
     $ctx->start_pager($i);
 
-    require Term::Size;
-    print $table->render( ( Term::Size::chars() )[0] );
+    print $table->render($App::bif::Context::term_width);
 
     $ctx->end_pager;
 
@@ -133,7 +132,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

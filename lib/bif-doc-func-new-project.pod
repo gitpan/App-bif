@@ -4,7 +4,7 @@ bif-doc-func-new-project - add a new project to an update
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -44,7 +44,7 @@ the values resulting in the project/topic UUID.
 =item * Update #2 is started by inserting a new row into the
 F<updates> table.
 
-=item * A row is inserted into F<hub_updates> against update #2 for the
+=item * A row is inserted into F<hub_deltas> against update #2 for the
 local hub with project_id set to topics.id / projects.id, which kicks
 of the following trigger actions:
 
@@ -58,7 +58,7 @@ update to the local hub, which kicks off the following trigger actions:
 
 =over
 
-=item * A row is inserted into hubs_merkle taking into account the new
+=item * A row is inserted into hub_related_updates_merkle taking into account the new
 update #2.
 
 =back
@@ -68,7 +68,7 @@ values.
 
 =back
 
-=item * A row is inserted into F<project_updates> against update #1, which kicks off the
+=item * A row is inserted into F<project_deltas> against update #1, which kicks off the
 following trigger actions:
 
 =over
@@ -81,13 +81,13 @@ actions:
 
 =over
 
-=item * A row is inserted into projects_merkle taking into account the new
+=item * A row is inserted into project_related_updates_merkle taking into account the new
 update #1.
 
 =back
 
 
-=item * If project_update.hub_uuid exists in the repository then every
+=item * If project_delta.hub_uuid exists in the repository then every
 project-only update from F<project_related_updates> is added to 
 F<hub_related_updates> 
 
@@ -99,7 +99,7 @@ The enclosing transaction will fail with a foreign key violation unless
 at least one call to
 L<func_new_project_status()|bif-doc-func-new-project-status> is also
 made and a row is inserted into
-L<project_updates|bif-doc-table-project-updates> resulting in
+L<project_deltas|bif-doc-table-project-updates> resulting in
 C<projects.status_id> containing a valid foreign key value into the
 L<project_status|bif-doc-table-project-status> table.
 

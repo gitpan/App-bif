@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = shift;
@@ -16,7 +16,7 @@ sub run {
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
     my $db = $ctx->dbw;
 
-    my @locations = $db->get_hub_locations( $ctx->{hub} );
+    my @locations = $db->get_hub_repos( $ctx->{hub} );
     $ctx->err( 'HubNotFound', 'hub not found: %s', $ctx->{hub} )
       unless @locations;
 
@@ -24,7 +24,7 @@ sub run {
 
     my @pinfo;
     foreach my $path ( @{ $ctx->{path} } ) {
-        my $pinfo = $ctx->get_project( $path, $hub->{alias} );
+        my $pinfo = $ctx->get_project( $path, $hub->{name} );
 
         return $ctx->err( 'ProjectNotFound', 'project not found: %s', $path )
           unless $pinfo;
@@ -64,7 +64,7 @@ sub run {
             undef $stderr_watcher;
             return;
         }
-        print STDERR "$hub->{alias}: $line";
+        print STDERR "$hub->{name}: $line";
     };
 
     my $coro = async {
@@ -82,7 +82,7 @@ sub run {
                         $client->on_update(
                             sub {
                                 $ctx->lprint(
-                                    "$hub->{alias} [$pinfo->{path}]: $_[0]");
+                                    "$hub->{name} [$pinfo->{path}]: $_[0]");
                             }
                         );
 
@@ -104,7 +104,7 @@ sub run {
                     undef $stderr_watcher;
                     $stderr->blocking(0);
                     while ( my $line = $stderr->getline ) {
-                        print STDERR "$hub->{alias}: $line";
+                        print STDERR "$hub->{name}: $line";
                     }
 
                     return;
@@ -138,7 +138,7 @@ bif-import -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -146,7 +146,10 @@ bif-import -  import projects from a remote hub
 
 =head1 DESCRIPTION
 
-Import projects from a hub.
+Import projects from a hub. If are project has been imported, then it
+is considered "local". If it has not been imported then we call it
+"non-local". A project that we have visibility of but have not
+registered the hub for we call "remote."
 
 =head1 ARGUMENTS
 
@@ -158,7 +161,7 @@ The path of the remote project to import.
 
 =item HUB
 
-The alias of a previously registered hub.
+The name of a previously registered hub.
 
 =back
 

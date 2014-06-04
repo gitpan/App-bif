@@ -1,4 +1,4 @@
-CREATE TABLE func_import_project_update(
+CREATE TABLE func_import_project_delta(
     update_uuid VARCHAR(40) NOT NULL,
     project_uuid VARCHAR(40) NOT NULL,
     parent_uuid VARCHAR(40),
@@ -10,9 +10,9 @@ CREATE TABLE func_import_project_update(
 
 
 CREATE TRIGGER
-    bi_func_import_project_update_1
+    func_import_project_delta_bi_1
 BEFORE INSERT ON
-    func_import_project_update
+    func_import_project_delta
 FOR EACH ROW
 BEGIN
 

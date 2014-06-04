@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -22,9 +22,23 @@ sub run {
             return $sth->fetchall_arrayref;
         }
 
-        my $header = join( ', ', @{ $sth->{NAME} } );
-        print $header, "\n", ( '-' x length $header ), "\n";
-        print DBI::neat_list($_) . "\n" for @{ $sth->fetchall_arrayref };
+        my $header = ' '
+          . ( join '  ', map { $_ =~ m/.id$/ ? 'r' : 'l' } @{ $sth->{NAME} } )
+          . ' ';
+
+        my $data = $sth->fetchall_arrayref;
+        foreach my $r (@$data) {
+            foreach ( 0 .. $#$r ) {
+                $r->[$_] = 'NULL' unless defined $r->[$_];
+            }
+        }
+
+        $ctx->start_pager;
+
+        print $ctx->render_table( $header, $sth->{NAME}, $data );
+
+        $ctx->end_pager;
+
     }
     else {
         print $db->do( $ctx->{statement} ) . "\n";
@@ -42,7 +56,7 @@ bif-sql -  run an SQL command against the database
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

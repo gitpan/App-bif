@@ -16,12 +16,12 @@ CREATE TABLE topics (
 SELECT create_sequence('topics');
 
 CREATE TRIGGER
-    bi_topics_1
+    topics_bi_1
 BEFORE INSERT ON topics
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        'TRIGGER bi_topics_1',
+        'TRIGGER topics_bi_1',
         NEW.id,
         NEW.uuid,
         NEW.first_update_id,
@@ -31,7 +31,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_topics
+    topics_bu_1
 BEFORE UPDATE OF
     ctime,ctimetz,first_update_id
 ON
@@ -42,12 +42,12 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bd_topics_1
+    topics_bd_1
 BEFORE DELETE ON topics
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        'TRIGGER bd_topics_1',
+        'TRIGGER topics_bd_1',
         OLD.id,
         OLD.first_update_id,
         OLD.kind

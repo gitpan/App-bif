@@ -42,15 +42,9 @@ run_in_tempdir {
         my $task = bif(qw/new task todo title --message message3/);
         ok $task->{id}, 'create task ' . $task->{id};
 
-        my $update = bif( qw/update/, $task->{id}, qw/ --message message4/ );
+        my $update =
+          bif( qw/update/, $task->{id}, qw/closed --title title --message m4/ );
         isa_ok $update, 'Bif::OK::UpdateTask';
-
-        $update =
-          bif( qw/update /, $task->{id}, qw/closed --message message5/ );
-        isa_ok $update, 'Bif::OK::UpdateTask';
-
-        $update =
-          bif( qw/update /, $task->{id}, qw/--title title2 -m message6/ );
 
         isa_ok $update, 'Bif::OK::UpdateTask';
     };
@@ -58,16 +52,10 @@ run_in_tempdir {
     subtest 'issue', sub {
 
         my $issue = bif(qw/new issue todo title --message message7/);
-        my $update = bif( qw/update/, $issue->{id}, qw/ --message message8/ );
+        my $update =
+          bif( qw/update/, $issue->{id}, qw/closed --title t2 --message m8/ );
         isa_ok $update, 'Bif::OK::UpdateIssue';
 
-        $update =
-          bif( qw/update /, $issue->{id}, qw/closed --message message9/ );
-        isa_ok $update, 'Bif::OK::UpdateIssue';
-
-        $update =
-          bif( qw/update /, $issue->{id}, qw/--title title2 -m message10/ );
-        isa_ok $update, 'Bif::OK::UpdateIssue';
     };
 
 };

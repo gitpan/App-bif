@@ -1,4 +1,4 @@
-CREATE TABLE issue_updates (
+CREATE TABLE issue_deltas (
     id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('update_order')),
     update_id INTEGER NOT NULL,
     new INTEGER,
@@ -15,21 +15,21 @@ CREATE TABLE issue_updates (
 ) WITHOUT ROWID;
 
 CREATE INDEX
-    issue_updates_issue_id_status_id
+    issue_deltas_issue_id_status_id
 ON
-    issue_updates(issue_id,status_id)
+    issue_deltas(issue_id,status_id)
 ;
 
 CREATE TRIGGER
-    ai_issue_updates_2
+    issue_deltas_ai_2
 AFTER INSERT ON
-    issue_updates
+    issue_deltas
 FOR EACH ROW WHEN
     NEW.status_id IS NOT NULL
 BEGIN
 
     SELECT debug(
-        'TRIGGER ai_issue_updates_2',
+        'TRIGGER issue_deltas_ai_2',
         NEW.update_id,
         NEW.issue_id,
         NEW.project_id,
@@ -47,14 +47,14 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    ai_issue_updates_1
+    issue_deltas_ai_1
 AFTER INSERT ON
-    issue_updates
+    issue_deltas
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER ai_issue_updates_1',
+        'TRIGGER issue_deltas_ai_1',
         NEW.update_id,
         NEW.issue_id,
         NEW.status_id,
@@ -74,7 +74,7 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                'issue_update:' || x'0A'
+                'issue_delta:' || x'0A'
                 || '  issue_uuid:' || COALESCE(topics.uuid, '') || x'0A'
                 || '  project_uuid:' || COALESCE(projects.uuid, '') || x'0A'
                 || '  status_uuid:' || COALESCE(status.uuid, '') || x'0A'
@@ -142,9 +142,9 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    ad_issue_updates_2
+    issue_deltas_ad_2
 AFTER DELETE ON
-    issue_updates
+    issue_deltas
 FOR EACH ROW WHEN
     OLD.status_id IS NOT NULL
 BEGIN
@@ -170,9 +170,9 @@ END;
 
 
 CREATE TRIGGER
-    ad_issue_updates_1
+    issue_deltas_ad_1
 AFTER DELETE ON
-    issue_updates
+    issue_deltas
 FOR EACH ROW
 BEGIN
 

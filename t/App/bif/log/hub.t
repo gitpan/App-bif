@@ -9,11 +9,11 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/ log hub/) }, 'OptArgs::Usage';
 
-    isa_ok exception { bif(qw/ log hub local/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ log hub -/) }, 'Bif::Error::RepoNotFound';
 
     bif(qw/init/);
 
-    isa_ok bif(qw/log hub local/), 'Bif::OK::LogHub';
+    isa_ok bif(qw/log hub -/), 'Bif::OK::LogHub';
 
     isa_ok exception { bif(qw/ log hub unknown /) }, 'Bif::Error::HubNotFound';
 

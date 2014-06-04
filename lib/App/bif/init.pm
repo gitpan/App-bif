@@ -7,7 +7,7 @@ use Bif::DBW;
 use Log::Any '$log';
 use Path::Tiny qw/path cwd tempdir/;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -15,11 +15,14 @@ sub run {
     $ctx->{directory} = path( $ctx->{directory} || cwd )->absolute;
 
     my $bifdir;
+    my $name;
     if ( $ctx->{bare} ) {
         $bifdir = $ctx->{directory};
+        $name   = $ctx->{directory}->basename;
     }
     else {
         $bifdir = $ctx->{directory}->child('.bif');
+        $name   = '-';
     }
 
     return $ctx->err( 'DirExists', 'directory exists: ' . $bifdir )
@@ -64,13 +67,13 @@ sub run {
                     id        => $rid,
                     update_id => $uid,
                     local     => 1,
-                    alias     => 'local',
+                    name      => $name,
                 },
             );
 
             my $rlid = $dbw->nextval('topics');
             $dbw->xdo(
-                insert_into => 'func_new_hub_location',
+                insert_into => 'func_new_hub_repo',
                 values      => {
                     id        => $rlid,
                     hub_id    => $rid,
@@ -80,7 +83,7 @@ sub run {
             );
 
             $dbw->xdo(
-                insert_into => 'hub_updates',
+                insert_into => 'hub_deltas',
                 values      => {
                     update_id           => $uid,
                     hub_id              => $rid,
@@ -114,7 +117,7 @@ bif-init -  create new bif repository
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

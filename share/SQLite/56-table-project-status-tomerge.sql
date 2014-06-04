@@ -9,7 +9,7 @@ CREATE TABLE project_status_tomerge(
 );
 
 CREATE TRIGGER
-    bu_project_status_tomerge_4
+    project_status_tomerge_bu_4
 BEFORE UPDATE OF
     resolve
 ON
@@ -19,7 +19,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_project_status_tomerge_4',
+        'TRIGGER project_status_tomerge_bu_4',
         OLD.project_status_id
     );
 
@@ -30,13 +30,13 @@ BEGIN
             SELECT
                 updates.mtime
             FROM
-                project_status_updates
+                project_status_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_status_updates.update_id
+                updates.id = project_status_deltas.update_id
             WHERE
-                project_status_updates.project_status_id =
+                project_status_deltas.project_status_id =
                     OLD.project_status_id
             ORDER BY
                 updates.mtime DESC,
@@ -59,7 +59,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_project_status_tomerge_3
+    project_status_tomerge_bu_3
 BEFORE UPDATE OF
     resolve
 ON
@@ -70,7 +70,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_project_status_tomerge_3',
+        'TRIGGER project_status_tomerge_bu_3',
         OLD.project_status_id
     );
 
@@ -79,17 +79,17 @@ BEGIN
     SET
         rank = (
             SELECT
-                project_status_updates.rank
+                project_status_deltas.rank
             FROM
-                project_status_updates
+                project_status_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_status_updates.update_id
+                updates.id = project_status_deltas.update_id
             WHERE
-                project_status_updates.project_status_id =
+                project_status_deltas.project_status_id =
                     OLD.project_status_id AND
-                project_status_updates.rank IS NOT NULL
+                project_status_deltas.rank IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -103,7 +103,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_project_status_tomerge_1
+    project_status_tomerge_bu_1
 BEFORE UPDATE OF
     resolve
 ON
@@ -114,7 +114,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_project_status_tomerge_1',
+        'TRIGGER project_status_tomerge_bu_1',
         OLD.project_status_id
     );
 
@@ -124,17 +124,17 @@ BEGIN
     SET
         status = (
             SELECT
-                project_status_updates.status
+                project_status_deltas.status
             FROM
-                project_status_updates
+                project_status_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_status_updates.update_id
+                updates.id = project_status_deltas.update_id
             WHERE
-                project_status_updates.project_status_id =
+                project_status_deltas.project_status_id =
                     OLD.project_status_id AND
-                project_status_updates.status IS NOT NULL
+                project_status_deltas.status IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid

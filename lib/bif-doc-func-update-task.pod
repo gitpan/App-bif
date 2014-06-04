@@ -4,7 +4,7 @@ bif-doc-func-update-task - update a task topic
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -27,7 +27,7 @@ bif-doc-func-update-task - update a task topic
 =head1 DESCRIPTION
 
 func_update_task() adds a task update to an in-progress update, by
-inserting a row into L<task_updates|bif-doc-table-task-updates>. As it
+inserting a row into L<task_deltas|bif-doc-table-task-updates>. As it
 just passes the values straight through this function is possibly a
 candidate for deletion.
 
@@ -38,7 +38,7 @@ tables:
 
 =over
 
-=item * L<task_updates|bif-doc-table-task-updates>
+=item * L<task_deltas|bif-doc-table-task-updates>
 
 =back
 

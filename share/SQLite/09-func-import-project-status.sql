@@ -7,7 +7,7 @@ CREATE TABLE func_import_project_status(
 
 
 CREATE TRIGGER
-    bi_func_import_project_status_1
+    func_import_project_status_bi_1
 BEFORE INSERT ON
     func_import_project_status
 FOR EACH ROW

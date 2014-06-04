@@ -66,15 +66,15 @@ run_in_tempdir {
                     values      => $xdb->xhash(
                         select => [
                             'u.uuid AS update_uuid',
-                            'project_updates.name AS name',
-                            'project_updates.title AS title',
+                            'project_deltas.name AS name',
+                            'project_deltas.title AS title',
                         ],
-                        from       => 'project_updates',
+                        from       => 'project_deltas',
                         inner_join => 'updates u',
-                        on         => 'u.id = project_updates.update_id',
+                        on         => 'u.id = project_deltas.update_id',
                         where =>
-                          { 'project_updates.project_id' => $project->{id} },
-                        order_by => 'project_updates.id ASC',
+                          { 'project_deltas.project_id' => $project->{id} },
+                        order_by => 'project_deltas.id ASC',
                         limit    => 1,
                     ),
                 );
@@ -84,45 +84,45 @@ run_in_tempdir {
                     values      => $xdb->xhash(
                         select => [
                             'u.uuid AS update_uuid',
-                            'project_status_updates.status AS status',
-                            'project_status_updates.rank AS rank',
+                            'project_status_deltas.status AS status',
+                            'project_status_deltas.rank AS rank',
                             'topics.uuid AS project_uuid',
                         ],
-                        from       => 'project_status_updates',
+                        from       => 'project_status_deltas',
                         inner_join => 'updates u',
-                        on         => 'u.id = project_status_updates.update_id',
+                        on         => 'u.id = project_status_deltas.update_id',
                         inner_join => 'project_status',
                         on         => {
                             'project_status.id' => \
-                              'project_status_updates.project_status_id',
+                              'project_status_deltas.project_status_id',
                         },
                         inner_join => 'topics',
                         on         => 'topics.id = project_status.project_id',
                         where      => {
-                            'project_status_updates.project_status_id' =>
+                            'project_status_deltas.project_status_id' =>
                               $project_status->{id}
                         },
                     ),
                 );
 
                 $db->xdo(
-                    insert_into => 'func_import_project_update',
+                    insert_into => 'func_import_project_delta',
                     values      => $xdb->xhash(
                         select => [
                             'u.uuid AS update_uuid',
                             'projects.uuid AS project_uuid',
                             'status.uuid AS status_uuid',
                         ],
-                        from       => 'project_updates',
+                        from       => 'project_deltas',
                         inner_join => 'updates u',
-                        on         => 'u.id = project_updates.update_id',
+                        on         => 'u.id = project_deltas.update_id',
                         inner_join => 'topics AS projects',
-                        on => 'projects.id = project_updates.project_id',
+                        on         => 'projects.id = project_deltas.project_id',
                         inner_join => 'topics AS status',
-                        on         => 'status.id = project_updates.status_id',
+                        on         => 'status.id = project_deltas.status_id',
                         where =>
-                          { 'project_updates.project_id' => $project->{id} },
-                        order_by => 'project_updates.id DESC',
+                          { 'project_deltas.project_id' => $project->{id} },
+                        order_by => 'project_deltas.id DESC',
                         limit    => 1,
                     ),
                 );
@@ -162,14 +162,14 @@ run_in_tempdir {
 
                 $u1 = $xdb->xhashes(
                     select => '*',
-                    from   => 'projects_merkle',
+                    from   => 'project_related_updates_merkle',
                 );
                 $u2 = $db->xhashes(
                     select => '*',
-                    from   => 'projects_merkle',
+                    from   => 'project_related_updates_merkle',
                 );
 
-                is_deeply $u1, $u2, 'projects_merkle match';
+                is_deeply $u1, $u2, 'project_related_updates_merkle match';
                 $res = 1;
             }
         );

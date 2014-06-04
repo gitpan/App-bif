@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -139,11 +139,11 @@ sub get_local_hub_id {
 }
 
 sub get_projects {
-    my $self  = shift;
-    my $path  = shift || return;
-    my $alias = shift;             # hub alias
+    my $self = shift;
+    my $path = shift || return;
+    my $hub  = shift;
 
-    if ($alias) {
+    if ($hub) {
         return $self->xhashes(
             select => [
                 't.id',   't.kind',
@@ -154,8 +154,8 @@ sub get_projects {
             from       => 'projects p',
             inner_join => 'hubs h',
             on         => {
-                'h.id'    => \'p.hub_id',
-                'h.alias' => $alias,
+                'h.id'   => \'p.hub_id',
+                'h.name' => $hub,
             },
             inner_join => 'topics t',
             on         => 't.id = p.id',
@@ -203,9 +203,9 @@ sub status_ids {
     return \@ids, [ sort keys %invalid ];
 }
 
-sub get_hub_locations {
+sub get_hub_repos {
     my $self = shift;
-    my $alias = shift || return;
+    my $hub = shift || return;
 
     return $self->xhashes(
 
@@ -213,48 +213,48 @@ sub get_hub_locations {
         select => [
             'h.id AS id',
             't.uuid AS uuid',
-            'h.alias AS alias',
-            'hl.location AS location',
-            'h.default_location_id = hl.id AS is_default'
+            'h.name AS name',
+            'hr.location AS location',
+            'h.default_location_id = hr.id AS is_default'
         ],
         from       => 'hubs h',
         inner_join => 'topics t',
         on         => 't.id = h.id',
-        inner_join => 'hub_locations hl',
-        on         => 'hl.hub_id = h.id',
+        inner_join => 'hub_repos hr',
+        on         => 'hr.hub_id = h.id',
         where      => {
-            'h.alias' => $alias,
+            'h.name' => $hub,
         },
         union_all_select => [
             'h.id AS id',
             't.uuid AS uuid',
-            'h.alias AS alias',
-            'hl.location AS location',
-            'h.default_location_id = hl.id AS is_default'
+            'h.name AS name',
+            'hr.location AS location',
+            'h.default_location_id = hr.id AS is_default'
         ],
         from       => 'hubs h',
         inner_join => 'topics t',
         on         => 't.id = h.id',
-        inner_join => 'hub_locations hl',
-        on         => 'hl.hub_id = h.id',
+        inner_join => 'hub_repos hr',
+        on         => 'hr.hub_id = h.id',
         where      => {
-            'h.id' => $alias,
+            'h.id' => $hub,
         },
         union_all_select => [
-            'h.id', 't.uuid', 'h.alias',
-            'hl.location', 'h.default_location_id = hl.id AS is_default'
+            'h.id', 't.uuid', 'h.name',
+            'hr.location', 'h.default_location_id = hr.id AS is_default'
         ],
-        from       => 'hub_locations hl2',
+        from       => 'hub_repos hr2',
         inner_join => 'hubs h',
-        on         => 'h.id = hl2.hub_id',
+        on         => 'h.id = hr2.hub_id',
         inner_join => 'topics t',
         on         => 't.id = h.id',
-        inner_join => 'hub_locations hl',
-        on         => 'hl.hub_id = h.id',
+        inner_join => 'hub_repos hr',
+        on         => 'hr.hub_id = h.id',
         where      => {
-            'hl2.location' => $alias,
+            'hr2.location' => $hub,
         },
-        order_by => [qw/alias location/],
+        order_by => [qw/name location/],
     );
 }
 
@@ -280,7 +280,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -374,16 +374,16 @@ status names and returns an arrayref of matching IDs, and an arrayref
 of invalid names. This method will silently ignore any @status which
 are undefined.
 
-=item get_hub_locations( $alias ) -> @HashRef
+=item get_hub_repos( $name ) -> @HashRef
 
 Returns a list of HASH references containing information about the hub
-identified by C<$alias>, each with the following keys:
+identified by C<$name>, each with the following keys:
 
 =over
 
 =item * id - the topic ID for the hub
 
-=item * alias - the alias for the hub
+=item * name - the name of the hub
 
 =item * location - the location of the hub
 
@@ -391,7 +391,7 @@ identified by C<$alias>, each with the following keys:
 
 =back
 
-Returns C<undef> if C<$alias> (an alias, an ID, or a location) is not
+Returns C<undef> if C<$name> (a name, an ID, or a location) is not
 found.
 
 =item get_max_update_id

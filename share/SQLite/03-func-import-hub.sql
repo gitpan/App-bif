@@ -1,24 +1,28 @@
 CREATE TABLE func_import_hub(
-    update_uuid VARCHAR(40) NOT NULL
+    update_uuid VARCHAR(40) NOT NULL,
+    name VARCHAR(128) NOT NULL
 );
 
 CREATE TRIGGER
-    bi_func_import_hub_1
+    func_import_hub_bi_1
 BEFORE INSERT ON
     func_import_hub
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid
+        NEW.update_uuid,
+        NEW.name
     );
 
     INSERT INTO
         func_new_hub(
-            update_id
+            update_id,
+            name
         )
     SELECT
-        u.id
+        u.id,
+        NEW.name
     FROM
         updates u
     WHERE

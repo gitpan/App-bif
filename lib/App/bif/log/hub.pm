@@ -5,14 +5,14 @@ use App::bif::Context;
 use App::bif::log;
 use locale;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx  = App::bif::Context->new(shift);
     my $db   = $ctx->db;
-    my @locs = $db->get_hub_locations( $ctx->uuid2id( $ctx->{alias} ) );
+    my @locs = $db->get_hub_repos( $ctx->uuid2id( $ctx->{name} ) );
 
-    return $ctx->err( 'HubNotFound', "hub not found: $ctx->{alias}" )
+    return $ctx->err( 'HubNotFound', "hub not found: $ctx->{name}" )
       unless @locs;
 
     my $hub = shift @locs;
@@ -28,10 +28,10 @@ sub run {
             q{strftime('%H:%M:%S',u.mtime,'unixepoch','localtime') AS mtime},
             'u.message',
         ],
-        from       => 'hub_updates hu',
+        from       => 'hub_deltas hd',
         inner_join => 'updates u',
-        on         => 'u.id = hu.update_id',
-        where      => { 'hu.hub_id' => $hub->{id} },
+        on         => 'u.id = hd.update_id',
+        where      => { 'hd.hub_id' => $hub->{id} },
 
         #        group_by   => [qw/weekday mdate mtime/],
         order_by => 'u.id DESC',
@@ -76,11 +76,11 @@ bif-log-hub - review the history of a hub
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
-    bif log hub ALIAS [OPTIONS...]
+    bif log hub NAME [OPTIONS...]
 
 =head1 DESCRIPTION
 
@@ -91,9 +91,9 @@ the local repository.
 
 =over
 
-=item ALIAS
+=item NAME
 
-The alias of a hub. Required. Use "local" for obtaining the log of the
+The name of a hub. Required. Use "local" for obtaining the log of the
 current repository.
 
 =back

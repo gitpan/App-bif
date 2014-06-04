@@ -36,11 +36,11 @@ run_in_tempdir {
     bif(qw/init bif2/);
     bif(qw/init hub --bare/);
 
-    my $pinfo = bif2(qw/new project todo title -m message/);
+    my $pinfo = bif2(qw/new project todo title -m m1/);
     bif2(qw/update todo -m m2/);
 
-    my $tinfo = bif2(qw/new task -m message -p todo tasktitle/);
-    bif2( qw/update/, $tinfo->{id}, qw/-m m2/ );
+    my $tinfo = bif2(qw/new task -m m3 -p todo tasktitle/);
+    bif2( qw/update/, $tinfo->{id}, qw/-m m4/ );
     my $ref = bif2( qw/sql --noprint/,
         "select uuid from topics where id=$tinfo->{id}" );
     $tinfo->{uuid} = $ref->[0][0];
@@ -49,8 +49,9 @@ run_in_tempdir {
         "select id from topics where uuid='$tinfo->{uuid}'" );
     is $ref->[0][0], $tinfo->{id}, 'uuid -> id';
 
-    my $iinfo = bif2(qw/new issue -m m3 -p todo issuetitle/);
-    bif2( qw/update/, $tinfo->{id}, qw/-m m4/ );
+    my $iinfo = bif2(qw/new issue -m m5 -p todo issuetitle/);
+
+    bif2( qw/update/, $tinfo->{id}, qw/-m m6/ );
     $ref = bif2( qw/sql --noprint/,
         "select uuid from topics where id=$iinfo->{id}" );
     $iinfo->{uuid} = $ref->[0][0];

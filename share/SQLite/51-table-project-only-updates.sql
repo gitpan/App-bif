@@ -1,4 +1,4 @@
-CREATE TABLE project_meta_updates(
+CREATE TABLE project_only_updates(
     project_id INTEGER NOT NULL,
     update_id INTEGER NOT NULL,
     UNIQUE(update_id,project_id) ON CONFLICT IGNORE
@@ -7,9 +7,9 @@ CREATE TABLE project_meta_updates(
 );
 
 CREATE INDEX
-    project_meta_updates_project_id
+    project_only_updates_project_id
 ON
-    project_meta_updates(project_id)
+    project_only_updates(project_id)
 ;
 
 /*
@@ -17,9 +17,9 @@ ON
 */
 
 CREATE TRIGGER
-    ai_project_meta_updates
+    project_only_updates_ai_1
 AFTER INSERT ON
-    project_meta_updates
+    project_only_updates
 FOR EACH ROW
 BEGIN
     SELECT debug(

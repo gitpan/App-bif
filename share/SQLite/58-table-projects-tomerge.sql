@@ -12,7 +12,7 @@ CREATE TABLE projects_tomerge(
 -- TODO can these all be before update "OF resolve" triggers?
 
 CREATE TRIGGER
-    bu_projects_tomerge_5
+    projects_tomerge_bu_5
 BEFORE UPDATE OF
     resolve
 ON
@@ -22,7 +22,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_projects_tomerge_5',
+        'TRIGGER projects_tomerge_bu_5',
         OLD.project_id
     );
 
@@ -33,13 +33,13 @@ BEGIN
             SELECT
                 updates.mtime
             FROM
-                project_updates
+                project_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_updates.update_id
+                updates.id = project_deltas.update_id
             WHERE
-                project_updates.project_id = OLD.project_id
+                project_deltas.project_id = OLD.project_id
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -61,7 +61,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_projects_tomerge_4
+    projects_tomerge_bu_4
 BEFORE UPDATE OF
     resolve
 ON
@@ -72,7 +72,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_projects_tomerge_4',
+        'TRIGGER projects_tomerge_bu_4',
         OLD.project_id
     );
 
@@ -81,16 +81,16 @@ BEGIN
     SET
         parent_id = (
             SELECT
-                project_updates.parent_id
+                project_deltas.parent_id
             FROM
-                project_updates
+                project_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_updates.update_id
+                updates.id = project_deltas.update_id
             WHERE
-                project_updates.project_id = OLD.project_id AND
-                project_updates.parent_id IS NOT NULL
+                project_deltas.project_id = OLD.project_id AND
+                project_deltas.parent_id IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -104,7 +104,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_projects_tomerge_3
+    projects_tomerge_bu_3
 BEFORE UPDATE OF
     resolve
 ON
@@ -115,7 +115,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_projects_tomerge_3',
+        'TRIGGER projects_tomerge_bu_3',
         OLD.project_id
     );
 
@@ -124,16 +124,16 @@ BEGIN
     SET
         name = (
             SELECT
-                project_updates.name
+                project_deltas.name
             FROM
-                project_updates
+                project_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_updates.update_id
+                updates.id = project_deltas.update_id
             WHERE
-                project_updates.project_id = OLD.project_id AND
-                project_updates.name IS NOT NULL
+                project_deltas.project_id = OLD.project_id AND
+                project_deltas.name IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -147,7 +147,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_projects_tomerge_2
+    projects_tomerge_bu_2
 BEFORE UPDATE OF
     resolve
 ON
@@ -158,7 +158,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_projects_tomerge_2',
+        'TRIGGER projects_tomerge_bu_2',
         OLD.project_id
     );
 
@@ -167,16 +167,16 @@ BEGIN
     SET
         title = (
             SELECT
-                project_updates.title
+                project_deltas.title
             FROM
-                project_updates
+                project_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_updates.update_id
+                updates.id = project_deltas.update_id
             WHERE
-                project_updates.project_id = OLD.project_id AND
-                project_updates.title IS NOT NULL
+                project_deltas.project_id = OLD.project_id AND
+                project_deltas.title IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -190,7 +190,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_projects_tomerge_1
+    projects_tomerge_bu_1
 BEFORE UPDATE OF
     resolve
 ON
@@ -201,7 +201,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_projects_tomerge_1',
+        'TRIGGER projects_tomerge_bu_1',
         OLD.project_id
     );
 
@@ -210,16 +210,16 @@ BEGIN
     SET
         status_id = (
             SELECT
-                project_updates.status_id
+                project_deltas.status_id
             FROM
-                project_updates
+                project_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = project_updates.update_id
+                updates.id = project_deltas.update_id
             WHERE
-                project_updates.project_id = OLD.project_id AND
-                project_updates.status_id IS NOT NULL
+                project_deltas.project_id = OLD.project_id AND
+                project_deltas.status_id IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -233,7 +233,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_projects_tomerge_0
+    projects_tomerge_bu_0
 BEFORE UPDATE OF
     resolve
 ON
@@ -244,7 +244,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_projects_tomerge_0',
+        'TRIGGER projects_tomerge_bu_0',
         OLD.project_id
     );
 
@@ -259,16 +259,16 @@ BEGIN
             WHERE
                 t.uuid = (
                     SELECT
-                        project_updates.hub_uuid
+                        project_deltas.hub_uuid
                     FROM
-                        project_updates
+                        project_deltas
                     INNER JOIN
                         updates
                     ON
-                        updates.id = project_updates.update_id
+                        updates.id = project_deltas.update_id
                     WHERE
-                        project_updates.project_id = OLD.project_id AND
-                        project_updates.hub_uuid IS NOT NULL
+                        project_deltas.project_id = OLD.project_id AND
+                        project_deltas.hub_uuid IS NOT NULL
                     ORDER BY
                         updates.mtime DESC,
                         updates.uuid

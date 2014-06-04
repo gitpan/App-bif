@@ -93,11 +93,11 @@ run_in_tempdir {
 
     is_deeply $db->selectrow_arrayref(
         'select task_id,status_id
-                 from task_updates
+                 from task_deltas
                  where id=?',
         undef, $update_id
       ),
-      [ $id, $status_id ], 'task_updates';
+      [ $id, $status_id ], 'task_deltas';
 
     ok $db->xdo(
         insert_into => 'func_new_task',
@@ -163,11 +163,11 @@ run_in_tempdir {
 
     is_deeply $db->selectrow_arrayref(
         'select project_id,parent_id,name
-                 from project_updates
+                 from project_deltas
                  where id=?',
         undef, $child_update_id
       ),
-      [ $child_id, $id, 'y' ], 'task_updates';
+      [ $child_id, $id, 'y' ], 'task_deltas';
 
 =cut
 
@@ -210,11 +210,11 @@ run_in_tempdir {
 
     is_deeply $db->selectrow_arrayref(
         'select status_id
-         from task_updates
+         from task_deltas
          where id = ?',
         undef, $update_id
       ),
-      [$done_status_id], 'task_updates';
+      [$done_status_id], 'task_deltas';
     return;
 
     is_deeply $db->selectrow_arrayref(
@@ -241,14 +241,14 @@ run_in_tempdir {
       'update task status';
 
     is_deeply $db->selectrow_arrayref(
-        'select tasks.status_id, task_updates.status_id
-         from task_updates
+        'select tasks.status_id, task_deltas.status_id
+         from task_deltas
          inner join tasks
-         on tasks.id = task_updates.task_id
-         where task_updates.id=?',
+         on tasks.id = task_deltas.task_id
+         where task_deltas.id=?',
         undef, $update_id
       ),
-      [ $done_status_id, $status_id ], 'out of order task_updates';
+      [ $done_status_id, $status_id ], 'out of order task_deltas';
 
 };
 

@@ -10,13 +10,13 @@ CREATE TABLE project_status (
 );
 
 CREATE TRIGGER
-    bi_project_status_1
+    project_status_bi_1
 BEFORE INSERT ON
     project_status
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        'TRIGGER bi_project_status_1',
+        'TRIGGER project_status_bi_1',
         NEW.id,
         NEW.project_id,
         NEW.status,
@@ -25,7 +25,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    ad_project_status_1
+    project_status_ad_1
 AFTER DELETE ON
     project_status
 FOR EACH ROW

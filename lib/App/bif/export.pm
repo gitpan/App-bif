@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = shift;
@@ -22,7 +22,7 @@ sub run {
         push( @pinfo, $pinfo );
     }
 
-    my @locations = $db->get_hub_locations( $ctx->{hub} );
+    my @locations = $db->get_hub_repos( $ctx->{hub} );
     $ctx->err( 'HubNotFound', 'hub not found: %s', $ctx->{hub} )
       unless @locations;
 
@@ -31,11 +31,11 @@ sub run {
     my @new_pinfo;
     foreach my $pinfo (@pinfo) {
         my $exists =
-          eval { $ctx->get_project( $pinfo->{path}, $hub->{alias} ) };
+          eval { $ctx->get_project( $pinfo->{path}, $hub->{name} ) };
 
         if ($exists) {
             if ( $exists->{uuid} eq $pinfo->{uuid} ) {
-                print "Already exported to $hub->{alias}: $pinfo->{path}\n";
+                print "Already exported to $hub->{name}: $pinfo->{path}\n";
                 next;
             }
             else {
@@ -74,7 +74,7 @@ sub run {
             undef $stderr_watcher;
             return;
         }
-        print STDERR "$hub->{alias}: $line";
+        print STDERR "$hub->{name}: $line";
     };
 
     my $coro = async {
@@ -103,10 +103,18 @@ sub run {
                         );
 
                         $db->xdo(
-                            insert_into => 'hub_updates',
+                            insert_into => 'hub_deltas',
                             values      => {
                                 update_id  => $uid,
                                 hub_id     => $hub->{id},
+                                project_id => $pinfo->{id},
+                            },
+                        );
+
+                        $db->xdo(
+                            delete_from => 'hub_related_projects',
+                            where       => {
+                                hub_id     => $db->get_local_hub_id,
                                 project_id => $pinfo->{id},
                             },
                         );
@@ -146,7 +154,7 @@ sub run {
                         $client->on_update(
                             sub {
                                 $ctx->lprint(
-                                    "$hub->{alias} [$pinfo->{path}]: $_[0]");
+                                    "$hub->{name} [$pinfo->{path}]: $_[0]");
                             }
                         );
 
@@ -176,7 +184,7 @@ sub run {
                     undef $stderr_watcher;
                     $stderr->blocking(0);
                     while ( my $line = $stderr->getline ) {
-                        print STDERR "$hub->{alias}: $line";
+                        print STDERR "$hub->{name}: $line";
                     }
 
                     return;
@@ -209,7 +217,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -230,7 +238,7 @@ project with the same path exists at the remote HUB.
 
 =item HUB
 
-The location of a remote hub or a previously defined hub alias.
+The name of a previously registered hub.
 
 =item --message, -m MESSAGE
 

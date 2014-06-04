@@ -1,4 +1,4 @@
-CREATE TABLE hub_locations (
+CREATE TABLE hub_repos (
     id INTEGER NOT NULL PRIMARY KEY,
     hub_id INTEGER NOT NULL,
     location VARCHAR NOT NULL UNIQUE,

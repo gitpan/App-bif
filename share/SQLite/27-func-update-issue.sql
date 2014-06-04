@@ -7,13 +7,13 @@ CREATE TABLE func_update_issue(
 );
 
 CREATE TRIGGER
-    bi_func_update_issue_1
+    func_update_issue_bi_1
 BEFORE INSERT ON
     func_update_issue
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_update_issue_1',
+        'TRIGGER func_update_issue_bi_1',
         NEW.id,
         NEW.update_id,
         NEW.project_id,
@@ -22,7 +22,7 @@ FOR EACH ROW BEGIN
     );
 
     INSERT INTO
-        issue_updates(
+        issue_deltas(
             update_id,
             issue_id,
             project_id,

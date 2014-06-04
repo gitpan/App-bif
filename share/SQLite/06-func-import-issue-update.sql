@@ -1,4 +1,4 @@
-CREATE TABLE func_import_issue_update(
+CREATE TABLE func_import_issue_delta(
     update_uuid VARCHAR(40) NOT NULL,
     issue_uuid VARCHAR(40),
     project_uuid VARCHAR(40),
@@ -8,9 +8,9 @@ CREATE TABLE func_import_issue_update(
 
 
 CREATE TRIGGER
-    bi_func_import_issue_update_1
+    func_import_issue_delta_bi_1
 BEFORE INSERT ON
-    func_import_issue_update
+    func_import_issue_delta
 FOR EACH ROW
 BEGIN
 

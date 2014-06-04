@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $opts = shift;
@@ -19,11 +19,9 @@ sub run {
     my $dbw = $ctx->dbw;
 
     if ( $ctx->{location} =~ m!^ssh://(.+)! ) {
-        ( $ctx->{alias} ||= $1 ) =~ s/\@.*//;
     }
     elsif ( -d $ctx->{location} ) {
         $ctx->{location} = path( $ctx->{location} )->realpath;
-        $ctx->{alias} ||= $ctx->{location}->basename;
     }
     else {
         return $ctx->err( 'HubNotFound', 'hub not found: %s',
@@ -31,15 +29,12 @@ sub run {
     }
 
     $log->debug("register hub: $ctx->{location}");
-    $log->debug("register alias: $ctx->{alias}");
 
-    my @locations = $dbw->get_hub_locations( $ctx->{location} );
+    my @locations = $dbw->get_hub_repos( $ctx->{location} );
 
     return $ctx->err(
-        'RepoExists',
-        'hub (or alias) already registered: %s (%s)',
-        $locations[0]->{location},
-        ( $locations[0]->{alias} || '' )
+        'RepoExists', 'hub already registered: %s (%s)',
+        $locations[0]->{location}, ( $locations[0]->{name} || '' )
     ) if (@locations);
 
     $|++;    # no buffering
@@ -66,7 +61,7 @@ sub run {
             undef $stderr_watcher;
             return;
         }
-        print STDERR "$ctx->{alias}: $line";
+        print STDERR "$ctx->{location}: $line";
 
     };
 
@@ -76,14 +71,13 @@ sub run {
                 sub {
                     $ctx->update_repo(
                         {
-                            message => "register $ctx->{alias} "
-                              . "($ctx->{location})",
+                            message => "register $ctx->{location}",
                         }
                     );
 
                     $client->on_update(
                         sub {
-                            $ctx->lprint("$ctx->{alias} (meta): $_[0]");
+                            $ctx->lprint("$ctx->{location} (meta): $_[0]");
                         }
                     );
 
@@ -96,7 +90,7 @@ sub run {
                     undef $stderr_watcher;
                     $stderr->blocking(0);
                     while ( my $line = $stderr->getline ) {
-                        print STDERR "$ctx->{alias}: $line";
+                        print STDERR "$ctx->{location}: $line";
                     }
 
                     if ( $status ne 'RepoImported' ) {
@@ -108,19 +102,15 @@ sub run {
                     my $current = $dbw->get_max_update_id;
                     my $delta   = $current - $previous;
 
-                    my ($id) = $dbw->xarray(
-                        select => 'hl.hub_id',
-                        from   => 'hub_locations hl',
-                        where  => { 'hl.location' => $ctx->{location} },
+                    my ($name) = $dbw->xarray(
+                        select     => 'h.name',
+                        from       => 'hub_repos hr',
+                        inner_join => 'hubs h',
+                        on         => 'h.id = hr.hub_id',
+                        where      => { 'hr.location' => $ctx->{location} },
                     );
 
-                    $dbw->xdo(
-                        update => 'hubs',
-                        set    => { alias => $ctx->{alias} },
-                        where  => { id => $id },
-                    );
-
-                    print "Hub registered: $ctx->{alias}\n";
+                    print "Hub registered: $name\n";
                     return $status;
                 }
             );
@@ -149,25 +139,23 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
-    bif register LOCATION [ALIAS] [OPTIONS...]
+    bif register LOCATION [OPTIONS...]
 
 =head1 DESCRIPTION
 
-The C<bif register> command connects to a hub (a remote repository) to
-obtain the list of projects hosted there. The project list is stored
-locally and is used by the C<import>, C<sync> and C<push> commands.
+The C<bif register> command connects to a hub repository to obtain the
+list of projects hosted there.  A hub has a name (use the C<list hubs>
+command to display it) which is useable after registration with all
+other hub-aware commands (import,export,push) to save typing the full
+address.
 
-A hub can have an alias which useable with all of the hub-aware
-commands (import,export,push) to save typing the full address.
+The retrieved project list is stored locally and is used by the
+C<import>, and C<push> commands, and updated by the C<sync> command.
 
-If the location is a network address like
-C<ssh://an.organisation@a.provider> then the default alias will be
-C<an.organisation>.  If location is a filesystem path then the default
-alias is the path basename.
 
 =head1 ARGUMENTS & OPTIONS
 
@@ -176,10 +164,6 @@ alias is the path basename.
 =item LOCATION
 
 The location of a remote repository.
-
-=item ALIAS
-
-Override the default alias for the hub.
 
 =back
 

@@ -11,14 +11,14 @@ CREATE TABLE func_import_update(
 
 
 CREATE TRIGGER
-    bi_func_import_update_1
+    func_import_update_bi_1
 BEFORE INSERT ON
     func_import_update
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_import_update_1',
+        'TRIGGER func_import_update_bi_1',
         NEW.uuid,
         NEW.parent_uuid,
         NEW.author,

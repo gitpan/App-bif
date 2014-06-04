@@ -19,13 +19,13 @@ ON
 ;
 
 CREATE TRIGGER
-    bi_hub_related_updates
+    hub_related_updates_bi_1
 BEFORE INSERT ON
     hub_related_updates
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        'bi_hub_related_updates',
+        'hub_related_updates_bi_1',
         NEW.hub_id,
         NEW.update_id,
         NEW.merkled
@@ -34,7 +34,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_hub_related_updates
+    hub_related_updates_bu_1
 BEFORE UPDATE OF
     merkled
 ON
@@ -43,14 +43,14 @@ FOR EACH ROW WHEN
     NEW.merkled = 1
 BEGIN
     SELECT debug(
-        'bu_hub_related_updates',
+        'hub_related_updates_bu_1',
         NEW.hub_id,
         NEW.update_id,
         NEW.merkled
     );
 
     INSERT INTO
-        hubs_merkle(
+        hub_related_updates_merkle(
             hub_id,
             prefix,
             hash,

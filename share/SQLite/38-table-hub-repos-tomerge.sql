@@ -1,24 +1,24 @@
-CREATE TABLE hub_locations_tomerge(
-    hub_location_id INTEGER NOT NULL UNIQUE,
+CREATE TABLE hub_repos_tomerge(
+    hub_repo_id INTEGER NOT NULL UNIQUE,
     location INTEGER DEFAULT 0,
     resolve INTEGER,
-    FOREIGN KEY(hub_location_id) REFERENCES hub_locations(id)
+    FOREIGN KEY(hub_repo_id) REFERENCES hub_repos(id)
         ON DELETE CASCADE
 );
 
 CREATE TRIGGER
-    bu_hub_locations_tomerge_4
+    hub_repos_tomerge_bu_4
 BEFORE UPDATE OF
     resolve
 ON
-    hub_locations_tomerge
+    hub_repos_tomerge
 FOR EACH ROW WHEN
     NEW.resolve = 1
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_hub_locations_tomerge_4',
-        OLD.hub_location_id
+        'TRIGGER hub_repos_tomerge_bu_4',
+        OLD.hub_repo_id
     );
 
     UPDATE
@@ -28,14 +28,14 @@ BEGIN
             SELECT
                 updates.mtime
             FROM
-                hub_location_updates
+                hub_repo_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = hub_location_updates.update_id
+                updates.id = hub_repo_deltas.update_id
             WHERE
-                hub_location_updates.hub_location_id =
-                    OLD.hub_location_id
+                hub_repo_deltas.hub_repo_id =
+                    OLD.hub_repo_id
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -43,13 +43,13 @@ BEGIN
                 1
         )
     WHERE
-        id = OLD.hub_location_id
+        id = OLD.hub_repo_id
     ;
 
     DELETE FROM
-        hub_locations_tomerge
+        hub_repos_tomerge
     WHERE
-        hub_location_id = OLD.hub_location_id
+        hub_repo_id = OLD.hub_repo_id
     ;
 
     SELECT RAISE(IGNORE);
@@ -57,38 +57,38 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_hub_locations_tomerge_1
+    hub_repos_tomerge_bu_1
 BEFORE UPDATE OF
     resolve
 ON
-    hub_locations_tomerge
+    hub_repos_tomerge
 FOR EACH ROW WHEN
     NEW.resolve = 1 AND
     OLD.location != 0
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_hub_locations_tomerge_1',
-        OLD.hub_location_id
+        'TRIGGER hub_repos_tomerge_bu_1',
+        OLD.hub_repo_id
     );
 
 
     UPDATE
-        hub_locations
+        hub_repos
     SET
         location = (
             SELECT
-                hub_location_updates.location
+                hub_repo_deltas.location
             FROM
-                hub_location_updates
+                hub_repo_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = hub_location_updates.update_id
+                updates.id = hub_repo_deltas.update_id
             WHERE
-                hub_location_updates.hub_location_id =
-                    OLD.hub_location_id AND
-                hub_location_updates.location IS NOT NULL
+                hub_repo_deltas.hub_repo_id =
+                    OLD.hub_repo_id AND
+                hub_repo_deltas.location IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -96,7 +96,7 @@ BEGIN
                 1
         )
     WHERE
-        id = OLD.hub_location_id
+        id = OLD.hub_repo_id
     ;
 
 END;

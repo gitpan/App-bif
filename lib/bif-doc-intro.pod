@@ -11,7 +11,7 @@ index can be found in L<bif-doc-index>.
 
 =head1 Version
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =begin comment
 
@@ -104,17 +104,16 @@ original:
 
 =head1 Collaborating With Others
 
-Need to register with an organisation's hub somewhere, and may as well
-give the hub an alias while you are at it:
+Need to register with an organisation's hub somewhere.
 
     #!sh
-    bif register organisation@hub.com --alias org
+    bif register organisation@hub.com
 
 Then, most likely, someone else already created the project, and you
 just want to work on it too:
 
     #!sh
-    bif import todo org
+    bif import todo organisation
     bif list projects
 
 Then to exchange updates you make and get updates others have made,

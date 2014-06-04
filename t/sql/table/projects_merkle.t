@@ -100,17 +100,17 @@ run_in_tempdir {
                 my $merkle = rehash( [], $p1 );
 
                 $db->xdo(
-                    insert_into => 'projects_merkle',
+                    insert_into => 'project_related_updates_merkle',
                     values      => $p1,
                 );
 
                 my $result = $db->xhashes(
                     select   => [qw/project_id prefix hash num_updates/],
-                    from     => 'projects_merkle',
+                    from     => 'project_related_updates_merkle',
                     order_by => 'prefix',
                 );
 
-                is_deeply $result, $merkle, 'projects_merkle';
+                is_deeply $result, $merkle, 'project_related_updates_merkle';
                 test_topic_hash( $merkle, $p1, $db );
 
                 $p1 = {
@@ -122,13 +122,13 @@ run_in_tempdir {
                 $merkle = rehash( $merkle, $p1 );
 
                 $db->xdo(
-                    insert_into => 'projects_merkle',
+                    insert_into => 'project_related_updates_merkle',
                     values      => $p1,
                 );
 
                 $result = $db->xhashes(
                     select   => [qw/project_id prefix hash num_updates/],
-                    from     => 'projects_merkle',
+                    from     => 'project_related_updates_merkle',
                     order_by => 'prefix',
                 );
 
@@ -140,17 +140,18 @@ run_in_tempdir {
                 $merkle = rehash( $merkle, $p1 );
 
                 $db->xdo(
-                    insert_into => 'projects_merkle',
+                    insert_into => 'project_related_updates_merkle',
                     values      => $p1,
                 );
 
                 $result = $db->xhashes(
                     select   => [qw/project_id prefix hash num_updates/],
-                    from     => 'projects_merkle',
+                    from     => 'project_related_updates_merkle',
                     order_by => 'prefix',
                 );
 
-                is_deeply $result, $merkle, '"delete" from projects_merkle';
+                is_deeply $result, $merkle,
+                  '"delete" from project_related_updates_merkle';
                 test_topic_hash( $merkle, $p1, $db );
 
                 $res = 1;

@@ -4,16 +4,16 @@ use warnings;
 use App::bif::Context;
 use App::bif::show;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 my $yellow = '';
 
 sub run {
     my $ctx  = App::bif::Context->new(shift);
     my $db   = $ctx->db;
-    my @locs = $db->get_hub_locations( $ctx->uuid2id( $ctx->{alias} ) );
+    my @locs = $db->get_hub_repos( $ctx->uuid2id( $ctx->{name} ) );
 
-    return $ctx->err( 'HubNotFound', "hub not found: $ctx->{alias}" )
+    return $ctx->err( 'HubNotFound', "hub not found: $ctx->{name}" )
       unless @locs;
 
     my $hub = shift @locs;
@@ -26,7 +26,7 @@ sub run {
         @data,
         App::bif::show::_header(
             $yellow . 'Hub',
-            $yellow . $hub->{alias}
+            $yellow . $hub->{name}
         ),
 
         App::bif::show::_header(
@@ -65,11 +65,11 @@ bif-show-hub - display a hub's current status
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
-    bif show hub ALIAS [OPTIONS...]
+    bif show hub NAME [OPTIONS...]
 
 =head1 DESCRIPTION
 
@@ -85,10 +85,10 @@ status.
 
 =over
 
-=item ALIAS
+=item NAME
 
-A hub alias or location. Required. You can use "local" to show the
-status of the current repository.
+A hub name or location. Required. You can use "-" to show the status of
+the current repository.
 
 =item --full, -f
 

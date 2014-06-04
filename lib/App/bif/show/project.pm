@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use App::bif::show;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 my $yellow = '';
 
@@ -38,8 +38,8 @@ sub run {
             'updates.author',        'updates.email',
             'updates.message',       'project_status.status',
             'project_status.status', 'projects.local',
-            'h.alias AS hub',        't2.uuid AS hub_uuid',
-            'hl.location',
+            'h.name AS hub',         't2.uuid AS hub_uuid',
+            'hr.location',
         ],
         from       => 'projects',
         inner_join => 'topics',
@@ -50,8 +50,8 @@ sub run {
         on         => 'project_status.id = projects.status_id',
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
-        left_join  => 'hub_locations hl',
-        on         => 'hl.id = h.default_location_id',
+        left_join  => 'hub_repos hr',
+        on         => 'hr.id = h.default_location_id',
         left_join  => 'topics t2',
         on         => 't2.id = h.id',
         where      => { 'projects.id' => $info->{id} },
@@ -188,7 +188,7 @@ bif-show-project - display a project's current status
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -221,7 +221,7 @@ looked up in the database.
 
 =item HUB
 
-An optional hub alias or location to look for matches.
+An optional hub name or location to look for matches.
 
 =item --full, -f
 

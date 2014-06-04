@@ -12,7 +12,7 @@ CREATE TABLE project_issues (
 );
 
 CREATE TRIGGER
-    bi_project_issues_1
+    project_issues_bi_1
 BEFORE INSERT ON
     project_issues
 FOR EACH ROW WHEN
@@ -27,7 +27,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_project_issues_1',
+        'TRIGGER project_issues_bi_1',
         NEW.id,
         NEW.issue_id,
         NEW.project_id,
@@ -56,7 +56,7 @@ END;
     is deleted.
 */
 CREATE TRIGGER
-    ad_project_issues_1
+    project_issues_ad_1
 AFTER DELETE ON
     project_issues
 FOR EACH ROW WHEN
@@ -70,7 +70,7 @@ FOR EACH ROW WHEN
     )
 BEGIN
     SELECT debug(
-        'TRIGGER ad_project_issues_1',
+        'TRIGGER project_issues_ad_1',
         OLD.issue_id,
         OLD.project_id,
         OLD.status_id,

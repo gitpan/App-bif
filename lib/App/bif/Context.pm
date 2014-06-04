@@ -7,9 +7,14 @@ use Config::Tiny;
 use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
+use Term::Size ();
 use feature 'state';
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
+
+our ( $term_width, $term_height ) = Term::Size::chars(*STDOUT);
+$term_width  ||= 80;
+$term_height ||= 40;
 
 sub new {
     my $proto = shift;
@@ -34,6 +39,7 @@ sub new {
     }
 
     $log->debugf( 'ctx: %s %s', (caller)[0], $opts );
+    $log->debugf( 'ctx: terminal %dx%d', $term_width, $term_height );
 
     $self->load_user_conf;
     $self->find_repo;
@@ -43,43 +49,18 @@ sub new {
     return $self;
 }
 
-sub File::HomeDir::my_app_config {
-    my $params = ref $_[-1] eq 'HASH' ? pop : {};
-    my $dist = pop
-      or Carp::croak("The my_app_config method requires an argument");
-
-    # not all platforms support a specific my_config() method
-    my $config =
-        $File::HomeDir::IMPLEMENTED_BY->can('my_config')
-      ? $File::HomeDir::IMPLEMENTED_BY->my_config
-      : $File::HomeDir::IMPLEMENTED_BY->my_documents;
-
-    # If neither configdir nor my_documents is defined, there's
-    # nothing we can do: bail out and return nothing...
-    return undef unless defined $config;
-
-    # On traditional unixes, hide the top-level dir
-    my $etc =
-      $config eq home()
-      ? File::Spec->catdir( $config, '.' . $dist )
-      : File::Spec->catdir( $config, $dist );
-
-    # directory exists: return it
-    return $etc if -d $etc;
-
-    # directory doesn't exist: check if we need to create it...
-    return undef unless $params->{create};
-
-    # user requested directory creation
-    require File::Path;
-    File::Path::mkpath($etc);
-    return $etc;
-}
-
 sub create_user_conf {
     my $self     = shift;
-    my $conf_dir = File::HomeDir->my_app_config( 'bif-user', { create => 1 } );
-    my $file     = path( $conf_dir, 'config' );
+    my $home_dir = File::HomeDir->my_home;
+    my $data_dir = File::HomeDir->my_data;
+
+    my $conf_dir =
+      $home_dir eq $data_dir
+      ? path( $home_dir, '.bif-user' )
+      : path( $data_dir, 'bif-user' );
+
+    $conf_dir->mkpath unless -d $conf_dir;
+    my $file = path( $conf_dir, 'config' );
 
     return $file if -e $file;
 
@@ -100,8 +81,8 @@ sub create_user_conf {
     my $conf = Config::Tiny->new;
     $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
     $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
-    $conf->{'user.alias'}->{ls} = 'list projects local --status run';
-    $conf->{'user.alias'}->{ll} =
+    $conf->{'user.alias'}->{l} = 'list projects local --status run';
+    $conf->{'user.alias'}->{ls} =
       'list topics --status open --project-status run';
 
     print "Writing $file\n";
@@ -218,9 +199,9 @@ sub start_pager {
     my $lines = shift;
     return if $self->{_bif_no_pager} or $pager;
 
-    if ($lines) {
-        require Term::Size;
-        return if $lines <= ( ( Term::Size::chars() )[1] );
+    if ( $lines && $lines <= $term_height ) {
+        $log->debug("ctx: no start_pager ($lines <= $term_height)");
+        return;
     }
 
     local $ENV{'LESS'} = '-FXeR';
@@ -238,6 +219,8 @@ sub start_pager {
         STDOUT->flush;
         $self->end_pager();
     };
+
+    return $pager;
 }
 
 sub end_pager {
@@ -309,20 +292,20 @@ sub uuid2id {
 }
 
 sub get_project {
-    my $self  = shift;
-    my $path  = shift;
-    my $alias = shift;
+    my $self = shift;
+    my $path = shift;
+    my $hub  = shift;
 
     my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
-    my @matches = $db->get_projects( $path, $alias );
+    my @matches = $db->get_projects( $path, $hub );
 
     if ( !@matches ) {
-        if ($alias) {
-            return $self->err( 'HubNotFound', "hub not found: $alias" )
-              unless scalar $db->get_hub_locations($alias);
+        if ($hub) {
+            return $self->err( 'HubNotFound', "hub not found: $hub" )
+              unless scalar $db->get_hub_repos($hub);
 
             return $self->err( 'ProjectNotFound',
-                "project not found: $path ($alias)" );
+                "project not found: $path ($hub)" );
         }
         return $self->err( 'ProjectNotFound', "project not found: $path" );
     }
@@ -341,7 +324,6 @@ sub render_table {
     my $indent = shift || 0;
 
     require Text::FormatTable;
-    require Term::Size;
     require Term::ANSIColor;
 
     my $table = Text::FormatTable->new($format);
@@ -359,9 +341,10 @@ sub render_table {
         $table->row(@$row);
     }
 
-    return $table->render( ( Term::Size::chars() )[0] ) unless $indent;
+    return $table->render($term_width) unless $indent;
 
-    my $str = $table->render( ( Term::Size::chars() )[0] - $indent );
+    my $str = $table->render( $term_width - $indent );
+
     my $prefix = ' ' x $indent;
     $str =~ s/^/$prefix/gm;
     return $str;
@@ -476,13 +459,13 @@ sub update_repo {
 
     $ref->{author} ||= $self->{user}->{name};
     $ref->{email}  ||= $self->{user}->{email};
-    $ref->{ruid}   ||= $dbw->nextval('updates');
+    $ref->{id}     ||= $dbw->nextval('updates');
     my $hub = $self->get_topic( $dbw->get_local_hub_id );
 
     $dbw->xdo(
         insert_into => 'updates',
         values      => {
-            id        => $ref->{ruid},
+            id        => $ref->{id},
             parent_id => $hub->{first_update_id},
             author    => $ref->{author},
             email     => $ref->{email},
@@ -496,12 +479,11 @@ sub update_repo {
 
     state $have_qv = DBIx::ThinSQL->import(qw/ qv /);
     $dbw->xdo(
-        insert_into => [
-            'hub_updates', qw/hub_id update_id project_id related_update_uuid/
-        ],
+        insert_into =>
+          [ 'hub_deltas', qw/hub_id update_id project_id related_update_uuid/ ],
         select => [
             qv( $hub->{id} ),
-            qv( $ref->{ruid} ),
+            qv( $ref->{id} ),
             qv( $ref->{project_id} ),
             'u.uuid',
         ],
@@ -572,7 +554,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

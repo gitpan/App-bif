@@ -7,13 +7,13 @@ CREATE TABLE func_new_project_status(
 );
 
 CREATE TRIGGER
-    bi_func_new_project_status_1
+    func_new_project_status_bi_1
 BEFORE INSERT ON
     func_new_project_status
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_new_project_status_1',
+        'TRIGGER func_new_project_status_bi_1',
         NEW.id,
         NEW.project_id,
         NEW.status
@@ -77,7 +77,7 @@ FOR EACH ROW BEGIN
     );
 
     INSERT INTO
-        project_status_updates(
+        project_status_deltas(
             update_id,
             project_status_id,
             new,

@@ -1,4 +1,4 @@
-CREATE TABLE project_updates (
+CREATE TABLE project_deltas (
     id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('update_order')),
     update_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
@@ -17,14 +17,14 @@ CREATE TABLE project_updates (
 ) WITHOUT ROWID;
 
 CREATE TRIGGER
-    ai_project_updates_1
+    project_deltas_ai_1
 AFTER INSERT ON
-    project_updates
+    project_deltas
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER ai_project_updates_1',
+        'TRIGGER project_deltas_ai_1',
         NEW.project_id,
         NEW.name,
         NEW.title,
@@ -46,7 +46,7 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                'project_update:' || x'0A'
+                'project_delta:' || x'0A'
                 || '  project_uuid:' || COALESCE(project.uuid, '') || x'0A'
                 || '  parent_uuid:' || COALESCE(parent.uuid, '') || x'0A'
                 || '  name:' || COALESCE(NEW.name, '') || x'0A'
@@ -88,7 +88,7 @@ BEGIN
     ;
 
     INSERT INTO
-        project_meta_updates(
+        project_only_updates(
             update_id,
             project_id
         )
@@ -101,14 +101,14 @@ END;
 
 
 CREATE TRIGGER
-    ad_project_updates_1
+    project_deltas_ad_1
 AFTER DELETE ON
-    project_updates
+    project_deltas
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER ad_project_updates_1',
+        'TRIGGER project_deltas_ad_1',
         OLD.project_id,
         OLD.name,
         OLD.status_id,

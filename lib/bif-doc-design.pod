@@ -1,11 +1,11 @@
 =head1 Bif Design
 
 This document attempts to describe why and how the Bif project
-management tool x does what it does.
+management tool does what it does.
 
 =head1 Version
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 Background
 
@@ -92,7 +92,11 @@ summaries of the current status as well as the change history.
 =item Distributed/Offline Operation
 
 As much as possible, the tool should work everywhere that you can. In
-effect that means data replication.
+effect that means data replication, but should only be as much as is
+needed. It doesn't make sense to transfer and synchronize large amounts
+of data that will never be queried. "As much as is needed" is a
+somewhat nebulous description - each person probably has a different
+meaning in mind.
 
 =item Fast Delta Synchronisation
 
@@ -127,6 +131,22 @@ project can see the status in the other projects.
 No reason that every project in the whole Bif ecosystem must use the
 same status types.
 
+=item Scalable
+
+Scalability was not an initially identified requirement, but as
+development has proceeded I have found myself taking it more and more
+into consideration. How would bif have to work to be useful to an
+organisation the size of Debian?
+
+There were close to forty thousand packages in Debian 7.0,
+progressively fewer in previous distributions.  Packages were released
+multiple times during development and for security updates, and each
+package release could probably be considered a bif project.  A single,
+centralized database, with email-based communication seems to work ok
+for that project. It will take some thought to determine whether
+replacing that model with a bif-supported workflow provides any
+advantages.
+
 =item Extreme Documentation
 
 Aside from functionality, for this to be successful it has to be
@@ -136,16 +156,6 @@ to the quality of the documentation.
 =back
 
 =head1 Data Model
-
-Bif is not implementing a distributed database, or at least not in the
-classical sense where all nodes need to agree on what the "current" or
-"latest" values for objects are, based on some kind of consensus
-achieved real-time. What bif does is simply distribute *updates*. The
-state of a particular node is the result of the updates it has, and it
-doesn't care what the other nodes are doing, or when it will get
-missing updates. I.e. there is no consensus. This works because the
-users do not need a real-time global view of projects, in the same way
-they don't need real-time emails.
 
 =head2 Assumptions
 
@@ -203,18 +213,16 @@ Updates are immutable, and they can't be easily deleted from
 everywhere. For the moment at least. Possibly thinking about updates to
 an update...
 
-=head2 Merkle Trees
-
 =head2 Meta Data
 
 Two types of meta data are calculated and stored in addition to the
-user data
+user data. The end result of the calculations are Merkle trees, which
+are the basis on which synchronisation occurs.
 
 =head3 Hub Meta Data
 
-In each repository we track the related hub_update,
-hub_location_updates, project_updates and *_status_updates in the
-"hub_related_updates" table.
+In each repository we track the related hub_delta, hub_repo_deltas,
+project_deltas and *_status_deltas in the "hub_related_updates" table.
 
 =begin graph-easy
 
@@ -255,12 +263,55 @@ remote repositories (hubs).
 When a local user registers a hub all project-only details are
 imported.  Initially this so that the local user can see what projects
 are available on the hub. Therefore, for each hub we track the related
-project_updates and *_status_updates in the "hub_related_updates"
-table.
+project_deltas and *_status_deltas in the "hub_related_updates" table.
 
-
-current state of topics, table for updates to topics, tables to track
+Current state of topics, table for updates to topics, tables to track
 meta data (Merkle trees).
+
+There is a Merkle tree associated with every project/hub combination,
+representing all of the changes contained therein.
+
+=head1 Network Communication
+
+Bif does not implement a single distributed database, at least not in
+the sense where all nodes need to agree in almost-real-time on what the
+"current" or "latest" values for all objects are.  What bif does is
+simbly exchange a certain set of updates to a certain set of nodes on
+demand. The state of a particular node is the result of the subset of
+updates it has, and it doesn't care what the other nodes are doing.
+This works because the users do not need a real-time global view of all
+projects in an organisation, in the same way they don't need real-time
+copies of all emails not addressed to them.
+
+=head2 Protocol
+
+Bif communicates using JSON sentences terminated by a double-newline
+(\n\n). Communication is bi-directional, often asynchronous, and occurs
+on a single channel.
+
+Commands or instructions are sent as array references with the first
+element being an UPPERCASE string, and the remaining elements vary
+depending on the instruction.
+
+    ["SYNC","project","f6f4f48ef6846421a5d","82e38655"]
+
+Status replies are array references generally containing a just a
+single CamelCase string element.
+
+    ["ProjectMatch"]
+
+Sometimes instead of a status reply a counter-instruction is sent, and
+sometimes multiple instructions are sent without waiting for a reply:
+
+    ["NEW","update",{"mtime":14153122121,"message":"Hello"]
+    ["NEW","project",{"mtime":14153122121,"title":"todo"]
+    ["NEW","project_status",{"mtime":14153122121,"title":"run"]
+    ["UPDATE","project",{"status_uuid":"11eb3ba88ae0f"]
+
+The server will generally keep the connection open and answering
+commands until the client sends a QUIT message:
+
+    ["QUIT"]
 
 =head2 Hub Registration
 
@@ -318,42 +369,7 @@ may also have issue updates related to $PROJECT locally.
 Basically just copies everything relating to a project from one
 repository to another.
 
-=head1 Network Communication
-
-=head2 Protocol
-
-Bif communicates using JSON sentences terminated by a double-newline
-(\n\n). Communication is bi-directional, often asynchronous, and occurs
-on a single channel.
-
-Commands or instructions are sent as array references with the first
-element being an UPPERCASE string, and the remaining elements vary
-depending on the instruction.
-
-    ["SYNC","project","f6f4f48ef6846421a5d","82e38655"]
-
-Status replies are array references generally containing a just a
-single CamelCase string element.
-
-    ["ProjectMatch"]
-
-Sometimes instead of a status reply a counter-instruction is sent, and
-sometimes multiple instructions are sent without waiting for a reply:
-
-    ["NEW","update",{"mtime":14153122121,"message":"Hello"]
-    ["NEW","project",{"mtime":14153122121,"title":"todo"]
-    ["NEW","project_status",{"mtime":14153122121,"title":"run"]
-    ["UPDATE","project",{"status_uuid":"11eb3ba88ae0f"]
-
-The server will generally keep the connection open and answering
-commands until the client sends a QUIT message:
-
-    ["QUIT"]
-
-=head2 Merkle tree synchronisation
-
-There is a Merkle tree associated with every project, representing all
-of the changes contained therein.
+=head2 Synchronisation
 
 A sync operation compares the tree from two repositories top-down,
 saving the updates missing from each one. The updates are then replayed

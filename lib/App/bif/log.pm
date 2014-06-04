@@ -5,7 +5,7 @@ use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 our $NOW;
 our $bold;
@@ -44,165 +44,9 @@ sub run {
 
         return $func->( $ctx, $info );
     }
-    else {
-        return _log_hub( $ctx, $ctx->get_topic( $db->get_local_hub_id ) );
-    }
 
-    my $sth = $db->xprepare(
-        select => [
-            'COALESCE(projects.path,topics.id) AS topic_id',
-            'topics.uuid AS topic_uuid',
-            'updates.id',
-            'updates.uuid',
-            'updates.mtime',
-            'updates.mtimetz',
-            'updates.author',
-            'updates.email',
-            'updates.message',
-            'updates.id = topics.first_update_id AS new_item',
-            "GROUP_CONCAT(
-                topics.kind
-            , '\n') AS kind",
-            "GROUP_CONCAT(
-                COALESCE(
-                    COALESCE(issue_updates.title, issues.title),
-                    COALESCE(task_updates.title, tasks.title),
-                    COALESCE(project_updates.title, projects.title)
-                )
-            , '\n') AS title",
-            'COALESCE(
-            issue_updates.id,
-            task_updates.id,
-            project_updates.id,
-            hub_updates.id
-            ) AS update_order',
-        ],
-        from      => 'updates',
-        left_join => 'hub_updates',
-        on        => 'hub_updates.update_id = updates.id',
-        left_join => 'hubs',
-        on        => 'hubs.id = hub_updates.hub_id',
-        left_join => 'project_updates',
-        on        => 'project_updates.update_id = updates.id AND
-                      project_updates.new IS NULL',
-        left_join => 'projects',
-        on        => 'projects.id = project_updates.project_id',
-        left_join => 'task_updates',
-        on        => 'task_updates.update_id = updates.id',
-        left_join => 'tasks',
-        on        => 'tasks.id = task_updates.task_id',
-        left_join => 'issue_updates',
-        on        => 'issue_updates.update_id = updates.id',
-        left_join => 'issues',
-        on        => 'issues.id = issue_updates.issue_id',
-        left_join => 'topics',
-        on        => 'topics.id = hub_updates.hub_id OR
-                       topics.id = project_updates.project_id OR
-                       topics.id = task_updates.task_id OR
-                       topics.id = issue_updates.issue_id',
-        do {
-            my $where_cond = '';
+    return _log_hub( $ctx, $ctx->get_topic( $db->get_local_hub_id ) );
 
-            foreach my $filter ( @{ $ctx->{filter} } ) {
-
-                # This could be much more efficently done with a
-                # completely different query that inner joins
-                # topics.first_update_id with updates. But for now...
-                if ( $filter eq 'new' ) {
-                    $where_cond .= ' OR' if $where_cond;
-                    $where_cond .= ' updates.id = topics.first_update_id';
-                }
-                elsif ( $filter eq 'status' ) {
-                    $where_cond .= ' OR' if $where_cond;
-                    $where_cond .=
-                        ' (project_updates.status_id IS NOT NULL '
-                      . 'OR task_updates.status_id IS NOT NULL '
-                      . 'OR issue_updates.status_id IS NOT NULL)';
-                }
-                else {
-                    return $ctx->err( 'InvalidFilter',
-                        'not a valid --filter: ' . $filter );
-                }
-            }
-
-            if ($where_cond) {
-                ( where => $where_cond );
-            }
-            else {
-                ();
-            }
-        },
-        group_by => [
-            'updates.id',      'updates.uuid',
-            'updates.mtime',   'updates.mtimetz',
-            'updates.author',  'updates.email',
-            'updates.message', 'updates.id = topics.first_update_id',
-        ],
-        order_by =>
-          [ 'updates.mtime desc', 'update_order DESC', 'updates.uuid', ],
-    );
-
-    $sth->execute;
-
-    $ctx->start_pager;
-
-    while ( my $row = $sth->hash ) {
-        my @data;
-
-        if ( $row->{new_item} ) {
-
- #            push( @data,
- #                _header( $yellow . ucfirst( $row->{kind} ), $row->{title} ) );
-            push(
-                @data,
-                _header(
-                    $yellow . $row->{kind},
-                    $yellow . $row->{topic_id},
-                    $row->{topic_uuid}
-                )
-            );
-        }
-        else {
-            push(
-                @data,
-                _header(
-                    $dark . $yellow . 'comment',
-                    $dark . $yellow . "$row->{topic_id}.$row->{id}",
-                    $row->{uuid}
-                )
-            );
-        }
-
-        push( @data, _header( 'From', $row->{author}, $row->{email} ) );
-
-        push( @data,
-            _header( 'When', _new_ago( $row->{mtime}, $row->{mtimetz} ) ) );
-
-        #        if (!$row->{new_item}) {
-        push(
-            @data,
-            _header(
-                'Subject',
-                ( $row->{new_item} ? '' : "Re: [$row->{kind}] " )
-                  . $row->{title},
-            )
-        ) if $row->{title};
-
-        #        }
-
-        print $ctx->render_table( 'l  l', undef, \@data ) . "\n";
-
-        if ( $row->{push_to} ) {
-            print "[Pushed to " . $row->{push_to} . "]\n\n\n";
-        }
-        else {
-            print _reformat( $row->{message} ), "\n";
-        }
-        next;
-
-    }
-    $ctx->end_pager;
-    return $ctx->ok('Log');
 }
 
 sub _header {
@@ -350,10 +194,10 @@ sub _log_hub {
             q{strftime('%H:%M:%S',u.mtime,'unixepoch','localtime') AS mtime},
             'u.message',
         ],
-        from       => 'hub_updates hu',
+        from       => 'hub_deltas hd',
         inner_join => 'updates u',
-        on         => 'u.id = hu.update_id',
-        where      => { 'hu.hub_id' => $info->{id} },
+        on         => 'u.id = hd.update_id',
+        where      => { 'hd.hub_id' => $info->{id} },
         group_by   => [qw/weekday mdate mtime/],
         order_by   => 'u.id DESC',
     );
@@ -395,10 +239,10 @@ sub _log_task {
 
     my $sth = $db->xprepare(
         select => [
-            'task_updates.task_id AS id',
-            "task_updates.task_id ||'.' || task_updates.update_id AS update_id",
+            'task_deltas.task_id AS id',
+            "task_deltas.task_id ||'.' || task_deltas.update_id AS update_id",
             'updates.uuid AS update_uuid',
-            'task_updates.title',
+            'task_deltas.title',
             'updates.mtime',
             'updates.mtimetz',
             'updates.author',
@@ -410,19 +254,19 @@ sub _log_task {
             'updates_tree.depth',
             'updates.message',
         ],
-        from       => 'task_updates',
+        from       => 'task_deltas',
         inner_join => 'updates',
         on         => 'updates.id = updates_tree.child',
         left_join  => 'task_status',
-        on         => 'task_status.id = task_updates.status_id',
+        on         => 'task_status.id = task_deltas.status_id',
         left_join  => 'projects',
         on         => 'projects.id = task_status.project_id',
         inner_join => 'updates_tree',
         on         => {
             'updates_tree.parent' => $info->{first_update_id},
-            'updates_tree.child'  => \'task_updates.update_id'
+            'updates_tree.child'  => \'task_deltas.update_id'
         },
-        where    => { 'task_updates.task_id' => $info->{id} },
+        where    => { 'task_deltas.task_id' => $info->{id} },
         order_by => 'updates.path ASC',
     );
 
@@ -458,29 +302,29 @@ sub _log_issue {
             'updates.ucount',
             'issue_status.status',
             'issue_status.status',
-            'issue_updates.new',
-            'issue_updates.title',
+            'issue_deltas.new',
+            'issue_deltas.title',
             'projects.path',
             'updates_tree.depth',
         ],
-        from       => 'issue_updates',
+        from       => 'issue_deltas',
         inner_join => 'updates',
-        on         => 'updates.id = issue_updates.update_id',
+        on         => 'updates.id = issue_deltas.update_id',
         inner_join => 'projects',
-        on         => 'projects.id = issue_updates.project_id',
+        on         => 'projects.id = issue_deltas.project_id',
         inner_join => 'project_issues',
         on         => {
-            'project_issues.project_id' => \'issue_updates.project_id',
-            'project_issues.issue_id'   => \'issue_updates.issue_id',
+            'project_issues.project_id' => \'issue_deltas.project_id',
+            'project_issues.issue_id'   => \'issue_deltas.issue_id',
         },
         left_join  => 'issue_status',
-        on         => 'issue_status.id = issue_updates.status_id',
+        on         => 'issue_status.id = issue_deltas.status_id',
         inner_join => 'updates_tree',
         on         => {
             'updates_tree.child'  => \'updates.id',
             'updates_tree.parent' => $info->{first_update_id}
         },
-        where    => { 'issue_updates.issue_id' => $info->{id} },
+        where    => { 'issue_deltas.issue_id' => $info->{id} },
         order_by => 'updates.path ASC',
     );
 
@@ -564,10 +408,10 @@ sub _log_project {
 
     my $sth = $db->xprepare(
         select => [
-            'project_updates.project_id AS id',
-            "project_updates.project_id ||'.' || updates.id AS update_id",
+            'project_deltas.project_id AS id',
+            "project_deltas.project_id ||'.' || updates.id AS update_id",
             'updates.uuid AS update_uuid',
-            'project_updates.title',
+            'project_deltas.title',
             'updates.mtime',
             'updates.mtimetz',
             'updates.author',
@@ -577,24 +421,24 @@ sub _log_project {
             'project_status.status',
             'project_status.status',
             'projects.path',
-            'project_updates.name',
+            'project_deltas.name',
         ],
-        from       => 'project_updates',
+        from       => 'project_deltas',
         inner_join => 'projects',
-        on         => 'projects.id = project_updates.project_id',
+        on         => 'projects.id = project_deltas.project_id',
         inner_join => 'topics',
         on         => 'topics.id = projects.id',
         inner_join => 'updates_tree',
         on         => 'updates_tree.parent = topics.first_update_id AND
-                       updates_tree.child = project_updates.update_id',
+                       updates_tree.child = project_deltas.update_id',
         inner_join => 'updates',
         on         => 'updates.id = updates_tree.child',
         left_join  => 'project_status',
-        on         => 'project_status.id = project_updates.status_id',
+        on         => 'project_status.id = project_deltas.status_id',
         where      => {
-            'project_updates.project_id' => $info->{id},
+            'project_deltas.project_id' => $info->{id},
 
-            #            'project_updates.new'        => undef,
+            #            'project_deltas.new'        => undef,
         },
         order_by => 'updates.path asc',
     );
@@ -620,7 +464,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

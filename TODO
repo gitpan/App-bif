@@ -1,3 +1,17 @@
+* After being exported to a hub does a project need to keep
+hub_related_updates for the local hub?
+
+* Don't print Hub: lines for "show project" when project has no (or
+local) hub.
+
+* Think about the difference in transactions between clients and
+servers. For example, an export can fail due to an issue/task problem,
+but at the moment Bif::Server will commit the addition of the project
+to its hub_related_updates table while the client doesn't. One solution
+is possibly to dynamically generate and sync the hub merkle tree based
+on ... project_only_updates_merkle if it existed? We might want that
+table anyway because of shallow exports for hub-to-hub cooperation.
+
 * Hide IDs in show issue for projects that are not local.
 
 * Rename Bif::Client->debug_bs to debug_bifsync
@@ -23,7 +37,7 @@ to a hub will fail because the second project doesn't exist at the hub.
       refers to an existing project, or importing a project that is
       referred to by an existing issue. Probably means storing the
       project_uuid in the issue update and triggering things
-      appropriately. Alternatively, we don't sync the issue_updates
+      appropriately. Alternatively, we don't sync the issue_deltas
       that refer to non-present projects?
 
 * Trademark policy? http://modeltrademarkguidelines.org/

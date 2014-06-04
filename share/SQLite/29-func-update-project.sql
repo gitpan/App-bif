@@ -11,13 +11,13 @@ CREATE TABLE func_update_project(
 );
 
 CREATE TRIGGER
-    bi_func_update_project_1
+    func_update_project_bi_1
 BEFORE INSERT ON
     func_update_project
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_update_project_1',
+        'TRIGGER func_update_project_bi_1',
         NEW.id,
         NEW.update_id,
         NEW.parent_id,
@@ -29,7 +29,7 @@ FOR EACH ROW BEGIN
     );
 
     INSERT INTO
-        project_updates(
+        project_deltas(
             update_id,
             project_id,
             parent_id,

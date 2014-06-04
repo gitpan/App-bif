@@ -121,7 +121,7 @@ sub new_test_hub {
         id        => $id,
         update_id => $update->{id},
         local     => $local,
-        alias     => 'location' . $location++,
+        name      => 'location' . $location++,
     };
 
     $dbw->xdo(
@@ -130,7 +130,7 @@ sub new_test_hub {
     );
 
     $dbw->xdo(
-        insert_into => 'func_new_hub_location',
+        insert_into => 'func_new_hub_repo',
         values      => {
             update_id => $update->{id},
             hub_id    => $id,
@@ -140,7 +140,7 @@ sub new_test_hub {
     );
 
     $dbw->xdo(
-        insert_into => 'hub_updates',
+        insert_into => 'hub_deltas',
         values      => {
             update_id           => $update->{id},
             hub_id              => $id,
@@ -159,23 +159,30 @@ sub new_test_hub {
 my $project = 0;
 
 sub new_test_project {
-    my $db = shift;
+    my $db        = shift;
     my $update_id = shift || $db->currval('updates');
+    my $id        = $db->nextval('topics');
 
     $project++;
 
     my $ref = {
         update_id => $update_id,
-        id        => $db->nextval('topics'),
+        id        => $id,
         name      => 'todo' . $project,
         title     => 'title' . $project,
-        local     => 1,
     };
 
     $db->xdo(
         insert_into => 'func_new_project',
         values      => $ref,
     );
+
+    $db->xdo(
+        update => 'projects',
+        set    => 'local = 1',
+        where  => { id => $id },
+    );
+
     return $ref;
 }
 

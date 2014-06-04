@@ -5,9 +5,8 @@ CREATE TABLE projects (
     title VARCHAR(1024) NOT NULL,
     path VARCHAR collate nocase,
     status_id INTEGER NOT NULL DEFAULT -1,
-    hub_id INTEGER,
-    local INTEGER,
-    hash VARCHAR DEFAULT '',
+    hub_id INTEGER, -- TODO: make it NOT NULL,
+    local INTEGER NOT NULL DEFAULT 0,
     num_updates INTEGER,
     FOREIGN KEY(id) REFERENCES topics(id)
         ON DELETE CASCADE
@@ -22,7 +21,7 @@ CREATE TABLE projects (
 CREATE UNIQUE INDEX projects_path_hub_id ON projects(path,hub_id);
 
 CREATE TRIGGER
-    bd_projects_1
+    projects_bd_1
 BEFORE DELETE ON
     projects
 FOR EACH ROW
@@ -35,7 +34,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    ad_projects_1
+    projects_ad_1
 AFTER DELETE ON
     projects
 FOR EACH ROW
@@ -90,7 +89,7 @@ END;
  */
 
 CREATE TRIGGER
-    tree_ai_projects_3
+    projects_ai_tree_3
 AFTER INSERT ON
     projects
 FOR EACH ROW WHEN
@@ -115,7 +114,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    tree_ai_projects_2
+    projects_ai_tree_2
 AFTER INSERT ON
     projects
 FOR EACH ROW WHEN
@@ -133,7 +132,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    tree_ai_projects_1
+    projects_ai_tree_1
 AFTER INSERT ON
     projects
 FOR EACH ROW 
@@ -188,7 +187,7 @@ END;
 */
 
 CREATE TRIGGER
-    tree_au_projects_5
+    projects_au_tree_5
 AFTER UPDATE OF
     parent_id
 ON
@@ -228,7 +227,7 @@ END;
 */
 
 CREATE TRIGGER
-    tree_au_projects_4
+    projects_au_tree_4
 AFTER UPDATE OF
     parent_id
 ON
@@ -261,7 +260,7 @@ END;
 */
 
 CREATE TRIGGER
-    tree_au_projects_3
+    projects_au_tree_3
 AFTER UPDATE OF
     parent_id
 ON
@@ -300,7 +299,7 @@ END;
 */
 
 CREATE TRIGGER
-    tree_au_projects_2
+    projects_au_tree_2
 AFTER UPDATE OF
     parent_id
 ON
@@ -337,7 +336,7 @@ END;
 */
 
 CREATE TRIGGER
-    tree_au_projects_1
+    projects_au_tree_1
 AFTER UPDATE OF
     name
 ON
@@ -404,7 +403,7 @@ END;
 */
 
 CREATE TRIGGER
-    tree_bu_projects_2
+    projects_bu_tree_2
 BEFORE UPDATE OF
     parent_id
 ON
@@ -428,7 +427,7 @@ END;
 */
 
 CREATE TRIGGER
-    tree_bu_projects_1
+    projects_bu_tree_1
 BEFORE UPDATE OF
     id
 ON

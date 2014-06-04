@@ -7,13 +7,13 @@ CREATE TABLE func_update_task_status(
 );
 
 CREATE TRIGGER
-    bi_func_update_task_status_1
+    func_update_task_status_bi_1
 BEFORE INSERT ON
     func_update_task_status
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_update_task_status_1',
+        'TRIGGER func_update_task_status_bi_1',
         NEW.update_id,
         NEW.id,
         NEW.status,
@@ -22,7 +22,7 @@ FOR EACH ROW BEGIN
     );
 
     INSERT INTO
-        task_status_updates(
+        task_status_deltas(
             id,
             task_status_id,
             status,

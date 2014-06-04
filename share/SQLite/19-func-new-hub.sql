@@ -1,22 +1,22 @@
 CREATE TABLE func_new_hub(
     update_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
-    alias VARCHAR(40),
+    name VARCHAR(128),
     local INTEGER
 );
 
 CREATE TRIGGER
-    bi_func_new_hub_1
+    func_new_hub_bi_1
 BEFORE INSERT ON
     func_new_hub
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_new_hub_1',
+        'TRIGGER func_new_hub_bi_1',
         NEW.id,
         NEW.update_id,
-        NEW.alias,
+        NEW.name,
         NEW.local
     );
 
@@ -58,24 +58,26 @@ BEGIN
 
     INSERT INTO hubs(
         id,
-        alias,
+        name,
         local
     )
     VALUES(
         NEW.id,
-        COALESCE(NEW.alias, 'TODO'),
+        NEW.name,
         NEW.local
     );
 
     INSERT INTO
-        hub_updates(
+        hub_deltas(
             update_id,
             hub_id,
+            name,
             new
         )
     VALUES(
         NEW.update_id,
         NEW.id,
+        NEW.name,
         1
     );
 

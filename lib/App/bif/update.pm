@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx  = App::bif::Context->new(shift);
@@ -42,18 +42,11 @@ sub _update_project {
     }
 
     $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
-    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
-            $ctx->update_repo(
-                {
-                    related_update_id => $ctx->{update_id},
-                    message           => 'update project '
-                      . "$info->{id} [$ctx->{id}]"
-                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
-                }
-            );
+            my $ruid = $db->nextval('updates');
+            $ctx->{update_id} = $db->nextval('updates');
 
             $db->xdo(
                 insert_into => 'updates',
@@ -79,6 +72,16 @@ sub _update_project {
             $db->xdo(
                 insert_into => 'func_merge_updates',
                 values      => { merge => 1 },
+            );
+
+            $ctx->update_repo(
+                {
+                    id                => $ruid,
+                    related_update_id => $ctx->{update_id},
+                    message           => 'update project '
+                      . "$info->{id} [$ctx->{id}]"
+                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
+                }
             );
 
         }
@@ -111,10 +114,18 @@ sub _update_issue {
       if @$invalid;
 
     $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
-    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
+            my ($path) = $db->xarray(
+                select => 'p.path',
+                from   => 'projects p',
+                where  => { 'p.id' => $info->{project_id} },
+            );
+
+            my $ruid = $db->nextval('updates');
+            $ctx->{update_id} = $db->nextval('updates');
+
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
@@ -142,14 +153,9 @@ sub _update_issue {
                 values      => { merge => 1 },
             );
 
-            my ($path) = $db->xarray(
-                select => 'p.path',
-                from   => 'projects p',
-                where  => { 'p.id' => $info->{project_id} },
-            );
-
             $ctx->update_repo(
                 {
+                    id                => $ruid,
                     related_update_id => $ctx->{update_id},
                     message           => 'update issue '
                       . $info->{project_issue_id}
@@ -157,6 +163,7 @@ sub _update_issue {
                       . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
                 }
             );
+
         }
     );
 
@@ -193,10 +200,22 @@ sub _update_task {
     }
 
     $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
-    $ctx->{update_id} = $db->nextval('updates');
 
     $db->txn(
         sub {
+            my $ruid = $db->nextval('updates');
+            $ctx->{update_id} = $db->nextval('updates');
+
+            my ($path) = $db->xarray(
+                select     => 'p.path',
+                from       => 'tasks t',
+                inner_join => 'task_status ts',
+                on         => 'ts.id = t.status_id',
+                inner_join => 'projects p',
+                on         => 'p.id = ts.project_id',
+                where      => { 't.id' => $ctx->{id} },
+            );
+
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
@@ -223,18 +242,9 @@ sub _update_task {
                 values      => { merge => 1 },
             );
 
-            my ($path) = $db->xarray(
-                select     => 'p.path',
-                from       => 'tasks t',
-                inner_join => 'task_status ts',
-                on         => 'ts.id = t.status_id',
-                inner_join => 'projects p',
-                on         => 'p.id = ts.project_id',
-                where      => { 't.id' => $ctx->{id} },
-            );
-
             $ctx->update_repo(
                 {
+                    id                => $ruid,
                     related_update_id => $ctx->{update_id},
                     message           => 'update task '
                       . $ctx->{id}
@@ -263,7 +273,7 @@ bif-update - update or comment a topic
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

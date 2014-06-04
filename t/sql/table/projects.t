@@ -131,8 +131,8 @@ run_in_tempdir {
                     updates.message,
                     updates.mtime,
                     updates.mtimetz,
-                    GROUP_CONCAT(project_updates.name,''),
-                    GROUP_CONCAT(project_updates.title,''),
+                    GROUP_CONCAT(project_deltas.name,''),
+                    GROUP_CONCAT(project_deltas.title,''),
                     GROUP_CONCAT(psu.status,''),
                     GROUP_CONCAT(psu.status,''),
                     GROUP_CONCAT(psu.rank,''),
@@ -148,19 +148,19 @@ run_in_tempdir {
             ON
                 parent.id = updates.parent_id
             LEFT JOIN
-                project_updates
+                project_deltas
             ON
-                project_updates.update_id = updates.id
+                project_deltas.update_id = updates.id
             LEFT JOIN
                 topics AS projects
             ON
-                projects.id = project_updates.project_id
+                projects.id = project_deltas.project_id
             LEFT JOIN
-                topics AS pus -- project_update_status
+                topics AS pus -- project_delta_status
             ON
-                pus.id = project_updates.status_id
+                pus.id = project_deltas.status_id
             LEFT JOIN
-                project_status_updates AS psu
+                project_status_deltas AS psu
             ON
                 psu.update_id = updates.id
             LEFT JOIN
@@ -211,11 +211,11 @@ run_in_tempdir {
 
             is_deeply $db->selectrow_arrayref(
                 'select project_id,name
-                 from project_updates
+                 from project_deltas
                  where id=?',
                 undef, $update_id
               ),
-              [ $id, 'x' ], 'project_updates';
+              [ $id, 'x' ], 'project_deltas';
 
             eval {
                 $db->txn(
@@ -259,11 +259,11 @@ run_in_tempdir {
 
             is_deeply $db->selectrow_arrayref(
                 'select project_id,parent_id,name
-                 from project_updates
+                 from project_deltas
                  where id=?',
                 undef, $child_update_id
               ),
-              [ $child_id, $id, 'y' ], 'project_updates';
+              [ $child_id, $id, 'y' ], 'project_deltas';
 
             $child_update_id = $db->nextval('updates');
             ok $db->xdo(
@@ -296,11 +296,11 @@ run_in_tempdir {
 
             is_deeply $db->selectrow_arrayref(
                 'select project_id,parent_id,name
-                 from project_updates
+                 from project_deltas
                  where id=?',
                 undef, $child_update_id
               ),
-              [ $child_id, undef, 'z' ], 'project_updates';
+              [ $child_id, undef, 'z' ], 'project_deltas';
 
             $child_update_id = $db->nextval('updates');
 
@@ -331,14 +331,14 @@ run_in_tempdir {
             is_deeply $db->selectrow_arrayref(
                 'select
                      projects.status_id,
-                     project_updates.status_id
-                 from project_updates
+                     project_deltas.status_id
+                 from project_deltas
                  inner join projects
-                 on projects.id = project_updates.project_id
-                 where project_updates.id=?',
+                 on projects.id = project_deltas.project_id
+                 where project_deltas.id=?',
                 undef, $child_update_id
               ),
-              [ $status_id, $status_id ], 'project_updates';
+              [ $status_id, $status_id ], 'project_deltas';
         }
     );
 };

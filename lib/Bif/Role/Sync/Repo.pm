@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 my %import_functions = (
     NEW => {
@@ -15,26 +15,26 @@ my %import_functions = (
         project        => 'func_import_project',
         project_status => 'func_import_project_status',
         hub            => 'func_import_hub',
-        hub_location   => 'func_import_hub_location',
+        hub_repo       => 'func_import_hub_repo',
         task           => 'func_import_task',
         task_status    => 'func_import_task_status',
         update         => 'func_import_update',
     },
     UPDATE => {
-        issue          => 'func_import_issue_update',
-        issue_status   => 'func_import_issue_status_update',
-        project        => 'func_import_project_update',
-        project_status => 'func_import_project_status_update',
-        hub            => 'func_import_hub_update',
-        hub_location   => 'func_import_hub_location_update',
-        task           => 'func_import_task_update',
-        task_status    => 'func_import_task_status_update',
+        issue          => 'func_import_issue_delta',
+        issue_status   => 'func_import_issue_status_delta',
+        project        => 'func_import_project_delta',
+        project_status => 'func_import_project_status_delta',
+        hub            => 'func_import_hub_delta',
+        hub_repo       => 'func_import_hub_repo_delta',
+        task           => 'func_import_task_delta',
+        task_status    => 'func_import_task_status_delta',
     },
     QUIT   => {},
     CANCEL => {},
 );
 
-sub recv_hub_updates {
+sub recv_hub_deltas {
     my $self = shift;
     my $db   = $self->db;
 
@@ -96,7 +96,7 @@ sub recv_hub_updates {
 
 sub real_import_hub {
     my $self   = shift;
-    my $result = $self->recv_hub_updates;
+    my $result = $self->recv_hub_deltas;
     if ( $result =~ m/^\d+$/ ) {
         $self->write( 'Recv', $result );
         return 'RepoImported';
@@ -123,7 +123,7 @@ sub real_sync_hub {
 
     my @refs = $db->xarrays(
         select => [qw/rm.prefix rm.hash/],
-        from   => 'hubs_merkle rm',
+        from   => 'hub_related_updates_merkle rm',
         where =>
           [ 'rm.hub_id = ', qv($id), ' AND rm.prefix LIKE ', qv($prefix2) ],
     );
@@ -205,7 +205,7 @@ sub real_sync_hub {
         return $self->send_updates( $update_list, $total );
     };
 
-    my $r1 = $self->recv_hub_updates;
+    my $r1 = $self->recv_hub_deltas;
     my $r2 = $send->join;
 
     if ( $r1 =~ m/^\d+$/ ) {

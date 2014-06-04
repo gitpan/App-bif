@@ -5,7 +5,7 @@ use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub _invalid_status {
     my $self = shift;
@@ -53,22 +53,21 @@ sub run {
         ( $ctx->{hub_id} ) = $db->xarray(
             select       => 'h.id',
             from         => 'hubs h',
-            where        => { 'h.alias' => $ctx->{hub} },
+            where        => { 'h.name' => $ctx->{hub} },
             union_select => 'h.id',
-            from         => 'hub_locations hl',
+            from         => 'hub_repos hr',
             inner_join   => 'hubs h',
-            on           => 'h.id = hl.hub_id',
-            where        => { 'hl.location' => $ctx->{hub} },
+            on           => 'h.id = hr.hub_id',
+            where        => { 'hr.location' => $ctx->{hub} },
             union_select => 'h.id',
-            from         => 'hub_locations hl',
+            from         => 'hub_repos hr',
             inner_join   => 'hubs h',
-            on           => 'h.id = hl.hub_id',
-            where        => { 'hl.location' => $dir },
+            on           => 'h.id = hr.hub_id',
+            where        => { 'hr.location' => $dir },
             limit        => 1,
         );
 
-        return $ctx->err( 'HubNotFound',
-            'hub location/alias not registered: ' . $ctx->{hub} )
+        return $ctx->err( 'HubNotFound', 'hub not registered: ' . $ctx->{hub} )
           unless $ctx->{hub_id};
 
         $data = _get_data($ctx);
@@ -127,7 +126,7 @@ sub _get_data {
             'p.path',
             case (
                 when => 'h.id IS NOT NULL',
-                then => 'h.alias',
+                then => 'h.name',
                 else => qv(''),
               )->as('hub'),
             'p.title',
@@ -135,7 +134,7 @@ sub _get_data {
             'sum( coalesce( total.open, 0 ) )',
             'sum( coalesce( total.stalled, 0 ) )',
             'sum( coalesce( total.closed, 0 ) )',
-            'coalesce( p.local, 0 )',
+            'p.local',
         ],
         from       => 'hub_related_projects hrp',
         inner_join => 'projects p',
@@ -228,7 +227,7 @@ sub _get_data2 {
             'p.path',
             case (
                 when => 'h.id IS NOT NULL',
-                then => 'h.alias',
+                then => 'h.name',
                 else => qv(''),
               )->as('hub'),
             'p.title',
@@ -236,7 +235,7 @@ sub _get_data2 {
             'sum( coalesce( total.open, 0 ) )',
             'sum( coalesce( total.stalled, 0 ) )',
             'sum( coalesce( total.closed, 0 ) )',
-            'coalesce( p.local, 0 )',
+            'p.local',
         ],
         from       => 'projects p',
         left_join  => 'hubs h',
@@ -326,7 +325,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -344,9 +343,9 @@ calculated progress percentage.
 
 =item HUB
 
-If a hub alias or location is provided then projects hosted by that hub
-will be listed instead of only listing local projects. A '*' character
-in the statistics columns (topic counts, completion %) is shown for
+If a hub name is provided then projects hosted by that hub will be
+listed instead of only listing local projects. A '*' character in the
+statistics columns (topic counts, completion %) is shown for
 remote-only projects where the information is not known locally.
 
 =item --status, -s STATUS

@@ -10,7 +10,7 @@ CREATE TABLE hub_related_projects(
 );
 
 CREATE TRIGGER
-    ai_hub_related_projects
+    hub_related_projects_ai_1
 AFTER INSERT ON
     hub_related_projects
 FOR EACH ROW
@@ -30,21 +30,21 @@ BEGIN
         )
     SELECT
         NEW.hub_id,
-        pmu.update_id
+        pou.update_id
     FROM
-        project_meta_updates pmu
+        project_only_updates pou
     WHERE
-        pmu.project_id = NEW.project_id
+        pou.project_id = NEW.project_id
     ;
 
     /*
-        Need to update projects_merkle for all of the
+        Need to update project_related_updates_merkle for all of the
         project_related_updates that have occured before the project
         got added to the hub/repo.
     */
 
     INSERT INTO
-        projects_merkle(
+        project_related_updates_merkle(
             project_id,
             hub_id,
             prefix,
@@ -83,4 +83,32 @@ BEGIN
         src.prefix
     ;
 
+END;
+
+CREATE TRIGGER
+    hub_related_projects_ad_1
+AFTER DELETE ON
+    hub_related_projects
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        OLD.hub_id,
+        OLD.project_id,
+        OLD.update_id,
+        OLD.hash
+    );
+
+    DELETE FROM
+        hub_related_updates
+    WHERE
+        hub_id = OLD.hub_ID AND
+        update_id IN (
+            SELECT
+                pou.update_id
+            FROM
+                project_only_updates pou
+            WHERE
+                pou.project_id = OLD.project_id
+        )
+    ;
 END;

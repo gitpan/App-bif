@@ -9,7 +9,7 @@ CREATE TABLE tasks (
 );
 
 CREATE TRIGGER
-    ad_tasks_1
+    tasks_ad_1
 AFTER DELETE ON
     tasks
 FOR EACH ROW

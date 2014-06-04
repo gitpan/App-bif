@@ -1,4 +1,4 @@
-CREATE TABLE task_updates (
+CREATE TABLE task_deltas (
     id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('update_order')),
     update_id INTEGER NOT NULL,
     task_id INTEGER NOT NULL,
@@ -13,9 +13,9 @@ CREATE TABLE task_updates (
 ) WITHOUT ROWID;
 
 CREATE TRIGGER
-    ai_task_updates_2
+    task_deltas_ai_2
 AFTER INSERT ON
-    task_updates
+    task_deltas
 FOR EACH ROW WHEN
     NEW.status_id IS NOT NULL
 BEGIN
@@ -39,9 +39,9 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    ai_task_updates_1
+    task_deltas_ai_1
 AFTER INSERT ON
-    task_updates
+    task_deltas
 FOR EACH ROW
 BEGIN
 
@@ -65,7 +65,7 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                'task_update:' || x'0A'
+                'task_delta:' || x'0A'
                 || '  task_uuid:' || COALESCE(topics.uuid, '') || x'0A'
                 || '  status_uuid:' || COALESCE(status.uuid, '') || x'0A'
                 || '  title:' || COALESCE(NEW.title, '') || x'0A'
@@ -122,9 +122,9 @@ END;
 
 
 CREATE TRIGGER
-    ad_task_updates_1
+    task_deltas_ad_1
 AFTER DELETE ON
-    task_updates
+    task_deltas
 FOR EACH ROW
 BEGIN
 

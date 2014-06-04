@@ -8,7 +8,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 with 'Bif::Role::Sync';
 
@@ -68,9 +68,9 @@ sub BUILD {
 
     $self->hub_id(
         $self->db->xarray(
-            select => 'hl.hub_id',
-            from   => 'hub_locations hl',
-            where  => { 'hl.location' => $self->location },
+            select => 'hr.hub_id',
+            from   => 'hub_repos hr',
+            where  => { 'hr.location' => $self->location },
         )
     );
 
@@ -133,9 +133,12 @@ sub import_project {
     my $pinfo = shift;
 
     my ($hash) = $self->db->xarray(
-        select => 'p.hash',
-        from   => 'projects p',
-        where  => { 'p.id' => $pinfo->{id} },
+        select => 'hrp.hash',
+        from   => 'hub_related_projects hrp',
+        where  => {
+            'hrp.hub_id'     => $self->hub_id,
+            'hrp.project_id' => $pinfo->{id},
+        },
     );
 
     $self->write( 'SYNC', 'project', $pinfo->{uuid}, $hash );
@@ -228,7 +231,7 @@ Bif::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

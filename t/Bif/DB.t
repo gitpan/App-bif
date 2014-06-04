@@ -194,10 +194,10 @@ run_in_tempdir {
         is_deeply $invalid, [ 'junky', 'more' ], "invalid @$invalid";
     };
 
-    subtest 'get_hub_locations', sub {
-        is_deeply [ $db->get_hub_locations ], [], 'get_hub_locations(undef)';
-        is_deeply [ $db->get_hub_locations('noalias') ], [],
-          'get_hub_locations(q{noalias})';
+    subtest 'get_hub_repos', sub {
+        is_deeply [ $db->get_hub_repos ], [], 'get_hub_repos(undef)';
+        is_deeply [ $db->get_hub_repos('noname') ], [],
+          'get_hub_repos(q{noname})';
     };
 };
 

@@ -8,7 +8,7 @@ CREATE TABLE tasks_tomerge(
 );
 
 CREATE TRIGGER
-    bu_tasks_tomerge_3
+    tasks_tomerge_bu_3
 BEFORE UPDATE OF
     resolve
 ON
@@ -18,7 +18,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_tasks_tomerge_3',
+        'TRIGGER tasks_tomerge_bu_3',
         OLD.task_id
     );
 
@@ -29,13 +29,13 @@ BEGIN
             SELECT
                 updates.mtime
             FROM
-                task_updates
+                task_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = task_updates.update_id
+                updates.id = task_deltas.update_id
             WHERE
-                task_updates.task_id = OLD.task_id
+                task_deltas.task_id = OLD.task_id
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -57,7 +57,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_tasks_tomerge_2
+    tasks_tomerge_bu_2
 BEFORE UPDATE OF
     resolve
 ON
@@ -68,7 +68,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_tasks_tomerge_2',
+        'TRIGGER tasks_tomerge_bu_2',
         OLD.task_id
     );
 
@@ -77,16 +77,16 @@ BEGIN
     SET
         title = (
             SELECT
-                task_updates.title
+                task_deltas.title
             FROM
-                task_updates
+                task_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = task_updates.update_id
+                updates.id = task_deltas.update_id
             WHERE
-                task_updates.task_id = OLD.task_id AND
-                task_updates.title IS NOT NULL
+                task_deltas.task_id = OLD.task_id AND
+                task_deltas.title IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -100,7 +100,7 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    bu_tasks_tomerge_1
+    tasks_tomerge_bu_1
 BEFORE UPDATE OF
     resolve
 ON
@@ -111,7 +111,7 @@ FOR EACH ROW WHEN
 BEGIN
 
     SELECT debug(
-        'TRIGGER bu_tasks_tomerge_1',
+        'TRIGGER tasks_tomerge_bu_1',
         OLD.task_id
     );
 
@@ -120,16 +120,16 @@ BEGIN
     SET
         status_id = (
             SELECT
-                task_updates.status_id
+                task_deltas.status_id
             FROM
-                task_updates
+                task_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = task_updates.update_id
+                updates.id = task_deltas.update_id
             WHERE
-                task_updates.task_id = OLD.task_id AND
-                task_updates.status_id IS NOT NULL
+                task_deltas.task_id = OLD.task_id AND
+                task_deltas.status_id IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid
@@ -140,14 +140,14 @@ BEGIN
             SELECT
                 updates.id
             FROM
-                task_updates
+                task_deltas
             INNER JOIN
                 updates
             ON
-                updates.id = task_updates.update_id
+                updates.id = task_deltas.update_id
             WHERE
-                task_updates.task_id = OLD.task_id AND
-                task_updates.status_id IS NOT NULL
+                task_deltas.task_id = OLD.task_id AND
+                task_deltas.status_id IS NOT NULL
             ORDER BY
                 updates.mtime DESC,
                 updates.uuid

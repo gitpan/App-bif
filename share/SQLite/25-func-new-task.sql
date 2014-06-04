@@ -8,14 +8,14 @@ CREATE TABLE func_new_task(
 
 
 CREATE TRIGGER
-    bi_func_new_task_1
+    func_new_task_bi_1
 BEFORE INSERT ON
     func_new_task
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        'TRIGGER bi_func_new_task_1',
+        'TRIGGER func_new_task_bi_1',
         NEW.id,
         NEW.status_id,
         NEW.title,
@@ -78,7 +78,7 @@ BEGIN
     );
 
     INSERT INTO
-        task_updates(
+        task_deltas(
             status_id,
             task_id,
             new,

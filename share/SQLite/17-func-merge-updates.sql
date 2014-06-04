@@ -3,14 +3,14 @@ CREATE TABLE func_merge_updates(
 );
 
 CREATE TRIGGER
-    bi_func_merge_updates_1
+    func_merge_updates_bi_1
 BEFORE INSERT ON
     func_merge_updates
 FOR EACH ROW WHEN
     NEW.merge = 1
 BEGIN
     select debug(
-        'TRIGGER bi_func_merge_updates_1'
+        'TRIGGER func_merge_updates_bi_1'
     );
 
     /*
@@ -28,7 +28,7 @@ BEGIN
     ;
 
     /*
-        The following updates the projects_merkle table
+        The following updates the project_related_updates_merkle table
     */
 
     UPDATE
@@ -40,7 +40,7 @@ BEGIN
     ;
 
     /*
-        The following updates the hubs_merkle table
+        The following updates the hub_related_updates_merkle table
     */
 
     UPDATE
@@ -53,7 +53,7 @@ BEGIN
 
 
     UPDATE hub_tomerge              SET resolve = 1;
-    UPDATE hub_locations_tomerge    SET resolve = 1;
+    UPDATE hub_repos_tomerge    SET resolve = 1;
     UPDATE projects_tomerge          SET resolve = 1;
     UPDATE project_status_tomerge   SET resolve = 1;
     UPDATE task_status_tomerge      SET resolve = 1;

@@ -8,7 +8,7 @@ CREATE TABLE default_status (
     CHECK (def = 1 OR def IS NULL)
 );
 
-CREATE TRIGGER ai_default_status
+CREATE TRIGGER default_status_ai_1
     AFTER INSERT ON default_status
 FOR EACH ROW WHEN NEW.def = 1
 BEGIN
@@ -21,7 +21,7 @@ BEGIN
     ;
 END;
 
-CREATE TRIGGER au_default_status
+CREATE TRIGGER default_status_au_1
     AFTER UPDATE ON default_status
 FOR EACH ROW WHEN NEW.def = 1
 BEGIN

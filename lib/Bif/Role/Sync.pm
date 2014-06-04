@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -72,90 +72,90 @@ sub send_updates {
             # hubs
             select => [
                 qv('hub')->as('kind'),
-                'hub_updates.new',
+                'hub_deltas.new',
                 'hubs.uuid',    # for update
-                'hl.uuid AS default_location_uuid',
-                'hub_updates.related_update_uuid',
+                'hr.uuid AS default_location_uuid',
+                'hub_deltas.related_update_uuid',
                 'u.uuid AS update_uuid',
                 'p.uuid AS project_uuid',
-                qv(undef)->as('int_filler'),
+                'hub_deltas.name',
                 8,
-                'hub_updates.id AS update_order',
+                'hub_deltas.id AS update_order',
             ],
-            from       => 'hub_updates',
+            from       => 'hub_deltas',
             inner_join => 'updates u',
-            on         => 'u.id = hub_updates.update_id',
+            on         => 'u.id = hub_deltas.update_id',
             inner_join => 'topics AS hubs',
-            on         => 'hubs.id = hub_updates.hub_id',
-            left_join  => 'topics AS hl',
-            on         => 'hl.id = hub_updates.default_location_id',
+            on         => 'hubs.id = hub_deltas.hub_id',
+            left_join  => 'topics AS hr',
+            on         => 'hr.id = hub_deltas.default_location_id',
             left_join  => 'topics AS p',
-            on         => 'p.id = hub_updates.project_id',
-            where      => { 'hub_updates.update_id' => $id },
+            on         => 'p.id = hub_deltas.project_id',
+            where      => { 'hub_deltas.update_id' => $id },
 
-            # hub_locations
+            # hub_repos
             union_all_select => [
-                qv('hub_location')->as('kind'), 'hlu.new',
-                'h.uuid',                       'hl2.uuid',
-                'hlu.location',                 'u.uuid AS update_uuid',
-                6,                              7,
-                8,                              'hlu.id AS update_order',
+                qv('hub_repo')->as('kind'), 'hrd.new',
+                'h.uuid',                   'hr2.uuid',
+                'hrd.location',             'u.uuid AS update_uuid',
+                6,                          7,
+                8,                          'hrd.id AS update_order',
             ],
             from       => 'updates u',
-            inner_join => 'hub_location_updates hlu',
-            on         => 'hlu.update_id = u.id',
-            inner_join => 'hub_locations hl',
-            on         => 'hl.id = hlu.hub_location_id',
-            inner_join => 'topics hl2',
-            on         => 'hl2.id = hlu.hub_location_id',
+            inner_join => 'hub_repo_deltas hrd',
+            on         => 'hrd.update_id = u.id',
+            inner_join => 'hub_repos hr',
+            on         => 'hr.id = hrd.hub_repo_id',
+            inner_join => 'topics hr2',
+            on         => 'hr2.id = hrd.hub_repo_id',
             inner_join => 'topics h',
-            on         => 'h.id = hl.hub_id',
+            on         => 'h.id = hr.hub_id',
             where      => { 'u.id' => $id },
 
             # projects
             union_all_select => [
                 qv('project')->as('kind'),
-                'project_updates.new',
+                'project_deltas.new',
                 'projects.uuid',    # for update
                 'parents.uuid',
-                'project_updates.name',
-                'project_updates.title',
+                'project_deltas.name',
+                'project_deltas.title',
                 'status.uuid',      # for update
-                'project_updates.hub_uuid',
+                'project_deltas.hub_uuid',
                 'u.uuid AS update_uuid',
-                'project_updates.id AS update_order',
+                'project_deltas.id AS update_order',
             ],
-            from       => 'project_updates',
+            from       => 'project_deltas',
             inner_join => 'updates u',
-            on         => 'u.id = project_updates.update_id',
+            on         => 'u.id = project_deltas.update_id',
             inner_join => 'topics AS projects',
-            on         => 'projects.id = project_updates.project_id',
+            on         => 'projects.id = project_deltas.project_id',
             left_join  => 'topics AS parents',
-            on         => 'parents.id = project_updates.parent_id',
+            on         => 'parents.id = project_deltas.parent_id',
             left_join  => 'topics AS status',
-            on         => 'status.id = project_updates.status_id',
-            where      => { 'project_updates.update_id' => $id },
+            on         => 'status.id = project_deltas.status_id',
+            where      => { 'project_deltas.update_id' => $id },
 
             # project_status
             union_all_select => [
                 qv('project_status')->as('kind'),
-                'project_status_updates.new',
+                'project_status_deltas.new',
                 'projects.uuid',    # for new
                 'topics.uuid',      # for update
-                'project_status_updates.status',
+                'project_status_deltas.status',
                 qv(undef)->as('varchar_filler'),
                 qv(undef)->as('varchar_filler2'),
-                'project_status_updates.rank',
+                'project_status_deltas.rank',
                 'updates.uuid AS update_uuid',
-                'project_status_updates.id AS update_order',
+                'project_status_deltas.id AS update_order',
             ],
             from       => 'updates',
-            inner_join => 'project_status_updates',
-            on         => 'project_status_updates.update_id = updates.id',
+            inner_join => 'project_status_deltas',
+            on         => 'project_status_deltas.update_id = updates.id',
             left_join  => 'project_status',
             on         => {
                 'project_status.id' => \
-                  'project_status_updates.project_status_id'
+                  'project_status_deltas.project_status_id'
             },
             inner_join => 'topics',    # project_status
             on         => {
@@ -168,22 +168,22 @@ sub send_updates {
             # task_status
             union_all_select => [
                 qv('task_status')->as('kind'),
-                'task_status_updates.new',
+                'task_status_deltas.new',
                 'projects.uuid',       # for new
                 'topics.uuid',         # for update
-                'task_status_updates.status',
-                'task_status_updates.def',
+                'task_status_deltas.status',
+                'task_status_deltas.def',
                 qv(undef)->as('varchar_filler2'),
-                'task_status_updates.rank',
+                'task_status_deltas.rank',
                 'updates.uuid AS update_uuid',
-                'task_status_updates.id AS update_order',
+                'task_status_deltas.id AS update_order',
             ],
             from       => 'updates',
-            inner_join => 'task_status_updates',
-            on         => 'task_status_updates.update_id = updates.id',
+            inner_join => 'task_status_deltas',
+            on         => 'task_status_deltas.update_id = updates.id',
             left_join  => 'task_status',
             on         => {
-                'task_status.id' => \'task_status_updates.task_status_id'
+                'task_status.id' => \'task_status_deltas.task_status_id'
             },
             inner_join => 'topics',    # task_status
             on         => {
@@ -196,22 +196,22 @@ sub send_updates {
             # issue_status
             union_all_select => [
                 qv('issue_status')->as('kind'),
-                'issue_status_updates.new',
+                'issue_status_deltas.new',
                 'projects.uuid',       # for new
                 'topics.uuid',         # for update
-                'issue_status_updates.status',
-                'issue_status_updates.def',
+                'issue_status_deltas.status',
+                'issue_status_deltas.def',
                 qv(undef)->as('varchar_filler2'),
-                'issue_status_updates.rank',
+                'issue_status_deltas.rank',
                 'updates.uuid AS update_uuid',
-                'issue_status_updates.id AS update_order',
+                'issue_status_deltas.id AS update_order',
             ],
             from       => 'updates',
-            inner_join => 'issue_status_updates',
-            on         => 'issue_status_updates.update_id = updates.id',
+            inner_join => 'issue_status_deltas',
+            on         => 'issue_status_deltas.update_id = updates.id',
             left_join  => 'issue_status',
             on         => {
-                'issue_status.id' => \'issue_status_updates.issue_status_id'
+                'issue_status.id' => \'issue_status_deltas.issue_status_id'
             },
             inner_join => 'topics',    # issue_status
             on         => {
@@ -224,56 +224,56 @@ sub send_updates {
             # tasks
             union_all_select => [
                 qv('task')->as('kind'),
-                'task_updates.new',
+                'task_deltas.new',
                 'tasks.uuid',          # for new
                 'status.uuid',         # for update
-                'task_updates.title',
+                'task_deltas.title',
                 'updates.uuid AS update_uuid',
                 6,
                 7,
                 8,
-                'task_updates.id AS update_order',
+                'task_deltas.id AS update_order',
             ],
             from       => 'updates',
-            inner_join => 'task_updates',
-            on         => 'task_updates.update_id = updates.id',
+            inner_join => 'task_deltas',
+            on         => 'task_deltas.update_id = updates.id',
             inner_join => 'topics AS tasks',
             on         => {
-                'tasks.id' => \'task_updates.task_id'
+                'tasks.id' => \'task_deltas.task_id'
             },
             left_join => 'topics AS status',
             on        => {
-                'status.id' => \'task_updates.status_id'
+                'status.id' => \'task_deltas.status_id'
             },
             where => { 'updates.id' => $id },
 
             # issues
             union_all_select => [
                 qv('issue')->as('kind'),
-                'issue_updates.new',
+                'issue_deltas.new',
                 'issues.uuid',          # for new
                 'issue_status.uuid',    # for update
-                'issue_updates.title',
+                'issue_deltas.title',
                 'projects.uuid',
                 'updates.uuid AS update_uuid',
                 7,
                 8,
-                'issue_updates.id AS update_order',
+                'issue_deltas.id AS update_order',
             ],
             from       => 'updates',
-            inner_join => 'issue_updates',
-            on         => 'issue_updates.update_id = updates.id',
+            inner_join => 'issue_deltas',
+            on         => 'issue_deltas.update_id = updates.id',
             inner_join => 'topics AS issues',
             on         => {
-                'issues.id' => \'issue_updates.issue_id'
+                'issues.id' => \'issue_deltas.issue_id'
             },
             left_join => 'topics AS issue_status',
             on        => {
-                'issue_status.id' => \'issue_updates.status_id'
+                'issue_status.id' => \'issue_deltas.status_id'
             },
             left_join => 'topics AS projects',
             on        => {
-                'projects.id' => \'issue_updates.project_id'
+                'projects.id' => \'issue_deltas.project_id'
             },
             where => { 'updates.id' => $id },
 
@@ -306,6 +306,7 @@ sub write_parts {
                     'NEW', 'hub',
                     {
                         update_uuid => $part->[5],
+                        name        => $part->[7],
                     }
                 );
             }
@@ -318,16 +319,17 @@ sub write_parts {
                         related_update_uuid   => $part->[4],
                         update_uuid           => $part->[5],
                         project_uuid          => $part->[6],
+                        name                  => $part->[7],
                     }
 
                 );
             }
         }
-        elsif ( $part->[0] eq 'hub_location' ) {
+        elsif ( $part->[0] eq 'hub_repo' ) {
             if ( $part->[1] ) {
                 $self->write(
                     'NEW',
-                    'hub_location',
+                    'hub_repo',
                     {
                         hub_uuid    => $part->[2],
                         location    => $part->[4],
@@ -338,11 +340,11 @@ sub write_parts {
             else {
                 $self->write(
                     'UPDATE',
-                    'hub_location',
+                    'hub_repo',
                     {
-                        hub_location_uuid => $part->[3],
-                        location          => $part->[4],
-                        update_uuid       => $part->[5],
+                        hub_repo_uuid => $part->[3],
+                        location      => $part->[4],
+                        update_uuid   => $part->[5],
                     }
                 );
             }

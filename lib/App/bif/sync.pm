@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $opts = shift;
@@ -23,24 +23,24 @@ sub run {
     }
 
     if ( $opts->{hub} ) {
-        foreach my $alias ( @{ $opts->{hub} } ) {
-            my @rl = $dbw->get_hub_locations($alias);
-            $ctx->err( 'HubNotFound', 'hub not found: ' . $alias )
+        foreach my $name ( @{ $opts->{hub} } ) {
+            my @rl = $dbw->get_hub_repos($name);
+            $ctx->err( 'HubNotFound', 'hub not found: ' . $name )
               unless @rl;
         }
     }
 
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
     my @hubs = $dbw->xhashes(
-        select     => [ 'h.id', 'h.alias', 'hl.location', 't.uuid' ],
+        select     => [ 'h.id', 'h.name', 'hr.location', 't.uuid' ],
         from       => 'hubs h',
         inner_join => 'topics t',
         on         => 't.id = h.id',
-        inner_join => 'hub_locations hl',
-        on    => 'hl.id = h.default_location_id',
+        inner_join => 'hub_repos hr',
+        on    => 'hr.id = h.default_location_id',
         where => {
             'h.local' => undef,
-            $opts->{hub} ? ( 'h.alias' => $opts->{hub} ) : (),
+            $opts->{hub} ? ( 'h.name' => $opts->{hub} ) : (),
         },
     );
 
@@ -52,7 +52,7 @@ sub run {
     foreach my $hub (@hubs) {
         my $error;
         my $cv = AE::cv;
-        $ctx->lprint("$hub->{alias}: connecting...");
+        $ctx->lprint("$hub->{name}: connecting...");
 
         my $client = Bif::Client->new(
             db       => $dbw,
@@ -74,7 +74,7 @@ sub run {
                 undef $stderr_watcher;
                 return;
             }
-            print STDERR "$hub->{alias}: $line";
+            print STDERR "$hub->{name}: $line";
         };
 
         my $coro = async {
@@ -90,17 +90,17 @@ sub run {
 
                         $client->on_update(
                             sub {
-                                $ctx->lprint("$hub->{alias} (meta): $_[0]");
+                                $ctx->lprint("$hub->{name} (meta): $_[0]");
                             }
                         );
 
                         my $previous = $dbw->get_max_update_id;
                         my $status   = $client->sync_hub( $hub->{id} );
-                        print "\n";
 
                         if (   $status eq 'RepoMatch'
                             or $status eq 'RepoSync' )
                         {
+                            print "\n" if $status eq 'RepoSync';
                             my @projects = $dbw->xhashes(
                                 select => [ 'p.id', 'p.path' ],
                                 from   => 'projects p',
@@ -118,13 +118,13 @@ sub run {
                                 $client->on_update(
                                     sub {
                                         $ctx->lprint(
-                                            "$hub->{alias} [$p->{path}]: $_[0]"
+                                            "$hub->{name} [$p->{path}]: $_[0]"
                                         );
                                     }
                                 );
 
                                 $status = $client->sync_project( $p->{id} );
-                                print "\n";
+                                print "\n" if $status eq 'ProjectSync';
 
                                 unless ( $status eq 'ProjectMatch'
                                     or $status eq 'ProjectSync' )
@@ -135,6 +135,7 @@ sub run {
                             }
                         }
                         else {
+                            print "\n";
                             $dbw->rollback;
                             $error = $status;
                         }
@@ -143,7 +144,7 @@ sub run {
                         undef $stderr_watcher;
                         $stderr->blocking(0);
                         while ( my $line = $stderr->getline ) {
-                            print STDERR "$hub->{alias}: $line";
+                            print STDERR "$hub->{name}: $line";
                         }
 
                         return if $error;
@@ -190,7 +191,7 @@ bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

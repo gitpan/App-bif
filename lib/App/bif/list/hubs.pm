@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -13,16 +13,16 @@ sub run {
 
     my $data = $db->xarrays(
         select => [
-            'h.id',        'COALESCE(h.alias,"") AS alias',
-            'hl.location', 'COUNT(p.id)',
+            'h.id',        'COALESCE(h.name,"") AS hname',
+            'hr.location', 'COUNT(p.id)',
         ],
         from       => 'hubs h',
-        inner_join => 'hub_locations hl',
-        on         => 'hl.id = h.default_location_id AND h.local IS NULL',
+        inner_join => 'hub_repos hr',
+        on         => 'hr.id = h.default_location_id AND h.local IS NULL',
         left_join  => 'projects p',
         on         => 'p.hub_id = h.id',
-        group_by   => [ 'h.id', 'alias', 'hl.location' ],
-        order_by   => 'h.alias',
+        group_by   => [ 'h.id', 'hname', 'hr.location' ],
+        order_by   => 'hname',
     );
 
     return $ctx->ok('ListHubs') unless @$data;
@@ -30,7 +30,7 @@ sub run {
     $ctx->start_pager( scalar @$data );
 
     print $ctx->render_table( ' r  l  l  r ',
-        [ 'ID', 'Alias', 'Location', 'Projects' ], $data );
+        [ 'ID', 'Name', 'Location', 'Projects' ], $data );
 
     $ctx->end_pager;
 
@@ -46,7 +46,7 @@ bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

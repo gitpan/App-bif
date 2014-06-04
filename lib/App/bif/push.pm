@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -54,10 +54,55 @@ sub _push_issue {
         "$ctx->{id} already has status $ctx->{path}:$existing" )
       if $existing;
 
+    DBIx::ThinSQL->import(qw/concat qv/);
+
+    my @unsatisfied = map { $_->[0] } $db->xarrays(
+        select     => concat( 'p.path', qv(' ('), 'h.name', qv(')') ),
+        from       => 'project_issues pi',
+        inner_join => 'projects p',
+        on         => 'p.id = pi.project_id',
+        inner_join => 'hubs h',
+        on         => 'h.id = p.hub_id',
+        where => { 'pi.issue_id' => $info->{id} },
+        except_select => concat( 'p2.path', qv(' ('), 'h.name', qv(')') ),
+        from          => 'projects p',
+        inner_join => 'hub_related_projects hrp',
+        on         => 'hrp.hub_id = p.hub_id',
+        inner_join => 'projects p2',
+        on         => 'p2.id = hrp.project_id',
+        inner_join => 'hubs h',
+        on         => 'h.id = p2.hub_id',
+        where      => { 'p.id' => $pinfo->{id} },
+    );
+
+    if (@unsatisfied) {
+        my ($name) = $db->xarray(
+            select     => [ 'h.name', 'h.local' ],
+            from       => 'projects p',
+            inner_join => 'hubs h',
+            on         => 'h.id = p.hub_id',
+            where => { 'p.id' => $pinfo->{id} },
+        );
+
+        @unsatisfied = join ', ', @unsatisfied;
+
+        return $ctx->err( 'NoCooperation',
+            "$ctx->{path} ($name) has no cooperation with @unsatisfied" );
+    }
+
     $ctx->{message} ||= $ctx->prompt_edit;
 
     $db->txn(
         sub {
+            $ctx->update_repo(
+                {
+                        message => 'push '
+                      . $info->{kind} . ' '
+                      . $info->{id} . ' '
+                      . $ctx->{path},
+                }
+            );
+
             my $uid = $db->nextval('updates');
             $db->xdo(
                 insert_into => 'updates',
@@ -81,14 +126,6 @@ sub _push_issue {
             );
 
             $ctx->{update_id} = $db->nextval('updates');
-            $ctx->update_repo(
-                {
-                        message => 'push '
-                      . $info->{kind} . ' '
-                      . $info->{id} . ' '
-                      . $ctx->{path},
-                }
-            );
 
             $db->xdo(
                 insert_into => 'updates',
@@ -137,11 +174,11 @@ __END__
 
 =head1 NAME
 
-bif-push - push a thread to another project
+bif-push - push a topic to another project
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 
@@ -149,7 +186,15 @@ bif-push - push a thread to another project
 
 =head1 DESCRIPTION
 
-Push a thread to another project.
+The C<bif push> command is used to modify the relationship between a
+topic and a previously unrelated project. The type of the topic being
+pushed determines the type of relationship changes that are possible.
+
+Pushing an issue for example "shares" that topic with another project.
+Comments made in any project for that issue will appear everywhere
+else, but status changes are project-specific.  In order for that to be
+possible however, the destination project must already be cooperating
+with all of the projects already associated with the issue.
 
 =head1 ARGUMENTS & OPTIONS
 

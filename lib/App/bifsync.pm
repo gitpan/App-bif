@@ -12,7 +12,7 @@ use Log::Any::Plugin;
 use OptArgs;
 use Path::Tiny;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 arg directory => (
     isa     => 'Str',

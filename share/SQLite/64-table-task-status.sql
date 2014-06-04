@@ -1,21 +1,21 @@
-CREATE TABLE issue_status (
+CREATE TABLE task_status (
     id INTEGER NOT NULL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     status VARCHAR(40) NOT NULL,
     rank INTEGER NOT NULL,
     def INTEGER,
-    FOREIGN KEY (id) REFERENCES topics(id) ON DELETE CASCADE,
+    FOREIGN KEY (id) REFERENCES topics(id) ON DELETE CASCADE
     FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE,
     UNIQUE (project_id,status),
-    UNIQUE (id,project_id), -- project_issue has a FK here
     CONSTRAINT def_constraint CHECK (
         def = 1 OR def IS NULL
     )
 );
 
-CREATE TRIGGER ai_issue_status_1
+CREATE TRIGGER
+    task_status_ai_1
 AFTER INSERT ON
-    issue_status
+    task_status
 FOR EACH ROW WHEN
     NEW.def = 1
 BEGIN
@@ -27,7 +27,7 @@ BEGIN
     );
 
     UPDATE
-        issue_status
+        task_status
     SET
         def = NULL
     WHERE
@@ -39,9 +39,9 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    au_issue_status_1
+    task_status_au_1
 AFTER UPDATE ON
-    issue_status
+    task_status
 FOR EACH ROW WHEN
     NEW.def = 1 AND OLD.def != 1
 BEGIN
@@ -52,7 +52,7 @@ BEGIN
     );
 
     UPDATE
-        issue_status
+        task_status
     SET
         def = NULL
     WHERE
@@ -64,9 +64,9 @@ BEGIN
 END;
 
 CREATE TRIGGER
-    ad_issue_status_1
+    task_status_ad_1
 AFTER DELETE ON
-    issue_status
+    task_status
 FOR EACH ROW
 BEGIN
     SELECT debug(
@@ -74,9 +74,9 @@ BEGIN
     );
 
     DELETE FROM
-        issue_status_tomerge
+        task_status_tomerge
     WHERE
-        issue_status_id = OLD.id
+        task_status_id = OLD.id
     ;
 
     DELETE FROM

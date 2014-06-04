@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_22';
+our $VERSION = '0.1.0_23';
 
 my $NOW;
 my $bold;
@@ -104,8 +104,8 @@ sub _show_project {
             'updates.author',        'updates.email',
             'updates.message',       'project_status.status',
             'project_status.status', 'projects.local',
-            'h.alias AS hub',        't2.uuid AS hub_uuid',
-            'hl.location',
+            'h.name AS hub',         't2.uuid AS hub_uuid',
+            'hr.location',
         ],
         from       => 'projects',
         inner_join => 'topics',
@@ -116,8 +116,8 @@ sub _show_project {
         on         => 'project_status.id = projects.status_id',
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
-        left_join  => 'hub_locations hl',
-        on         => 'hl.id = h.default_location_id',
+        left_join  => 'hub_repos hr',
+        on         => 'hr.id = h.default_location_id',
         left_join  => 'topics t2',
         on         => 't2.id = h.id',
         where      => { 'projects.id' => $info->{id} },
@@ -244,8 +244,8 @@ sub _show_task {
             'topics.id AS id',
             'substr(topics.uuid,1,8) as uuid',
             'projects.path',
-            'h.alias AS hub',
-            'hl.location',
+            'h.name AS hub',
+            'hr.location',
             'substr(topics2.uuid,1,8) AS project_uuid',
             'tasks.title AS title',
             'topics.mtime AS mtime',
@@ -269,8 +269,8 @@ sub _show_task {
         on         => 'projects.id = task_status.project_id',
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
-        left_join  => 'hub_locations hl',
-        on         => 'hl.id = h.default_location_id',
+        left_join  => 'hub_repos hr',
+        on         => 'hr.id = h.default_location_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'updates AS updates2',
@@ -344,8 +344,8 @@ sub _show_issue {
             'project_issues.id AS id',
             'substr(topics.uuid,1,8) as uuid',
             'projects.path',
-            'h.alias AS hub',
-            'hl.location AS location',
+            'h.name AS hub',
+            'hr.location AS location',
             'projects.title AS project_title',
             'substr(topics2.uuid,1,8) AS project_uuid',
             'issues.title AS title',
@@ -374,8 +374,8 @@ sub _show_issue {
         on         => 'projects.id = project_issues.project_id',
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
-        left_join  => 'hub_locations hl',
-        on         => 'hl.id = h.default_location_id',
+        left_join  => 'hub_repos hr',
+        on         => 'hr.id = h.default_location_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'issue_status',
@@ -450,7 +450,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_22 (2014-05-10)
+0.1.0_23 (2014-06-04)
 
 =head1 SYNOPSIS
 

@@ -1,30 +1,33 @@
-CREATE TABLE func_import_hub_update(
+CREATE TABLE func_import_hub_delta(
     update_uuid VARCHAR(40) NOT NULL,
     hub_uuid VARCHAR(40) NOT NULL,
+    name VARCHAR(128),
     default_location_uuid VARCHAR(40),
     project_uuid VARCHAR(40),
     related_update_uuid VARCHAR(40)
 );
 
 CREATE TRIGGER
-    bi_func_import_hub_update_1
+    func_import_hub_delta_bi_1
 BEFORE INSERT ON
-    func_import_hub_update
+    func_import_hub_delta
 FOR EACH ROW
 BEGIN
 
     SELECT debug(
         NEW.update_uuid,
         NEW.hub_uuid,
+        NEW.name,
         NEW.default_location_uuid,
         NEW.project_uuid,
         NEW.related_update_uuid
     );
 
     INSERT INTO
-        hub_updates(
+        hub_deltas(
             update_id,
             hub_id,
+            name,
             default_location_id,
             project_id,
             related_update_uuid
@@ -32,7 +35,8 @@ BEGIN
     SELECT
         u.id,
         hubs.id,
-        hl.id,
+        NEW.name,
+        hr.id,
         p.id,
         NEW.related_update_uuid
     FROM
@@ -42,9 +46,9 @@ BEGIN
     ON
         u.uuid = NEW.update_uuid
     LEFT JOIN
-        topics hl
+        topics hr
     ON
-        hl.uuid = NEW.default_location_uuid
+        hr.uuid = NEW.default_location_uuid
     LEFT JOIN
         topics p
     ON

@@ -15,8 +15,8 @@ run_in_tempdir {
       'unknown option';
 
     # Check that aliases work
-    isa_ok bif(qw/ls/), 'Bif::OK::ListProjects';
-    isa_ok bif(qw/ll/), 'Bif::OK::ListTopics';
+    isa_ok bif(qw/l/),  'Bif::OK::ListProjects';
+    isa_ok bif(qw/ls/), 'Bif::OK::ListTopics';
 
 };
 
