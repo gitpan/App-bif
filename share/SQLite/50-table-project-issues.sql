@@ -12,6 +12,43 @@ CREATE TABLE project_issues (
 );
 
 CREATE TRIGGER
+    project_issues_ai_1
+AFTER INSERT ON
+    project_issues
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        NEW.id,
+        NEW.issue_id,
+        NEW.project_id,
+        NEW.status_id,
+        NEW.update_id
+    );
+
+    /*
+        An issue just got added to a project. Add all of the updates
+        for this issue to the project_related_updates table.
+    */
+    INSERT INTO
+        project_related_updates(
+            project_id,
+            real_project_id,
+            update_id
+        )
+    SELECT DISTINCT
+        NEW.project_id,
+        id.project_id,
+        id.update_id
+    FROM
+        issue_deltas id
+    WHERE
+        id.issue_id = NEW.issue_id
+    ;
+
+END;
+
+
+CREATE TRIGGER
     project_issues_bi_1
 BEFORE INSERT ON
     project_issues
@@ -50,6 +87,7 @@ BEGIN
 
     SELECT RAISE(IGNORE);
 END;
+
 
 /*
     This is to account for the lack of cascade deletes when a project

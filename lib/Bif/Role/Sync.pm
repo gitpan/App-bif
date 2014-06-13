@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -46,7 +46,7 @@ sub write {
 
 sub trigger_on_update {
     my $self = shift;
-    $self->on_update->( 'updates sent: '
+    $self->on_update->( 'deltas sent: '
           . ( $self->updates_sent // '' )
           . ' received: '
           . ( $self->updates_recv // '' ) );
@@ -74,7 +74,7 @@ sub send_updates {
                 qv('hub')->as('kind'),
                 'hub_deltas.new',
                 'hubs.uuid',    # for update
-                'hr.uuid AS default_location_uuid',
+                'null AS undef1',
                 'hub_deltas.related_update_uuid',
                 'u.uuid AS update_uuid',
                 'p.uuid AS project_uuid',
@@ -87,8 +87,6 @@ sub send_updates {
             on         => 'u.id = hub_deltas.update_id',
             inner_join => 'topics AS hubs',
             on         => 'hubs.id = hub_deltas.hub_id',
-            left_join  => 'topics AS hr',
-            on         => 'hr.id = hub_deltas.default_location_id',
             left_join  => 'topics AS p',
             on         => 'p.id = hub_deltas.project_id',
             where      => { 'hub_deltas.update_id' => $id },
@@ -314,12 +312,11 @@ sub write_parts {
                 $self->write(
                     'UPDATE', 'hub',
                     {
-                        hub_uuid              => $part->[2],
-                        default_location_uuid => $part->[3],
-                        related_update_uuid   => $part->[4],
-                        update_uuid           => $part->[5],
-                        project_uuid          => $part->[6],
-                        name                  => $part->[7],
+                        hub_uuid            => $part->[2],
+                        related_update_uuid => $part->[4],
+                        update_uuid         => $part->[5],
+                        project_uuid        => $part->[6],
+                        name                => $part->[7],
                     }
 
                 );

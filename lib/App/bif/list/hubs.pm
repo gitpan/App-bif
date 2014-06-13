@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -18,7 +18,7 @@ sub run {
         ],
         from       => 'hubs h',
         inner_join => 'hub_repos hr',
-        on         => 'hr.id = h.default_location_id AND h.local IS NULL',
+        on         => 'hr.id = h.default_repo_id AND h.local IS NULL',
         left_join  => 'projects p',
         on         => 'p.hub_id = h.id',
         group_by   => [ 'h.id', 'hname', 'hr.location' ],
@@ -46,7 +46,7 @@ bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

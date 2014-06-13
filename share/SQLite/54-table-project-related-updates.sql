@@ -6,6 +6,13 @@ CREATE TABLE project_related_updates(
     CONSTRAINT pru_merkled CHECK (
         merkled = 0 OR merkled = 1
     ),
+
+    /*
+        TODO: Remove the ON CONFLICT IGNORE clause below which is only
+        needed because the queries that insert into this table are not
+        yet as tight as they should be.
+    */
+
     UNIQUE(update_id,project_id) ON CONFLICT IGNORE
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY(real_project_id) REFERENCES projects(id) ON DELETE CASCADE,
@@ -16,11 +23,13 @@ CREATE TABLE project_related_updates(
     TODO This needs to be measured with various combinations of
     project_id, hub_id and update_id. I suspect update_id first is
     best.
-CREATE INDEX
-    project_related_updates_project_id_hub_id
-ON
-    project_related_updates(project_id,hub_id)
-;
+
+    CREATE INDEX
+        project_related_updates_project_id_hub_id
+    ON
+        project_related_updates(project_id,hub_id)
+    ;
+
 */
 
 CREATE TRIGGER
@@ -55,6 +64,9 @@ BEGIN
         count(src.uuid) as num_updates
     FROM
         (
+        -- find updates with the same prefix as the current update
+        -- that are related to the current project
+        -- and add the hubs where the project is present
         SELECT
             hrp.hub_id,
             u2.prefix,

@@ -8,7 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-my $VERSION = '0.1.0_23';
+my $VERSION = '0.1.0_24';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -47,14 +47,11 @@ WriteAll;
     my $bifsync = path( $Bin, 'bin', 'bifsync' );
     my $lib     = path( $Bin, 'lib' );
     my $share   = path( $Bin, 'share' );
-    my $t       = path( $Bin, 't' );
+    my $tbin    = path( $Bin, 'tbin' );
+    my $tbif    = $tbin->child('bif');
+    my $tbifsync = $tbin->child('bifsync');
 
-    # MacOS has a case-preserving filesystem so we can't have t/Bif and
-    # t/bif together. Grrr.
-    my $tbif =
-      ( $^O eq 'darwin' or $^O eq 'MacOS' )
-      ? path( $Bin, 'bif' )
-      : $t->child('bif');
+    mkdir $tbin;
 
     $tbif->spew_utf8(<<EOF);
 #!$^X
@@ -64,7 +61,7 @@ use OptArgs qw/dispatch/;
 
 # Make sure that any subcommands that call bifsync locally find the
 # local testing version in t/bifsync
-\$ENV{PATH} = "$t" .':'.\$ENV{PATH};
+\$ENV{PATH} = "$tbin" .':'.\$ENV{PATH};
 
 \$main::BIF_SHARE_DIR = "$share";
 
@@ -77,7 +74,6 @@ EOF
     $pod =~ s/.*__END__//sm;
     $tbif->append_utf8($pod);
 
-    my $tbifsync = $t->child('bifsync');
     $tbifsync->spew_utf8(<<EOF);
 #!$^X
 use strict;
@@ -122,7 +118,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_23 (2014-06-04)
+HIDDEN0.1.0_24 (2014-06-13)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN

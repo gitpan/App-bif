@@ -98,6 +98,8 @@ BEGIN
         OLD.hash
     );
 
+    -- TODO also delete from hru_merkle?
+
     DELETE FROM
         hub_related_updates
     WHERE
@@ -110,5 +112,13 @@ BEGIN
             WHERE
                 pou.project_id = OLD.project_id
         )
+    ;
+
+    -- TODO where else do we need to delete entries in prum?
+    DELETE FROM
+        project_related_updates_merkle
+    WHERE
+        hub_id = OLD.hub_id AND
+        project_id = OLD.project_id
     ;
 END;

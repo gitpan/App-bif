@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 
@@ -38,9 +38,9 @@ USE BIF FOR REAL DATA!>
 =head1 DESCRIPTION
 
 Bif is a project management tool with a command-line interface. It
-helps you track tasks and issues using a local database, exchanging
-updates with remote databases on demand. The tool has several features
-of interest to distributed project teams:
+helps you track tasks, issues and bugs using a local database,
+exchanging updates with remote databases on demand. The tool has
+several features of interest to distributed project teams:
 
 =over
 

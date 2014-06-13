@@ -6,7 +6,23 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
+
+my $stderr;
+my $stderr_watcher;
+
+sub cleanup_errors {
+    my $hub = shift;
+
+    undef $stderr_watcher;
+    $stderr->blocking(0);
+
+    while ( my $line = $stderr->getline ) {
+        print STDERR "$hub: $line";
+    }
+
+    return;
+}
 
 sub run {
     my $ctx = shift;
@@ -55,9 +71,8 @@ sub run {
         },
     );
 
-    my $stderr = $client->child->stderr;
+    $stderr = $client->child->stderr;
 
-    my $stderr_watcher;
     $stderr_watcher = AE::io $stderr, 0, sub {
         my $line = $stderr->getline;
         if ( !defined $line ) {
@@ -79,35 +94,62 @@ sub run {
                     );
 
                     foreach my $pinfo (@pinfo) {
-                        $client->on_update(
-                            sub {
-                                $ctx->lprint(
-                                    "$hub->{name} [$pinfo->{path}]: $_[0]");
-                            }
+                        $db->xdo(
+                            update => 'projects',
+                            set    => 'local = 1',
+                            where  => { id => $pinfo->{id} },
                         );
+                    }
 
-                        my $status = $client->import_project($pinfo);
-                        print "\n";
+                    $client->on_update(
+                        sub {
+                            $ctx->lprint("$hub->{name}         : $_[0]");
+                        }
+                    );
 
-                        if ( $status eq 'ProjectImported' ) {
-                            print "Project imported: $pinfo->{path}\n";
-                        }
-                        else {
-                            $db->rollback;
-                            $error = $status;
-                            last;
-                        }
+                    my $status = $client->sync_hub( $hub->{id} );
+
+                    unless ( $status eq 'RepoMatch'
+                        or $status eq 'RepoSync' )
+                    {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
 
                     }
 
-                    # Catch up on errors
-                    undef $stderr_watcher;
-                    $stderr->blocking(0);
-                    while ( my $line = $stderr->getline ) {
-                        print STDERR "$hub->{name}: $line";
+                    $status = $client->transfer_hub_updates;
+                    if ( $status ne 'TransferHubUpdates' ) {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
+                    }
+                    print "\n";
+
+                    $client->on_update(
+                        sub {
+                            $ctx->lprint("$hub->{name} (topics): $_[0]");
+                        }
+                    );
+
+                    $status = $client->sync_projects;
+
+                    unless ( $status eq 'ProjectSync' ) {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
                     }
 
-                    return;
+                    $status = $client->transfer_project_related_updates;
+
+                    if ( $status ne 'TransferProjectRelatedUpdates' ) {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
+                    }
+                    print "\n";
+
+                    return cleanup_errors( $hub->{name} );
                 }
             );
         };
@@ -138,7 +180,7 @@ bif-import -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

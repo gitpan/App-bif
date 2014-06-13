@@ -1,8 +1,8 @@
 Bif Project Management Tool
     Bif is a project management tool with a command-line interface. It helps
-    you track tasks and issues using a local database, exchanging updates
-    with remote databases on demand. The tool has several features of
-    interest to distributed project teams:
+    you track tasks, issues and bugs using a local database, exchanging
+    updates with remote databases on demand. The tool has several features
+    of interest to distributed project teams:
 
     Offline Operation
         Many bif actions work offline; you can create and update tasks and
@@ -140,13 +140,13 @@ Development
         #!sh
         githook-perltidy install
 
-    A test bif script is created in the t/ directory when you run
+    A test bif script is created in the tbin/ directory when you run
     Makefile.PL.
 
         #!sh
         perl Makefile.PL
-        export PATH=$PWD/t:$PATH    # if you don't use direnv
-        which bif                   # t/bif
+        export PATH=$PWD/tbin:$PATH    # if you don't use direnv
+        which bif                      # tbin/bif
 
     We encourage personal development branches in the git repository. Send a
     request to the mailing list with your public ssh key (something like

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -94,16 +94,19 @@ sub _push_issue {
 
     $db->txn(
         sub {
-            $ctx->update_repo(
-                {
-                        message => 'push '
-                      . $info->{kind} . ' '
-                      . $info->{id} . ' '
-                      . $ctx->{path},
-                }
+            my $rid = $db->nextval('updates');
+            my $uid = $db->nextval('updates');
+
+            my ( $proj, $hub ) = $db->xarray(
+                select     => [qw/ p.path h.name /],
+                from       => 'projects p',
+                inner_join => 'hubs h',
+                on         => 'h.id = p.hub_id',
+                where      => {
+                    'p.id' => $info->{project_id},
+                },
             );
 
-            my $uid = $db->nextval('updates');
             $db->xdo(
                 insert_into => 'updates',
                 values      => {
@@ -111,30 +114,8 @@ sub _push_issue {
                     parent_id => $info->{first_update_id},
                     email     => $ctx->{user}->{email},
                     author    => $ctx->{user}->{name},
-                    message   => "[pushed from <WHERE>"
-                      . " to $ctx->{path}<STATUS>]\n\n",
-                },
-            );
-
-            $db->xdo(
-                insert_into => 'func_update_issue',
-                values      => {
-                    id         => $info->{id},
-                    project_id => $info->{project_id},
-                    update_id  => $uid,
-                },
-            );
-
-            $ctx->{update_id} = $db->nextval('updates');
-
-            $db->xdo(
-                insert_into => 'updates',
-                values      => {
-                    id        => $ctx->{update_id},
-                    parent_id => $info->{first_update_id},
-                    email     => $ctx->{user}->{email},
-                    author    => $ctx->{user}->{name},
-                    message   => $ctx->{message},
+                    message   => "[ Pushed from project "
+                      . "$proj\@$hub ]\n\n$ctx->{message}",
                 },
             );
 
@@ -150,16 +131,28 @@ sub _push_issue {
             $db->xdo(
                 insert_into => 'func_update_issue',
                 values      => {
+                    update_id  => $uid,
                     id         => $info->{id},
                     project_id => $pinfo->{id},
-                    update_id  => $ctx->{update_id},
                     status_id  => $status_id,
                 },
             );
 
+            $ctx->{update_id} = $uid;
+
             $db->xdo(
                 insert_into => 'func_merge_updates',
                 values      => { merge => 1 },
+            );
+
+            $ctx->update_repo(
+                {
+                    id      => $rid,
+                    message => 'push '
+                      . $info->{kind} . ' '
+                      . $info->{id} . ' '
+                      . $ctx->{path},
+                }
             );
 
         }
@@ -178,7 +171,7 @@ bif-push - push a topic to another project
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

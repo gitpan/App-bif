@@ -6,7 +6,23 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
+
+my $stderr;
+my $stderr_watcher;
+
+sub cleanup_errors {
+    my $hub = shift;
+
+    undef $stderr_watcher;
+    $stderr->blocking(0);
+
+    while ( my $line = $stderr->getline ) {
+        print STDERR "$hub: $line";
+    }
+
+    return;
+}
 
 sub run {
     my $opts = shift;
@@ -37,7 +53,7 @@ sub run {
         inner_join => 'topics t',
         on         => 't.id = h.id',
         inner_join => 'hub_repos hr',
-        on    => 'hr.id = h.default_location_id',
+        on    => 'hr.id = h.default_repo_id',
         where => {
             'h.local' => undef,
             $opts->{hub} ? ( 'h.name' => $opts->{hub} ) : (),
@@ -65,9 +81,8 @@ sub run {
             },
         );
 
-        my $stderr = $client->child->stderr;
+        $stderr = $client->child->stderr;
 
-        my $stderr_watcher;
         $stderr_watcher = AE::io $stderr, 0, sub {
             my $line = $stderr->getline;
             if ( !defined $line ) {
@@ -90,69 +105,70 @@ sub run {
 
                         $client->on_update(
                             sub {
-                                $ctx->lprint("$hub->{name} (meta): $_[0]");
+                                $ctx->lprint("$hub->{name}         : $_[0]");
                             }
                         );
 
                         my $previous = $dbw->get_max_update_id;
                         my $status   = $client->sync_hub( $hub->{id} );
 
-                        if (   $status eq 'RepoMatch'
+                        unless ( $status eq 'RepoMatch'
                             or $status eq 'RepoSync' )
                         {
-                            print "\n" if $status eq 'RepoSync';
-                            my @projects = $dbw->xhashes(
-                                select => [ 'p.id', 'p.path' ],
-                                from   => 'projects p',
-                                where  => {
-                                    'p.hub_id' => $hub->{id},
-                                    'p.local'  => 1,
-                                    $opts->{path}
-                                    ? ( 'p.path' => $opts->{path} )
-                                    : (),
-                                },
-                                order_by => 'p.path',
-                            );
-
-                            foreach my $p (@projects) {
-                                $client->on_update(
-                                    sub {
-                                        $ctx->lprint(
-                                            "$hub->{name} [$p->{path}]: $_[0]"
-                                        );
-                                    }
-                                );
-
-                                $status = $client->sync_project( $p->{id} );
-                                print "\n" if $status eq 'ProjectSync';
-
-                                unless ( $status eq 'ProjectMatch'
-                                    or $status eq 'ProjectSync' )
-                                {
-                                    $dbw->rollback;
-                                    $error = $status;
-                                }
-                            }
-                        }
-                        else {
-                            print "\n";
                             $dbw->rollback;
-                            $error = $status;
+                            $error = "unexpected status received: $status";
+                            return cleanup_errors( $hub->{name} );
+
                         }
 
-                        # Catch up on errors
-                        undef $stderr_watcher;
-                        $stderr->blocking(0);
-                        while ( my $line = $stderr->getline ) {
-                            print STDERR "$hub->{name}: $line";
+                        $status = $client->transfer_hub_updates;
+                        if ( $status ne 'TransferHubUpdates' ) {
+                            $dbw->rollback;
+                            $error = "unexpected status received: $status";
+                            return cleanup_errors( $hub->{name} );
+                        }
+                        print "\n";
+
+                        my @projects = $dbw->xhashes(
+                            select => [ 'p.id', 'p.path' ],
+                            from   => 'projects p',
+                            where  => {
+                                'p.hub_id' => $hub->{id},
+                                'p.local'  => 1,
+                                $opts->{path}
+                                ? ( 'p.path' => $opts->{path} )
+                                : (),
+                            },
+                            order_by => 'p.path',
+                        );
+
+                        $client->on_update(
+                            sub {
+                                $ctx->lprint("$hub->{name} (topics): $_[0]");
+                            }
+                        );
+
+                        $status = $client->sync_projects;
+
+                        unless ( $status eq 'ProjectSync' ) {
+                            $dbw->rollback;
+                            $error = "unexpected status received: $status";
+                            return cleanup_errors( $hub->{name} );
                         }
 
-                        return if $error;
+                        $status = $client->transfer_project_related_updates;
+
+                        if ( $status ne 'TransferProjectRelatedUpdates' ) {
+                            $dbw->rollback;
+                            $error = "unexpected status received: $status";
+                            return cleanup_errors( $hub->{name} );
+                        }
+                        print "\n";
 
                         my $current = $dbw->get_max_update_id;
                         my $delta   = $current - $previous;
 
-                        return;
+                        return cleanup_errors;
                     }
                 );
             };
@@ -191,7 +207,7 @@ bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

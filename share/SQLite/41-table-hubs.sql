@@ -1,12 +1,12 @@
 CREATE TABLE hubs (
     id INTEGER NOT NULL PRIMARY KEY,
-    default_location_id INTEGER NOT NULL DEFAULT -1,
+    default_repo_id INTEGER NOT NULL DEFAULT -1,
     name VARCHAR(128) NOT NULL UNIQUE,
     local INTEGER UNIQUE,
     hash VARCHAR,
     num_updates INTEGER,
     FOREIGN KEY (id) REFERENCES topics(id) ON DELETE CASCADE,
-    FOREIGN KEY (id,default_location_id)
+    FOREIGN KEY (id,default_repo_id)
         REFERENCES hub_repos(hub_id,id)
         DEFERRABLE INITIALLY DEFERRED,
     CONSTRAINT local_constraint CHECK (

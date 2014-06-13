@@ -3,14 +3,11 @@ CREATE TABLE hub_deltas (
     update_id INTEGER NOT NULL,
     hub_id INTEGER NOT NULL,
     name VARCHAR(128),
-    default_location_id INTEGER,
     project_id INTEGER,
     related_update_uuid VARCHAR,
     new INTEGER,
     FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE,
     FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE,
-    FOREIGN KEY(default_location_id) REFERENCES hub_repos(id)
-        ON DELETE CASCADE,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
@@ -25,7 +22,6 @@ BEGIN
         NEW.update_id,
         NEW.hub_id,
         NEW.name,
-        NEW.default_location_id,
         NEW.project_id,
         NEW.related_update_uuid
     );
@@ -48,18 +44,12 @@ BEGIN
                 || COALESCE(topics.uuid, '') || x'0A'
                 || '  name:'
                 || COALESCE(NEW.name, '') || x'0A'
-                || '  default_location_uuid:'
-                || COALESCE(location.uuid, '') || x'0A'
                 || '  project_uuid:'
                 || COALESCE(p.uuid, '') || x'0A'
                 || '  related_update_uuid:'
                 || COALESCE(NEW.related_update_uuid, '') || x'0A'
             FROM
                 topics
-            LEFT JOIN
-                topics AS location
-            ON
-                location.id = NEW.default_location_id
             LEFT JOIN
                 topics p
             ON
@@ -101,9 +91,7 @@ BEGIN
     UPDATE
         hub_tomerge
     SET
-        name = name + (NEW.name IS NOT NULL),
-        default_location_id = default_location_id +
-        (NEW.default_location_id IS NOT NULL)
+        name = name + (NEW.name IS NOT NULL)
     WHERE
         hub_id = NEW.hub_id
     ;
@@ -119,8 +107,7 @@ BEGIN
 
     SELECT debug(
         'TRIGGER hub_deltas_ad_1',
-        OLD.hub_id,
-        OLD.default_location_id
+        OLD.hub_id
     );
 
     INSERT OR IGNORE INTO
@@ -129,9 +116,7 @@ BEGIN
     UPDATE
         hub_tomerge
     SET
-        name = name + (OLD.name IS NOT NULL),
-        default_location_id = default_location_id +
-        (OLD.default_location_id IS NOT NULL)
+        name = name + (OLD.name IS NOT NULL)
     WHERE
         hub_id = OLD.hub_id
     ;

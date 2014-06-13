@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 sub run {
     my $opts = shift;
@@ -102,12 +102,18 @@ sub run {
                     my $current = $dbw->get_max_update_id;
                     my $delta   = $current - $previous;
 
-                    my ($name) = $dbw->xarray(
-                        select     => 'h.name',
+                    my ( $hid, $rid, $name ) = $dbw->xarray(
+                        select     => [ 'h.id', 'hr.id', 'h.name' ],
                         from       => 'hub_repos hr',
                         inner_join => 'hubs h',
                         on         => 'h.id = hr.hub_id',
-                        where      => { 'hr.location' => $ctx->{location} },
+                        where => { 'hr.location' => $ctx->{location} },
+                    );
+
+                    $dbw->xdo(
+                        update => 'hubs',
+                        set    => { default_repo_id => $rid },
+                        where  => { id => $hid },
                     );
 
                     print "Hub registered: $name\n";
@@ -139,7 +145,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

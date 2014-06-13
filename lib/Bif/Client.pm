@@ -8,7 +8,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 with 'Bif::Role::Sync';
 
@@ -48,6 +48,11 @@ has json => ( is => 'rw', default => sub { JSON->new->utf8 } );
 
 has on_error => ( is => 'ro', required => 1 );
 
+has temp_table => (
+    is       => 'rw',
+    init_arg => undef,
+);
+
 sub BUILD {
     my $self = shift;
 
@@ -73,6 +78,14 @@ sub BUILD {
             where  => { 'hr.location' => $self->location },
         )
     );
+
+    $self->temp_table( 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) ) );
+
+    $self->db->do( "CREATE TEMPORARY TABLE "
+          . $self->temp_table . "("
+          . "id INTEGER UNIQUE ON CONFLICT IGNORE,"
+          . "ucount INTEGER"
+          . ")" );
 
     $self->child_watcher(
         AE::child $self->child->pid,
@@ -128,6 +141,13 @@ sub sync_hub {
     return $action;
 }
 
+sub transfer_hub_updates {
+    my $self = shift;
+
+    $self->write( 'TRANSFER', 'hub_updates' );
+    return $self->real_transfer_hub_updates;
+}
+
 sub import_project {
     my $self  = shift;
     my $pinfo = shift;
@@ -147,6 +167,9 @@ sub import_project {
     if ( $action eq 'SYNC' and $type eq 'project' ) {
         my $result = $self->real_sync_project( $pinfo->{id} );
         if ( $result eq 'ProjectSync' or $result eq 'ProjectMatch' ) {
+            my $status = $self->transfer_project_related_updates;
+            return $status unless $status eq 'TransferProjectRelatedUpdates';
+
             $self->db->xdo(
                 update => 'projects',
                 set    => 'local = 1',
@@ -170,29 +193,37 @@ sub import_project {
     return 'ExpectedSync';
 }
 
-sub sync_project {
+sub sync_projects {
     my $self = shift;
-    my $id   = shift;
 
-    my $project = $self->db->xhash(
-        select     => [ 'hrp.hash', 't.uuid' ],
+    my @projects = $self->db->xarrays(
+        select     => [ 't.uuid', 'hrp.hash', 't.id' ],
         from       => 'hub_related_projects hrp',
         inner_join => 'topics t',
-        on    => { 't.id'           => $id, },
-        where => { 'hrp.project_id' => $id, 'hrp.hub_id' => $self->hub_id, },
+        on         => 't.id = hrp.project_id',
+        where    => { 'hrp.hub_id' => $self->hub_id, },
+        order_by => 't.uuid',
     );
 
-    $self->write( 'SYNC', 'project', $project->{uuid}, $project->{hash} );
+    my @ids = map { pop @$_ } @projects;
+    $self->write( 'SYNC', 'projects', @projects );
 
     my ( $action, $type ) = $self->read;
-    if ( $action eq 'SYNC' and $type eq 'project' ) {
-        return $self->real_sync_project($id);
-    }
-    elsif ( $action eq 'ProjectMatch' ) {
-        $self->on_update->('no changes');
+    return $action unless ( $action eq 'SYNC' and $type eq 'projects' );
+
+    foreach my $id (@ids) {
+        my $status = $self->real_sync_project( $id, \@ids );
+        return $status unless $status eq 'ProjectSync';
     }
 
-    return $action;
+    return 'ProjectSync';
+}
+
+sub transfer_project_related_updates {
+    my $self = shift;
+
+    $self->write( 'TRANSFER', 'project_related_updates' );
+    return $self->real_transfer_project_related_updates;
 }
 
 sub export_project {
@@ -231,7 +262,7 @@ Bif::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

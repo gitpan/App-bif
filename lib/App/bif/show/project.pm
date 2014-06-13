@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use App::bif::show;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 my $yellow = '';
 
@@ -51,7 +51,7 @@ sub run {
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
         left_join  => 'hub_repos hr',
-        on         => 'hr.id = h.default_location_id',
+        on         => 'hr.id = h.default_repo_id',
         left_join  => 'topics t2',
         on         => 't2.id = h.id',
         where      => { 'projects.id' => $info->{id} },
@@ -188,7 +188,7 @@ bif-show-project - display a project's current status
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

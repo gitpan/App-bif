@@ -142,10 +142,15 @@ sub new_test_hub {
     $dbw->xdo(
         insert_into => 'hub_deltas',
         values      => {
-            update_id           => $update->{id},
-            hub_id              => $id,
-            default_location_id => $lid,
+            update_id => $update->{id},
+            hub_id    => $id,
         },
+    );
+
+    $dbw->xdo(
+        update => 'hubs',
+        set    => { default_repo_id => $lid, },
+        where  => { id => $id },
     );
 
     $dbw->xdo(

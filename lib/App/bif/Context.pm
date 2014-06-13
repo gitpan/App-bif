@@ -10,7 +10,7 @@ use Path::Tiny qw/path rootdir cwd/;
 use Term::Size ();
 use feature 'state';
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 our ( $term_width, $term_height ) = Term::Size::chars(*STDOUT);
 $term_width  ||= 80;
@@ -554,7 +554,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

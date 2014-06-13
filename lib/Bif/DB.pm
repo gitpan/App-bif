@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -215,7 +215,7 @@ sub get_hub_repos {
             't.uuid AS uuid',
             'h.name AS name',
             'hr.location AS location',
-            'h.default_location_id = hr.id AS is_default'
+            'h.default_repo_id = hr.id AS is_default'
         ],
         from       => 'hubs h',
         inner_join => 'topics t',
@@ -230,7 +230,7 @@ sub get_hub_repos {
             't.uuid AS uuid',
             'h.name AS name',
             'hr.location AS location',
-            'h.default_location_id = hr.id AS is_default'
+            'h.default_repo_id = hr.id AS is_default'
         ],
         from       => 'hubs h',
         inner_join => 'topics t',
@@ -242,7 +242,7 @@ sub get_hub_repos {
         },
         union_all_select => [
             'h.id', 't.uuid', 'h.name',
-            'hr.location', 'h.default_location_id = hr.id AS is_default'
+            'hr.location', 'h.default_repo_id = hr.id AS is_default'
         ],
         from       => 'hub_repos hr2',
         inner_join => 'hubs h',
@@ -280,7 +280,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

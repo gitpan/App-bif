@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 my $NOW;
 my $bold;
@@ -117,7 +117,7 @@ sub _show_project {
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
         left_join  => 'hub_repos hr',
-        on         => 'hr.id = h.default_location_id',
+        on         => 'hr.id = h.default_repo_id',
         left_join  => 'topics t2',
         on         => 't2.id = h.id',
         where      => { 'projects.id' => $info->{id} },
@@ -270,7 +270,7 @@ sub _show_task {
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
         left_join  => 'hub_repos hr',
-        on         => 'hr.id = h.default_location_id',
+        on         => 'hr.id = h.default_repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'updates AS updates2',
@@ -375,7 +375,7 @@ sub _show_issue {
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
         left_join  => 'hub_repos hr',
-        on         => 'hr.id = h.default_location_id',
+        on         => 'hr.id = h.default_repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
         inner_join => 'issue_status',
@@ -450,7 +450,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 

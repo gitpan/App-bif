@@ -9,9 +9,7 @@ CREATE TABLE issue_deltas (
     FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE,
     FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY(status_id) REFERENCES issue_status(id) ON DELETE CASCADE--,
-    -- Also do a foreign key across project_id/status_id?
---    UNIQUE (update_id,status_id) -- issues FK to this
+    FOREIGN KEY(status_id) REFERENCES issue_status(id) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
 CREATE INDEX
@@ -104,19 +102,10 @@ BEGIN
         )
     SELECT -- This catches the existing projects for the issue
         pi.project_id,
-        pi2.project_id,
+        NEW.project_id,
         NEW.update_id
     FROM
         project_issues pi
-    JOIN
-        (
-            SELECT
-                pi.project_id
-            FROM
-                project_issues pi
-            WHERE
-                pi.issue_id = NEW.issue_id
-        ) pi2
     WHERE
         pi.issue_id = NEW.issue_id
     UNION SELECT   -- This catches the (possibly new) project of this update

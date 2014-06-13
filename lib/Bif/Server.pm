@@ -7,7 +7,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 with 'Bif::Role::Sync';
 
@@ -39,6 +39,11 @@ has on_update => (
 
 has on_error => ( is => 'ro', required => 1 );
 
+has temp_table => (
+    is       => 'rw',
+    init_arg => undef,
+);
+
 # Names are reversed, so that the methods make sense from the server's
 # point of view.
 
@@ -51,8 +56,12 @@ my %METHODS = (
         project => 'sync_project',
     },
     SYNC => {
-        hub     => 'sync_hub',
-        project => 'sync_project',
+        hub      => 'sync_hub',
+        projects => 'sync_projects',
+    },
+    TRANSFER => {
+        hub_updates             => 'real_transfer_hub_updates',
+        project_related_updates => 'real_transfer_project_related_updates',
     },
     QUIT => {},
 );
@@ -68,16 +77,28 @@ sub run {
     $self->rh( Coro::Handle->new_from_fh( *STDIN, timeout => 30 ) );
     $self->wh( Coro::Handle->new_from_fh(*STDOUT) );
 
+    $self->temp_table( 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) ) );
+
+    $self->db->do( "CREATE TEMPORARY TABLE "
+          . $self->temp_table . "("
+          . "id INTEGER UNIQUE ON CONFLICT IGNORE,"
+          . "ucount INTEGER"
+          . ")" );
+
+    $self->db->begin_work;
+
     while (1) {
         my ( $action, $type, @rest ) = $self->read;
 
         if ( $action eq 'EOF' ) {
+            $self->db->rollback;
             return;
         }
         elsif ( $action eq 'INVALID' ) {
             next;
         }
         elsif ( $action eq 'QUIT' ) {
+            $self->db->commit;
             $self->write('Bye');
             return;
         }
@@ -102,13 +123,13 @@ sub run {
             next;
         }
 
-        my $response = eval {
-            $self->db->txn( sub { $self->$method(@rest) } );
-        };
+        my $response = eval { $self->$method(@rest) };
 
         if ($@) {
             $log->error($@);
-            $self->write( 'InternalError', 'Internal Server Error' );
+            $self->write( 'InternalError', 'Internal Server Error',
+                $action, $type, @rest );
+            $self->db->rollback;
             next;
         }
 
@@ -119,10 +140,14 @@ sub run {
             next;
         }
         elsif ( $response eq 'QUIT' ) {
+            $self->db->commit;
             $self->write('Bye');
             return;
         }
     }
+
+    $self->db->rollback;
+    return;
 }
 
 sub export_hub {
@@ -208,42 +233,54 @@ sub import_project {
     return $self->real_import_project($uuid);
 }
 
-sub sync_project {
+sub sync_projects {
     my $self = shift;
-    my $uuid = shift;
-    my $hash = shift;
+    my @ids;
 
-    if ( !$uuid ) {
-        $self->write( 'MissingUUID', 'uuid is required' );
-        return 'MissingUUID';
-    }
-    elsif ( !defined $hash ) {
-        $self->write( 'MissingHash', 'hash is required' );
-        return 'MissingHash';
+    foreach my $pair (@_) {
+        my ( $uuid, $hash ) = @$pair;
+
+        if ( !$uuid ) {
+            $self->write( 'MissingUUID', 'uuid is required' );
+            return 'MissingUUID';
+        }
+        elsif ( !defined $hash ) {
+            $self->write( 'MissingHash', 'hash is required' );
+            return 'MissingHash';
+        }
+
+        my $pinfo = $self->db->xhash(
+            select     => [ 't.id', 'hrp.hash' ],
+            from       => 'topics t',
+            inner_join => 'hub_related_projects hrp',
+            on         => {
+                'hrp.project_id' => \'t.id',
+                'hrp.hub_id'     => $self->hub_id,
+            },
+            where => { 't.uuid' => $uuid },
+        );
+
+        if ( !$pinfo ) {
+            $self->write( 'ProjectNotFound', 'project not found: ' . $uuid );
+            return 'ProjectNotFound';
+        }
+
+        push( @ids, $pinfo->{id} );
+
+        #        if ( $pinfo->{hash} eq $hash ) {
+        #            $self->write( 'ProjectMatch', $uuid, $pinfo->{hash} );
+        #            return 'ProjectMatch';
+        #        }
     }
 
-    my $pinfo = $self->db->xhash(
-        select     => [ 't.id', 'hrp.hash' ],
-        from       => 'topics t',
-        inner_join => 'hub_related_projects hrp',
-        on         => {
-            'hrp.project_id' => \'t.id',
-            'hrp.hub_id'     => $self->hub_id,
-        },
-        where => { 't.uuid' => $uuid },
-    );
+    $self->write( 'SYNC', 'projects' );
 
-    if ( !$pinfo ) {
-        $self->write( 'ProjectNotFound', 'project not found: ' . $uuid );
-        return 'ProjectNotFound';
+    foreach my $id (@ids) {
+        my $status = $self->real_sync_project( $id, \@ids );
+        return $status unless $status eq 'ProjectSync';
     }
 
-    if ( $pinfo->{hash} eq $hash ) {
-        $self->write( 'ProjectMatch', $uuid, $pinfo->{hash} );
-        return 'ProjectMatch';
-    }
-    $self->write( 'SYNC', 'project', $uuid, $pinfo->{hash} );
-    return $self->real_sync_project( $pinfo->{id} );
+    return 'ProjectSync';
 }
 
 sub disconnect {

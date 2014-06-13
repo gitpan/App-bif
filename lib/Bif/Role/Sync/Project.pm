@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 my %import_functions = (
     NEW => {
@@ -123,17 +123,15 @@ sub real_import_project {
 sub real_sync_project {
     my $self   = shift;
     my $id     = shift || die caller;
-    my $prefix = shift;
-    my $tmp    = shift || 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) );
+    my $ids    = shift || die caller;
+    my $prefix = shift // '';
 
-    $prefix = '' unless defined $prefix;
+    my @ids       = grep { $_ != $id } @$ids;
+    my $tmp       = $self->temp_table;
     my $prefix2   = $prefix . '_';
     my $db        = $self->db;
     my $on_update = $self->on_update;
     my $hub_id    = $self->hub_id;
-
-    $db->do("CREATE TEMPORARY TABLE $tmp(id INTEGER, ucount INTEGER)")
-      if ( $prefix eq '' );
 
     $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
@@ -180,9 +178,13 @@ sub real_sync_project {
             select      => [ 'u.id', 'u.ucount' ],
             from        => 'updates u',
             inner_join  => 'project_related_updates pru',
-            on          => 'pru.update_id = u.id',
-            inner_join  => 'projects_tree pt',
             on          => {
+                'pru.update_id'           => \'u.id',
+                'pru.project_id'          => $id,
+                'NOT pru.real_project_id' => \@ids,
+            },
+            inner_join => 'projects_tree pt',
+            on         => {
                 'pt.child'  => \'pru.project_id',
                 'pt.parent' => $id,
             },
@@ -192,11 +194,24 @@ sub real_sync_project {
 
     if (@next) {
         foreach my $next ( sort @next ) {
-            $self->real_sync_project( $id, $next, $tmp );
+            $self->real_sync_project( $id, $ids, $next, $tmp );
+
+            $self->db->xdo(
+                update => 'projects',
+                set    => 'local = 1',
+                where  => { id => $id },
+            );
         }
     }
 
     return unless $prefix eq '';
+
+    return 'ProjectSync';
+}
+
+sub real_transfer_project_related_updates {
+    my $self = shift;
+    my $tmp  = $self->temp_table;
 
     my $send = async {
         my ($total) = $self->db->xarray(
@@ -206,7 +221,7 @@ sub real_sync_project {
 
         $self->write( 'TOTAL', $total );
 
-        my $update_list = $db->xprepare(
+        my $update_list = $self->db->xprepare(
             select => [
                 'u.id',                  'u.uuid',
                 'p.uuid AS parent_uuid', 'u.mtime',
@@ -229,10 +244,13 @@ sub real_sync_project {
     my $r1 = $self->recv_project_deltas;
     my $r2 = $send->join;
 
+    $self->db->xdo( delete_from => $tmp );
+
     if ( $r1 =~ m/^\d+$/ ) {
         $self->write( 'Recv', $r1 );
         my ( $recv, $count ) = $self->read;
-        return 'ProjectSync' if $recv eq 'Recv' and $count == $r2;
+        return 'TransferProjectRelatedUpdates'
+          if $recv eq 'Recv' and $count == $r2;
         $log->debug("MEH: $count $r2");
         return $recv;
     }

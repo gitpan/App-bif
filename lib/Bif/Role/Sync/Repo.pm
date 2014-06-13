@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
 
 my %import_functions = (
     NEW => {
@@ -109,15 +109,12 @@ sub real_sync_hub {
     my $self   = shift;
     my $id     = shift || die caller;
     my $prefix = shift;
-    my $tmp    = shift || 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) );
+    my $tmp    = $self->temp_table;
 
     $prefix = '' unless defined $prefix;
     my $prefix2   = $prefix . '_';
     my $db        = $self->db;
     my $on_update = $self->on_update;
-
-    $db->do("CREATE TEMPORARY TABLE $tmp(id INTEGER, ucount INTEGER)")
-      if ( $prefix eq '' );
 
     $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
@@ -176,6 +173,12 @@ sub real_sync_hub {
     }
 
     return unless $prefix eq '';
+    return 'RepoSync';
+}
+
+sub real_transfer_hub_updates {
+    my $self = shift;
+    my $tmp  = $self->temp_table;
 
     my $send = async {
         my ($total) = $self->db->xarray(
@@ -185,7 +188,7 @@ sub real_sync_hub {
 
         $self->write( 'TOTAL', $total );
 
-        my $update_list = $db->xprepare(
+        my $update_list = $self->db->xprepare(
             select => [
                 'u.id',                  'u.uuid',
                 'p.uuid AS parent_uuid', 'u.mtime',
@@ -208,10 +211,12 @@ sub real_sync_hub {
     my $r1 = $self->recv_hub_deltas;
     my $r2 = $send->join;
 
+    $self->db->xdo( delete_from => $tmp );
+
     if ( $r1 =~ m/^\d+$/ ) {
         $self->write( 'Recv', $r1 );
         my ( $recv, $count ) = $self->read;
-        return 'RepoSync' if $recv eq 'Recv' and $count == $r2;
+        return 'TransferHubUpdates' if $recv eq 'Recv' and $count == $r2;
         $log->debug("MEH: $count $r2");
         return $recv;
     }

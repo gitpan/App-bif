@@ -1,10 +1,10 @@
 package App::bif::Build;
 use strict;
 use warnings;
-$App::bif::Build::VERSION = '0.1.0_23';
-$App::bif::Build::COMMIT = '8bcc309b93a85c3bbcf8295ee66c991db40cc28a';
+$App::bif::Build::VERSION = '0.1.0_24';
+$App::bif::Build::COMMIT = '8c0c0f464400739781fde9ec799f952a5523ac2b';
 $App::bif::Build::BRANCH = 'devel';
-$App::bif::Build::DATE = '2014-06-04 11:02:55';
+$App::bif::Build::DATE = '2014-06-13 12:53:06';
 1;
 __END__
 
@@ -14,7 +14,7 @@ App::bif::Build - build-time constants for App-bif
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 
@@ -43,16 +43,16 @@ follows:
 The Git branch name which was current when the App-bif distribution was
 created.
 
-=item $App::bif::Build::COMMIT = "8bcc309b93a85c3bbcf8295ee66c991db40cc28a"
+=item $App::bif::Build::COMMIT = "8c0c0f464400739781fde9ec799f952a5523ac2b"
 
 The Git commit hash at the head of the branch when the App-bif
 distribution was created.
 
-=item $App::bif::Build::DATE = "2014-06-04 11:02:55"
+=item $App::bif::Build::DATE = "2014-06-13 12:53:06"
 
 The UTC date that the Makefile.PL file was run.
 
-=item $App::bif::Build::VERSION = "0.1.0_23"
+=item $App::bif::Build::VERSION = "0.1.0_24"
 
 The version of the App-bif distribution.
 

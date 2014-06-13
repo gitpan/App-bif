@@ -5,7 +5,7 @@ management tool does what it does.
 
 =head1 Version
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 Background
 
@@ -171,10 +171,11 @@ applicable, and may have columns that indicate a relationship (e.g.
 projects.hub_id).
 
 There is a table for "updates" that represent changes, but that table
-only contains timestamps, author details, and a message.
+only contains generic items such as timestamps, author details, and a
+message.
 
-There are tables for $THINGS_updates, which relate a particular
-"update" with changes to $THINGS.
+There are tables for $THINGS_deltas, which relate changes to $THINGS
+with a particular update.
 
 There are sometimes tables for many-to-many relationships, such as an
 issue having a different status for each project.
@@ -202,10 +203,13 @@ Operations happen like this:
 =item * create a row in the updates table that identifies the author,
 time, timezone, message
 
-=item * add the changes in the *_updates tables for each topic
+=item * add the changes in the *_deltas tables for each topic
 
-=item * insert a row into func_merge_updates that calculates the hashes
-of everything.
+=item * Updates are "resolved" by inserting a row into
+func_merge_updates that calculates the updates.uuid SHA1 hash. If
+updates.uuid is already set (i.e. it was passed in from another
+repository) then it must match otherwise an error is raised. In this
+way we ensure a reliable copy of the data.
 
 =back
 
@@ -371,9 +375,42 @@ repository to another.
 
 =head2 Synchronisation
 
-A sync operation compares the tree from two repositories top-down,
-saving the updates missing from each one. The updates are then replayed
-in the correct order.
+A sync operation with a hub happens in two steps. First of all the
+hub-related updates (which are actually project meta-data) are
+exchanged, then the project-related updates (which are actually task
+and issue data) are exchanged.
+
+=head3 Hub Related Updates Synchronisation
+
+Syncing hub-related updates is relatively easy. The
+hub_related_updates_merkle table from each end is recursively compared
+top down (or breadth-first? - need to check) to discover the
+differences, from which a set of updates is stored in a temporary
+table. The updates are then tranferred to the other end in the order
+they were created in the database.
+
+=head3 Project Related Updates Synchronisation
+
+Syncing project-related updates starts out the same way as hub-related
+update synchronisation.  The project_related_updates_merkle table from
+each end is recursively compared top down (or breadth-first? - need to
+check) to discover the differences.
+
+However, the set of updates which are stored at each end to be
+transferred cannot be directly inferred from the merkle tree because
+the client is only synchronising the projects which it has locally
+(i.e. have been imported). The challenge is how to do that when an
+issue exists in two projects but only one is local
+
+The updates are then tranferred to the other end in the order they were
+created in the database.
+
+=head2 Merging Deltas
+
+One of the actions that takes place when an update is resolved is the
+merging of any received deltas to set the current value of the user's
+project, task or issue status. The merge is very simple: the latest
+result according to the update timestamp wins.
 
 =head1 Application Architecture
 

@@ -6,7 +6,23 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_23';
+our $VERSION = '0.1.0_24';
+
+my $stderr;
+my $stderr_watcher;
+
+sub cleanup_errors {
+    my $hub = shift;
+
+    undef $stderr_watcher;
+    $stderr->blocking(0);
+
+    while ( my $line = $stderr->getline ) {
+        print STDERR "$hub: $line";
+    }
+
+    return;
+}
 
 sub run {
     my $ctx = shift;
@@ -65,9 +81,8 @@ sub run {
         },
     );
 
-    my $stderr = $client->child->stderr;
+    $stderr = $client->child->stderr;
 
-    my $stderr_watcher;
     $stderr_watcher = AE::io $stderr, 0, sub {
         my $line = $stderr->getline;
         if ( !defined $line ) {
@@ -150,42 +165,51 @@ sub run {
                             insert_into => 'func_merge_updates',
                             values      => { merge => 1 },
                         );
-
-                        $client->on_update(
-                            sub {
-                                $ctx->lprint(
-                                    "$hub->{name} [$pinfo->{path}]: $_[0]");
-                            }
-                        );
-
-                        my $status = $client->sync_hub( $hub->{id} );
-                        print "\n";
-
-                        unless ( $status eq 'RepoSync' ) {
-                            $db->rollback;
-                            $error = "unexpected status received: $status";
-                            last;
-                        }
-
-                        $status = $client->sync_project( $pinfo->{id} );
-                        print "\n";
-
-                        unless ( $status eq 'ProjectSync'
-                            or $status eq 'ProjectMatch' )
-                        {
-                            $db->rollback;
-                            $error = "unexpected status received: $status";
-                            last;
-                        }
-
                     }
 
-                    # Catch up on errors
-                    undef $stderr_watcher;
-                    $stderr->blocking(0);
-                    while ( my $line = $stderr->getline ) {
-                        print STDERR "$hub->{name}: $line";
+                    $client->on_update(
+                        sub {
+                            $ctx->lprint("$hub->{name}         : $_[0]");
+                        }
+                    );
+
+                    my $status = $client->sync_hub( $hub->{id} );
+
+                    if ( $status ne 'RepoSync' ) {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
                     }
+
+                    $status = $client->transfer_hub_updates;
+                    if ( $status ne 'TransferHubUpdates' ) {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
+                    }
+                    print "\n";
+
+                    $status = $client->sync_projects;
+
+                    unless ( $status eq 'ProjectSync' ) {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
+                    }
+
+                    $client->on_update(
+                        sub {
+                            $ctx->lprint("$hub->{name} (topics): $_[0]");
+                        }
+                    );
+                    $status = $client->transfer_project_related_updates;
+
+                    if ( $status ne 'TransferProjectRelatedUpdates' ) {
+                        $db->rollback;
+                        $error = "unexpected status received: $status";
+                        return cleanup_errors( $hub->{name} );
+                    }
+                    print "\n";
 
                     return;
                 }
@@ -217,7 +241,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_23 (2014-06-04)
+0.1.0_24 (2014-06-13)
 
 =head1 SYNOPSIS
 
