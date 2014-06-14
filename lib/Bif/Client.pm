@@ -8,7 +8,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 with 'Bif::Role::Sync';
 
@@ -28,6 +28,10 @@ has child => ( is => 'rw' );
 has child_watcher => ( is => 'rw' );
 
 has debug_bs => ( is => 'ro' );
+
+has updates_tosend => ( is => 'rw', default => 0 );
+
+has updates_torecv => ( is => 'rw', default => 0 );
 
 has updates_sent => ( is => 'rw', default => 0 );
 
@@ -198,10 +202,15 @@ sub sync_projects {
 
     my @projects = $self->db->xarrays(
         select     => [ 't.uuid', 'hrp.hash', 't.id' ],
-        from       => 'hub_related_projects hrp',
+        from       => 'projects p',
+        inner_join => 'hub_related_projects hrp',
+        on         => 'hrp.hub_id = p.hub_id AND hrp.project_id = p.id',
         inner_join => 'topics t',
-        on         => 't.id = hrp.project_id',
-        where    => { 'hrp.hub_id' => $self->hub_id, },
+        on         => 't.id = p.id',
+        where      => {
+            'p.hub_id' => $self->hub_id,
+            'p.local'  => 1,
+        },
         order_by => 't.uuid',
     );
 
@@ -262,7 +271,7 @@ Bif::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

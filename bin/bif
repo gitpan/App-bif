@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 
@@ -99,7 +99,7 @@ bif commands and their arguments are listed below:
         bif list issue-status PATH
         bif list issues
         bif list project-status PATH
-        bif list projects [HUB]
+        bif list projects [STATUS...]
         bif list task-status PATH
         bif list tasks
         bif list topics
@@ -117,7 +117,7 @@ bif commands and their arguments are listed below:
     bif show ITEM
         bif show ID
         bif show hub NAME
-        bif show project PATH [HUB]
+        bif show project ID [HUB]
     bif sql [STATEMENT...]
     bif sync
     bif update ID [STATUS]
@@ -126,8 +126,9 @@ bif commands and their arguments are listed below:
 In addition to the above commands a couple of useful aliases are
 created by default:
 
-    bif l          # bif list projects --status run
+    bif l          # bif list projects run
     bif ls         # bif list topics --status open
+    bif lss        # bif list topics --status stalled
 
 =head2 Global Options
 
@@ -611,9 +612,18 @@ should offer) respectful communication with all of its members.
 
 L<http://bifax.org/bif/>
 
-=item User Mailing List:
+=item Code Repository:
 
-Doesn't exist yet. Please use the development list below.
+git://bifax.org/bif.git/
+
+=item Issue Tracker:
+
+Doesn't exit yet.
+
+=item Mailing List:
+
+Subscribe via L<http://www.freelists.org/list/bif-devel> and then send
+mail to <bif-devel@freelists.org>.
 
 =back
 
@@ -637,25 +647,6 @@ answering the following questions:
 We will most likely need to ask for more information from you. You can
 probably speed things along by already running your commands with the
 C<--debug> flag turned on.
-
-=head1 DEVELOPMENT
-
-=over
-
-=item Code Repository:
-
-git://bifax.org/bif.git/
-
-=item Issue Tracker:
-
-Doesn't exit yet.
-
-=item Development Mailing List:
-
-Subscribe via L<http://www.freelists.org/list/bif-devel> and then send
-mail to <bif-devel@freelists.org>.
-
-=back
 
 =head1 AUTHOR
 

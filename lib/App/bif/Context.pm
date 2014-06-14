@@ -10,7 +10,7 @@ use Path::Tiny qw/path rootdir cwd/;
 use Term::Size ();
 use feature 'state';
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 our ( $term_width, $term_height ) = Term::Size::chars(*STDOUT);
 $term_width  ||= 80;
@@ -81,9 +81,11 @@ sub create_user_conf {
     my $conf = Config::Tiny->new;
     $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
     $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
-    $conf->{'user.alias'}->{l} = 'list projects local --status run';
+    $conf->{'user.alias'}->{l} = 'list projects define plan run';
     $conf->{'user.alias'}->{ls} =
       'list topics --status open --project-status run';
+    $conf->{'user.alias'}->{lss} =
+      'list topics --status stalled --project-status run';
 
     print "Writing $file\n";
     $conf->write($file);
@@ -554,7 +556,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

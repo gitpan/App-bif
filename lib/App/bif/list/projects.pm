@@ -5,21 +5,23 @@ use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 sub _invalid_status {
-    my $self = shift;
-    my $kind = shift;
-    return () unless @_;
+    my $self   = shift;
+    my $kind   = shift;
+    my $ref    = shift // return ();
+    my @status = @$ref;
+    return () unless @status;
 
-    my %try = map { defined $_ ? ( $_ => 1 ) : () } @_;
+    my %try = map { defined $_ ? ( $_ => 1 ) : () } @status;
 
     return () unless keys %try;
 
     map { delete $try{ $_->[0] } } $self->xarrays(
         select_distinct => ['status'],
         from            => $kind . '_status',
-        where           => [ 'status IN(', ( map { qv($_) } @_ ), ')' ],
+        where           => { status => $ref },
     );
 
     return keys %try;
@@ -87,7 +89,9 @@ sub run {
     foreach my $i ( 0 .. $#$data ) {
         my $row = $data->[$i];
         if ( !$row->[7] ) {
+            $row->[0] = $dark . $row->[0];
             $row->[4] = $row->[5] = $row->[6] = '*';
+            $row->[6] = '*' . $reset;
         }
         else {
             if ( $row->[6] ) {
@@ -138,17 +142,26 @@ sub _get_data {
         ],
         from       => 'hub_related_projects hrp',
         inner_join => 'projects p',
-        on         => 'p.id = hrp.project_id',
+        on         => do {
+            if ( $ctx->{local} ) {
+                {
+                    'p.id'    => \'hrp.project_id',
+                    'p.local' => 1,
+                };
+            }
+            else {
+                'p.id = hrp.project_id';
+            }
+        },
         left_join  => 'hubs h',
         on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
         on         => do {
             if ( $ctx->{status} ) {
-                [
-                    'project_status.id = p.status_id AND ',
-                    'project_status.status = ',
-                    qv( $ctx->{status} )
-                ];
+                {
+                    'project_status.id'     => \'p.status_id',
+                    'project_status.status' => $ctx->{status},
+                };
             }
             else {
                 'project_status.id = p.status_id';
@@ -163,15 +176,24 @@ sub _get_data {
             ],
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
-            on         => 'p.id = hrp.project_id',
+            on         => do {
+                if ( $ctx->{local} ) {
+                    {
+                        'p.id'    => \'hrp.project_id',
+                        'p.local' => 1,
+                    };
+                }
+                else {
+                    'p.id = hrp.project_id';
+                }
+            },
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
-                      on       => [
-                        'project_status.id = p.status_id AND ',
-                        'project_status.status = ',
-                        qv( $ctx->{status} )
-                      ];
+                      on       => {
+                        'project_status.id'     => \'p.status_id',
+                        'project_status.status' => $ctx->{status},
+                      };
                 }
                 else {
                     ();
@@ -191,14 +213,23 @@ sub _get_data {
             ],
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
-            on         => 'p.id = hrp.project_id',
+            on         => do {
+                if ( $ctx->{local} ) {
+                    {
+                        'p.id'    => \'hrp.project_id',
+                        'p.local' => 1,
+                    };
+                }
+                else {
+                    'p.id = hrp.project_id';
+                }
+            },
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
                       on       => [
-                        'project_status.id = p.status_id AND ',
-                        'project_status.status = ',
-                        qv( $ctx->{status} )
+                        'project_status.id'     => \'p.status_id',
+                        'project_status.status' => $ctx->{status},
                       ],
                       ;
                 }
@@ -243,11 +274,10 @@ sub _get_data2 {
         inner_join => 'project_status',
         on         => do {
             if ( $ctx->{status} ) {
-                [
-                    'project_status.id = p.status_id AND ',
-                    'project_status.status = ',
-                    qv( $ctx->{status} )
-                ];
+                {
+                    'project_status.id'     => \'p.status_id',
+                    'project_status.status' => $ctx->{status},
+                };
             }
             else {
                 'project_status.id = p.status_id';
@@ -264,21 +294,27 @@ sub _get_data2 {
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
-                      on       => [
-                        'project_status.id = p.status_id AND ',
-                        'project_status.status = ',
-                        qv( $ctx->{status} )
-                      ];
+                      on       => {
+                        'project_status.id'     => \'p.status_id',
+                        'project_status.status' => $ctx->{status},
+                      };
                 }
                 else {
                     ();
                 }
             },
-            inner_join       => 'task_status',
-            on               => 'task_status.project_id = p.id',
-            inner_join       => 'tasks',
-            on               => 'tasks.status_id = task_status.id',
-            where            => 'p.local = 1',
+            inner_join => 'task_status',
+            on         => 'task_status.project_id = p.id',
+            inner_join => 'tasks',
+            on         => 'tasks.status_id = task_status.id',
+            do {
+                if ( $ctx->{local} ) {
+                    ( where => 'p.local = 1' );
+                }
+                else {
+                    ();
+                }
+            },
             group_by         => 'p.id',
             union_all_select => [
                 'p.id',
@@ -290,11 +326,10 @@ sub _get_data2 {
             do {
                 if ( $ctx->{status} ) {
                     inner_join => 'project_status',
-                      on       => [
-                        'project_status.id = p.status_id AND ',
-                        'project_status.status = ',
-                        qv( $ctx->{status} )
-                      ],
+                      on       => {
+                        'project_status.id'     => \'p.status_id',
+                        'project_status.status' => $ctx->{status},
+                      },
                       ;
                 }
                 else {
@@ -305,11 +340,25 @@ sub _get_data2 {
             on         => 'issue_status.project_id = p.id',
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
-            where      => 'p.local = 1',
-            group_by   => 'p.id',
+            do {
+                if ( $ctx->{local} ) {
+                    ( where => 'p.local = 1' );
+                }
+                else {
+                    ();
+                }
+            },
+            group_by => 'p.id',
           )->as('total'),
-        on       => 'total.id = p.id',
-        where    => 'p.local = 1',
+        on => 'total.id = p.id',
+        do {
+            if ( $ctx->{local} ) {
+                ( where => 'p.local = 1' );
+            }
+            else {
+                ();
+            }
+        },
         group_by => [ 'p.path', 'p.title', 'project_status.status', ],
         order_by => 'p.path',
     );
@@ -325,32 +374,37 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 
-    bif list projects [HUB] [OPTIONS...]
+    bif list projects [STATUS...] [OPTIONS...]
 
 =head1 DESCRIPTION
 
-The C<bif list projects> command lists the projects in the local
-repository, showing counts of the open and stalled topics, and a
-calculated progress percentage.
+The C<bif list projects> command lists all projects in the repository,
+showing counts of the open and stalled topics, and a calculated
+progress percentage.
+
+A '*' character in the statistics columns (topic counts, completion %)
+is shown for remote-only projects where such information is not known
+locally.
 
 =head1 ARGUMENTS & OPTIONS
 
 =over
 
-=item HUB
+=item STATUS...
 
-If a hub name is provided then projects hosted by that hub will be
-listed instead of only listing local projects. A '*' character in the
-statistics columns (topic counts, completion %) is shown for
-remote-only projects where the information is not known locally.
+Limit the list by project status type(s).
 
-=item --status, -s STATUS
+=item --hub, -H HUB
 
-Limit the list to projects with a matching status.
+Limit the list to projects located at HUB.
+
+=item --local, -l
+
+Limit the list to projects that synchronise.
 
 =back
 

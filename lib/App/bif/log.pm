@@ -5,7 +5,7 @@ use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
 use locale;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 our $NOW;
 our $bold;
@@ -241,7 +241,7 @@ sub _log_task {
         select => [
             'task_deltas.task_id AS id',
             "task_deltas.task_id ||'.' || task_deltas.update_id AS update_id",
-            'updates.uuid AS update_uuid',
+            'SUBSTR(updates.uuid,1,8) AS update_uuid',
             'task_deltas.title',
             'updates.mtime',
             'updates.mtimetz',
@@ -293,7 +293,7 @@ sub _log_issue {
             'updates.uuid',
             concat( 'project_issues.id', qv('.'), 'updates.id' )
               ->as('update_id'),
-            'updates.uuid AS update_uuid',
+            'SUBSTR(updates.uuid,1,8) AS update_uuid',
             'updates.mtime',
             'updates.mtimetz',
             'updates.author',
@@ -410,7 +410,7 @@ sub _log_project {
         select => [
             'project_deltas.project_id AS id',
             "project_deltas.project_id ||'.' || updates.id AS update_id",
-            'updates.uuid AS update_uuid',
+            'SUBSTR(updates.uuid,1,8) AS update_uuid',
             'project_deltas.title',
             'updates.mtime',
             'updates.mtimetz',
@@ -464,7 +464,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

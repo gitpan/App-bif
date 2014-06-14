@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 my %import_functions = (
     NEW => {
@@ -46,7 +46,7 @@ sub recv_project_deltas {
     my $i   = $total;
     my $got = 0;
 
-    $self->updates_recv("$got/$total");
+    $self->updates_torecv( $self->updates_torecv + $total );
     $self->trigger_on_update;
 
     while ( $got < $total ) {
@@ -81,12 +81,9 @@ sub recv_project_deltas {
         }
 
         $got++;
-        $self->updates_recv("$got/$total");
+        $self->updates_recv( $self->updates_recv + 1 );
         $self->trigger_on_update;
     }
-
-    $self->updates_recv( ( ' ' x length("$got/") ) . $total );
-    $self->trigger_on_update;
 
     return $total;
 }
@@ -195,12 +192,6 @@ sub real_sync_project {
     if (@next) {
         foreach my $next ( sort @next ) {
             $self->real_sync_project( $id, $ids, $next, $tmp );
-
-            $self->db->xdo(
-                update => 'projects',
-                set    => 'local = 1',
-                where  => { id => $id },
-            );
         }
     }
 
@@ -219,6 +210,7 @@ sub real_transfer_project_related_updates {
             from   => "$tmp t",
         );
 
+        $self->updates_tosend( $self->updates_tosend + $total );
         $self->write( 'TOTAL', $total );
 
         my $update_list = $self->db->xprepare(
@@ -271,6 +263,7 @@ sub real_export_project {
         where      => { 'pru.project_id' => $id },
     );
 
+    $self->updates_tosend( $self->updates_tosend + $total );
     $self->write( 'TOTAL', $total );
 
     my $sth = $self->db->xprepare(

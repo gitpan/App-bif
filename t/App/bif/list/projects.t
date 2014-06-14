@@ -16,7 +16,7 @@ run_in_tempdir {
     isa_ok bif(qw/ new project todo --message message title /),
       'Bif::OK::NewProject';
 
-    isa_ok exception { bif(qw/ list projects --status junkstatus /) },
+    isa_ok exception { bif(qw/ list projects junkstatus /) },
       'Bif::Error::InvalidStatus';
 
     isa_ok bif(qw/ new project todo2 --message message title2 --status eval/),
@@ -25,7 +25,7 @@ run_in_tempdir {
     $list = bif(qw/list projects /);
     isa_ok $list, 'Bif::OK::ListProjects';
 
-    $list = bif(qw/list projects --status run/);
+    $list = bif(qw/list projects run/);
     isa_ok $list, 'Bif::OK::ListProjects';
 
 };

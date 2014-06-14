@@ -65,7 +65,7 @@
             "Coro" : "0",
             "Coro::Handle" : "0",
             "DBD::SQLite" : "1.42",
-            "DBIx::ThinSQL" : "v0.0.18",
+            "DBIx::ThinSQL" : "v0.0.20",
             "DBIx::ThinSQL::SQLite" : "v0.0.10",
             "Digest::SHA" : "0",
             "File::HomeDir" : "0",
@@ -112,5 +112,5 @@
          "url" : "git://bifax.org/bif.git/"
       }
    },
-   "version" : "0.1.0_24"
+   "version" : "0.1.0_25"
 }

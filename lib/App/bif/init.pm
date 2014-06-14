@@ -7,7 +7,7 @@ use Bif::DBW;
 use Log::Any '$log';
 use Path::Tiny qw/path cwd tempdir/;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -115,7 +115,7 @@ bif-init -  create new bif repository
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

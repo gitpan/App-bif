@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 my $stderr;
 my $stderr_watcher;
@@ -169,7 +169,7 @@ sub run {
 
                     $client->on_update(
                         sub {
-                            $ctx->lprint("$hub->{name}         : $_[0]");
+                            $ctx->lprint("$hub->{name}: $_[0]");
                         }
                     );
 
@@ -187,7 +187,6 @@ sub run {
                         $error = "unexpected status received: $status";
                         return cleanup_errors( $hub->{name} );
                     }
-                    print "\n";
 
                     $status = $client->sync_projects;
 
@@ -197,11 +196,6 @@ sub run {
                         return cleanup_errors( $hub->{name} );
                     }
 
-                    $client->on_update(
-                        sub {
-                            $ctx->lprint("$hub->{name} (topics): $_[0]");
-                        }
-                    );
                     $status = $client->transfer_project_related_updates;
 
                     if ( $status ne 'TransferProjectRelatedUpdates' ) {
@@ -241,7 +235,7 @@ bif-export -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

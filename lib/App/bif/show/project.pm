@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use App::bif::show;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 my $yellow = '';
 
@@ -188,7 +188,7 @@ bif-show-project - display a project's current status
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

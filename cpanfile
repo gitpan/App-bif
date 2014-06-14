@@ -18,7 +18,7 @@ on 'runtime' => sub {
 
     # Bif::DB
     requires 'DBD::SQLite'   => '1.42';
-    requires 'DBIx::ThinSQL' => '0.0.18';
+    requires 'DBIx::ThinSQL' => '0.0.20';
 
     # Bif::DBW
     requires 'DBIx::ThinSQL::SQLite' => '0.0.10';

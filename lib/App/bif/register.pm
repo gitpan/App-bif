@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 sub run {
     my $opts = shift;
@@ -77,7 +77,7 @@ sub run {
 
                     $client->on_update(
                         sub {
-                            $ctx->lprint("$ctx->{location} (meta): $_[0]");
+                            $ctx->lprint("$ctx->{location}: $_[0]");
                         }
                     );
 
@@ -145,7 +145,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

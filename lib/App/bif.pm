@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -380,15 +380,22 @@ subcmd(
     comment => 'list projects with topic counts and progress',
 );
 
-arg hub => (
-    isa     => 'Str',
-    comment => 'hub to list projects from instead of local',
+arg status => (
+    isa     => 'ArrayRef',
+    greedy  => 1,
+    comment => 'limit the list by status type(s)',
 );
 
-opt status => (
+opt hub => (
     isa     => 'Str',
-    alias   => 's',
-    comment => 'limit to projects with a specifc status',
+    alias   => 'H',
+    comment => 'Limit the list to projects located at HUB',
+);
+
+opt local => (
+    isa     => 'Bool',
+    alias   => 'l',
+    comment => 'limit the list to projects that synchronise.',
 );
 
 # ------------------------------------------------------------------------
@@ -827,7 +834,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 my $stderr;
 my $stderr_watcher;
@@ -29,14 +29,6 @@ sub run {
     $opts->{no_pager}++;    # causes problems with something in Coro?
     my $ctx = App::bif::Context->new($opts);
     my $dbw = $ctx->dbw;
-
-    if ( $opts->{path} ) {
-        foreach my $path ( @{ $opts->{path} } ) {
-            my @p = $dbw->get_projects($path);
-            $ctx->err( 'ProjectNotFound', 'project not found: ' . $path )
-              unless @p;
-        }
-    }
 
     if ( $opts->{hub} ) {
         foreach my $name ( @{ $opts->{hub} } ) {
@@ -105,7 +97,7 @@ sub run {
 
                         $client->on_update(
                             sub {
-                                $ctx->lprint("$hub->{name}         : $_[0]");
+                                $ctx->lprint("$hub->{name}: $_[0]");
                             }
                         );
 
@@ -121,32 +113,14 @@ sub run {
 
                         }
 
-                        $status = $client->transfer_hub_updates;
-                        if ( $status ne 'TransferHubUpdates' ) {
-                            $dbw->rollback;
-                            $error = "unexpected status received: $status";
-                            return cleanup_errors( $hub->{name} );
-                        }
-                        print "\n";
-
-                        my @projects = $dbw->xhashes(
-                            select => [ 'p.id', 'p.path' ],
-                            from   => 'projects p',
-                            where  => {
-                                'p.hub_id' => $hub->{id},
-                                'p.local'  => 1,
-                                $opts->{path}
-                                ? ( 'p.path' => $opts->{path} )
-                                : (),
-                            },
-                            order_by => 'p.path',
-                        );
-
-                        $client->on_update(
-                            sub {
-                                $ctx->lprint("$hub->{name} (topics): $_[0]");
+                        if ( $status eq 'RepoSync' ) {
+                            $status = $client->transfer_hub_updates;
+                            if ( $status ne 'TransferHubUpdates' ) {
+                                $dbw->rollback;
+                                $error = "unexpected status received: $status";
+                                return cleanup_errors( $hub->{name} );
                             }
-                        );
+                        }
 
                         $status = $client->sync_projects;
 
@@ -207,7 +181,7 @@ bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

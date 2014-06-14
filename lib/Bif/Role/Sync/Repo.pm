@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 my %import_functions = (
     NEW => {
@@ -49,7 +49,7 @@ sub recv_hub_deltas {
     my $i   = $total;
     my $got = 0;
 
-    $self->updates_recv("$got/$total");
+    $self->updates_torecv( $self->updates_torecv + $total );
     $self->trigger_on_update;
 
     while ( $got < $total ) {
@@ -84,13 +84,11 @@ sub recv_hub_deltas {
         }
 
         $got++;
-        $self->updates_recv("$got/$total");
+        $self->updates_recv( $self->updates_recv + 1 );
         $self->trigger_on_update;
 
     }
 
-    $self->updates_recv( ( ' ' x length("$got/") ) . $total );
-    $self->trigger_on_update;
     return $total;
 }
 
@@ -186,6 +184,7 @@ sub real_transfer_hub_updates {
             from   => "$tmp t",
         );
 
+        $self->updates_tosend( $self->updates_tosend + $total );
         $self->write( 'TOTAL', $total );
 
         my $update_list = $self->db->xprepare(
@@ -237,6 +236,7 @@ sub real_export_hub {
         where      => { 'rru.hub_id' => $id },
     );
 
+    $self->updates_tosend( $self->updates_tosend + $total );
     $self->write( 'TOTAL', $total );
 
     my $sth = $self->db->xprepare(

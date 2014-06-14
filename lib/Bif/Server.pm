@@ -3,11 +3,12 @@ use strict;
 use warnings;
 use Bif::Mo;
 use Coro::Handle;
+use DBIx::ThinSQL qw/sq/;
 use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 with 'Bif::Role::Sync';
 
@@ -26,9 +27,13 @@ has wh => ( is => 'rw' );
 
 has json => ( is => 'rw', default => sub { JSON->new->utf8 } );
 
-has updates_sent => ( is => 'rw' );
+has updates_tosend => ( is => 'rw', default => 0, );
 
-has updates_recv => ( is => 'rw' );
+has updates_torecv => ( is => 'rw', default => 0, );
+
+has updates_sent => ( is => 'rw', default => 0, );
+
+has updates_recv => ( is => 'rw', default => 0, );
 
 has on_update => (
     is      => 'rw',
@@ -230,7 +235,21 @@ sub import_project {
     }
 
     $self->write( 'IMPORT', 'project', $uuid );
-    return $self->real_import_project($uuid);
+    my $status = $self->real_import_project($uuid);
+
+    $self->db->xdo(
+        update => 'projects',
+        set    => 'local = 1',
+        where  => {
+            id => sq(
+                select => 't.id',
+                from   => 'topics t',
+                where  => { 't.uuid' => $uuid, },
+            ),
+        },
+    );
+
+    return $status;
 }
 
 sub sync_projects {

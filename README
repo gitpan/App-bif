@@ -1,4 +1,4 @@
-Bif Project Management Tool
+About Bif
     Bif is a project management tool with a command-line interface. It helps
     you track tasks, issues and bugs using a local database, exchanging
     updates with remote databases on demand. The tool has several features
@@ -14,8 +14,7 @@ Bif Project Management Tool
         the real world.
 
     This flexibility comes with minimal additional complexity; bif commands
-    are designed for consistency and ease of use. See bif-doc-intro for a
-    very quick hands-on introduction.
+    are designed for consistency and ease of use.
 
     Bif runs on any system that supports Perl and SQLite.
 
@@ -28,6 +27,9 @@ Software Status
     We are actively seeking contributors. See below for how you can help.
 
 Community Organisation
+    Bif is community supported software, and the community expects (and
+    should offer) respectful communication with all of its members.
+
     Website:
         <http://bifax.org/bif/>
 
@@ -41,28 +43,22 @@ Community Organisation
         Subscribe via <http://www.freelists.org/list/bif-devel> and then
         send mail to <bif-devel@freelists.org>.
 
+Installing
+    As a Perl wrapper around an SQLite database, bif depends on several
+    packages from the Comprehensive Perl Archive Network (CPAN
+    <http://cpan.org>). Bif and its dependencies can be easily installed
+    system-wide with the "cpan" tool which is a standard part of Perl.
+
+        #!sh
+        sudo cpan App::bif
+
+    Note that some of the dependencies require a C compiler to build.
+
 Documentation
     The main entry point for reference documentation is the bif manual.
     After installation you should be able to access it by running "bif doc",
     or "perldoc bif", or "man bif". You can also browse the documentation
     online at <http://bifax.org/bif/doc/>.
-
-Installing
-    As a Perl wrapper around an SQLite database, bif depends on several
-    packages from the Comprehensive Perl Archive Network (CPAN
-    <http://cpan.org>). Some of the packages require a C compiler to build.
-
-    Installing bif and its dependencies is easiest with the "cpanm" client
-    which can be installed using "curl" and "perl" as shown below.
-
-        #!sh
-        curl -L http://cpanmin.us | perl - --sudo App::cpanminus
-
-    To build and install bif system-wide simply point "cpanm" at the
-    appropriate release.
-
-        #!sh
-        cpanm --sudo App::bif
 
 Contributing
     You do not have to be a developer to contribute to bif! It is arguable
@@ -126,8 +122,13 @@ Development
 
     Make sure that you have a recent "cpanm" that has the "--with-develop"
     option. The cpanminus packages in the current stable versions of Ubuntu
-    and Debian do not. Development dependencies can then be installed like
-    so:
+    and Debian do not. The latest version can be installed manually using
+    "curl" and "perl" as shown below.
+
+        #!sh
+        curl -L http://cpanmin.us | perl - --sudo App::cpanminus
+
+    Development dependencies can then be installed like so:
 
         #!sh
         cpanm --installdeps --with-develop $PWD

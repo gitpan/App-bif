@@ -5,7 +5,7 @@ management tool does what it does.
 
 =head1 Version
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 Background
 
@@ -57,7 +57,7 @@ To put it another way, the goal of Bif is to provide users with a fully
 functional local issue tracker that interacts with remote instances as
 needed.
 
-=head1 Requirements/Constraints
+=head1 Requirements
 
 Note that some of the distributed requirements for a *project* tracking
 system are actually quite different to the distributed requirements for
@@ -110,11 +110,6 @@ not lose all the benefits associated with database transactions?
 A project history is not a hierarchical tree al-la Git trees. Updates
 can be merged without needing to reparent anything.
 
-=item Universally Unique Identifiers
-
-Necessary for exchanging updates between systems that have their own
-requirements for locally unique identifiers.
-
 =item Locally Unique Integers
 
 We cannot subject users to identifiers that look like abb382f3c.
@@ -155,12 +150,23 @@ to the quality of the documentation.
 
 =back
 
-=head1 Data Model
+=head1 Constraints
 
-=head2 Assumptions
+=over
+
+=item Universally Unique Identifiers
+
+Necessary for exchanging updates between systems that have their own
+requirements for locally unique identifiers.
+
+=back
+
+=head1 Assumptions
 
 We assume that there are relatively few project updates in comparison
 to task and issue updates.
+
+=head1 Data Model
 
 =head2 User Data
 
@@ -170,23 +176,20 @@ status types for all of those. They have columns for a current state if
 applicable, and may have columns that indicate a relationship (e.g.
 projects.hub_id).
 
-There is a table for "updates" that represent changes, but that table
-only contains generic items such as timestamps, author details, and a
-message.
-
-There are tables for $THINGS_deltas, which relate changes to $THINGS
-with a particular update.
-
 There are sometimes tables for many-to-many relationships, such as an
 issue having a different status for each project.
 
-=head3 Updates, or Changesets
+=head2 Updates
 
 A Bif update can actually be composed of many operations in the
 database, but everything relates to a single row in the C<updates>
 table. The updates table has an integer primary key which is used for
 local operations and foreign key targets. It also has a 40 character
 Universally Unique ID (UUID).
+
+There is a table for "updates" that represent changes, but that table
+only contains generic items such as timestamps, author details, and a
+message.
 
 The UUIDs of updates (same for UUIDs of topics) are SHA1 hashes
 calculated from the content of the update (or topic). This provides a
@@ -195,6 +198,12 @@ indicate a full and accurate transfer, and potentially simplifies
 signing updates in the future. The main purposes of the UUID however is
 for looking up local IDs when inserting updates with foreign key
 requirements.
+
+=head2 Deltas
+
+There are tables for $THINGS_deltas, which relate changes to $THINGS
+with a particular update.
+
 
 Operations happen like this:
 
@@ -216,6 +225,13 @@ way we ensure a reliable copy of the data.
 Updates are immutable, and they can't be easily deleted from
 everywhere. For the moment at least. Possibly thinking about updates to
 an update...
+
+=head2 Merging Deltas
+
+One of the actions that takes place when an update is resolved is the
+merging of any received deltas to set the current value of the user's
+project, task or issue status. The merge is very simple: the latest
+result according to the update timestamp wins.
 
 =head2 Meta Data
 
@@ -380,21 +396,20 @@ hub-related updates (which are actually project meta-data) are
 exchanged, then the project-related updates (which are actually task
 and issue data) are exchanged.
 
-=head3 Hub Related Updates Synchronisation
+=head3 Hub Related Updates
 
 Syncing hub-related updates is relatively easy. The
 hub_related_updates_merkle table from each end is recursively compared
-top down (or breadth-first? - need to check) to discover the
-differences, from which a set of updates is stored in a temporary
-table. The updates are then tranferred to the other end in the order
-they were created in the database.
+top down - need to check) to discover the differences, from which a set
+of updates is stored in a temporary table. The updates are then
+tranferred to the other end in the order they were created in the
+database.
 
-=head3 Project Related Updates Synchronisation
+=head3 Project Related Updates
 
 Syncing project-related updates starts out the same way as hub-related
 update synchronisation.  The project_related_updates_merkle table from
-each end is recursively compared top down (or breadth-first? - need to
-check) to discover the differences.
+each end is recursively compared top down to discover the differences.
 
 However, the set of updates which are stored at each end to be
 transferred cannot be directly inferred from the merkle tree because
@@ -404,13 +419,6 @@ issue exists in two projects but only one is local
 
 The updates are then tranferred to the other end in the order they were
 created in the database.
-
-=head2 Merging Deltas
-
-One of the actions that takes place when an update is resolved is the
-merging of any received deltas to set the current value of the user's
-project, task or issue status. The merge is very simple: the latest
-result according to the update timestamp wins.
 
 =head1 Application Architecture
 

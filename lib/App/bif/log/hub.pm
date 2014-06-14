@@ -5,7 +5,7 @@ use App::bif::Context;
 use App::bif::log;
 use locale;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 sub run {
     my $ctx  = App::bif::Context->new(shift);
@@ -76,7 +76,7 @@ bif-log-hub - review the history of a hub
 
 =head1 VERSION
 
-0.1.0_24 (2014-06-13)
+0.1.0_25 (2014-06-14)
 
 =head1 SYNOPSIS
 

@@ -33,7 +33,8 @@ $main::BIF_SHARE_DIR = $SRC_DIR->child('share');
 $main::BIF_DB_NOSYNC = 1;
 
 # Ensure that our test bifsync is found by tests
-$ENV{PATH} = $SRC_DIR->child('t') . ':' . $ENV{PATH};
+die "Cannot find test bifsync" unless -e $SRC_DIR->child(qw/tbin bifsync/);
+$ENV{PATH} = $SRC_DIR->child('tbin') . ':' . $ENV{PATH};
 
 sub run_in_tempdir (&) {
     my $sub = shift;

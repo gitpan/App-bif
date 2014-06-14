@@ -1,17 +1,17 @@
-=head1 A Short Introduction To Bif
+=head1 Introduction To Bif
 
-This is a very quick, very hands-on introduction to the bif project
-management tool.  The examples given here are based on project
-management situations typically encountered by software developers.  It
-is assumed that you are comfortable working with command line programs
-and your operating system shell (e.g. bash).
+Bif is a project management tool with a command-line interface. It
+helps you track tasks, issues and bugs using a local database,
+exchanging updates with remote databases on demand.
 
-For a more thorough approach see the L<bif> manual.  The documentation
-index can be found in L<bif-doc-index>.
+The examples given in this introduction are based on project management
+situations typically encountered by software developers.  It is assumed
+that you are comfortable working with command line programs and your
+operating system shell (e.g. bash).
 
 =head1 Version
 
-0.1.0_24 (2014-06-13)
+This document is based on bif version 0.1.0_25 (2014-06-14).
 
 =begin comment
 

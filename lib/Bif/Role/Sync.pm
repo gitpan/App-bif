@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_24';
+our $VERSION = '0.1.0_25';
 
 with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
 
@@ -47,9 +47,11 @@ sub write {
 sub trigger_on_update {
     my $self = shift;
     $self->on_update->( 'deltas sent: '
-          . ( $self->updates_sent // '' )
+          . ( $self->updates_sent // '' ) . '/'
+          . $self->updates_tosend
           . ' received: '
-          . ( $self->updates_recv // '' ) );
+          . ( $self->updates_recv // '' ) . '/'
+          . $self->updates_torecv );
 }
 
 sub send_updates {
@@ -59,8 +61,6 @@ sub send_updates {
     my $db          = $self->db;
 
     my $sent = 0;
-    $self->updates_sent("$sent/$total");
-    $self->trigger_on_update;
 
     while ( my $update = $update_list->hash ) {
         my $id = delete $update->{id};
@@ -283,12 +283,9 @@ sub send_updates {
         return $sent unless $self->write_parts($parts);
 
         $sent += $update->{ucount};
-        $self->updates_sent("$sent/$total");
+        $self->updates_sent( $self->updates_sent + $update->{ucount} );
         $self->trigger_on_update;
     }
-
-    $self->updates_sent( ( ' ' x length("$sent/") ) . $total );
-    $self->trigger_on_update;
 
     return $sent;
 }
