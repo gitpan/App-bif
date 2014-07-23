@@ -9,11 +9,15 @@ CREATE TABLE updates (
     mtimetz INTEGER NOT NULL
         DEFAULT (strftime('%s','now','localtime') - strftime('%s','now')),
     path VARCHAR,
-    author VARCHAR(255) NOT NULL,
-    email VARCHAR(255) NOT NULL,
+    identity_id INTEGER NOT NULL DEFAULT -1,
+    author VARCHAR(255),
+    email VARCHAR(255),
     lang VARCHAR(8) NOT NULL DEFAULT 'en',
     message text NOT NULL DEFAULT '',
     prefix VARCHAR COLLATE NOCASE,
+    FOREIGN KEY(identity_id) REFERENCES identities(id)
+        ON DELETE CASCADE
+        DEFERRABLE INITIALLY DEFERRED,
     FOREIGN KEY(parent_id) REFERENCES updates(id)
         ON DELETE CASCADE
 );
@@ -108,8 +112,9 @@ BEGIN
     SELECT
         NEW.id,
         'update:' || x'0A'
-            || '  author:' || NEW.author || x'0A'
-            || '  email:' || NEW.email || x'0A'
+            || '  author:' || COALESCE(NEW.author,'') || x'0A'
+            || '  email:' || COALESCE(NEW.email,'') || x'0A'
+            || '  identity_uuid:' || COALESCE(t.uuid,'') || x'0A'
             || '  lang:' || NEW.lang || x'0A'
             || '  message:' || NEW.message || x'0A'
             || '  mtime:' || NEW.mtime || x'0A'
@@ -121,6 +126,10 @@ BEGIN
         updates AS parent
     ON
         parent.id = NEW.parent_id
+    LEFT JOIN
+        topics t
+    ON
+        t.id = NEW.identity_id
     ;
 
 END;
@@ -197,28 +206,38 @@ BEGIN
         id = NEW.id
     ;
 
-    /*
-        First of all add the parents of the list of projects in
-        update_projects for the current update
-
-    INSERT INTO
-        project_related_updates(
-            update_id,
-            project_id
-        )
-    SELECT
-        NEW.id,
-        projects_tree.parent
-    FROM
-        project_related_updates
-    INNER JOIN
-        projects_tree
-    ON
-        projects_tree.child = project_related_updates.project_id
-    WHERE
-        project_related_updates.update_id = NEW.id
-    ;
-    */
-
 END;
 
+/*
+    When an identity is created the initial row in the updates table
+    doesn't have identity_id set. When it does get set then add the
+    uuid for the identity to the pending terms calculation.
+*/
+CREATE TRIGGER
+    updates_au_2
+AFTER UPDATE OF
+    identity_id
+ON
+    updates
+FOR EACH ROW
+BEGIN
+
+    UPDATE
+        updates_pending
+    SET
+        terms = terms || (
+            SELECT
+                'update:' || x'0A'
+                    || '  identity_uuid:' || COALESCE(t.uuid,'') || x'0A'
+            FROM
+                (SELECT 1)
+            LEFT JOIN
+                topics t
+            ON
+                t.id = NEW.identity_id
+        )
+    WHERE
+        update_id = NEW.id
+    ;
+
+END;

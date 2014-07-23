@@ -1,10 +1,11 @@
 package App::bif::Build;
 use strict;
 use warnings;
-$App::bif::Build::VERSION = '0.1.0_25';
-$App::bif::Build::COMMIT = 'd1b396ba3524d59a85fcbabba876221a75eeddf9';
+$App::bif::Build::VERSION = '0.1.0_26';
+$App::bif::Build::COMMIT = 'f2307c8e309ec0332002181ab69fb55fb648220c';
 $App::bif::Build::BRANCH = 'devel';
-$App::bif::Build::DATE = '2014-06-14 12:05:39';
+$App::bif::Build::DATE = '2014-07-23 21:10:22';
+$App::bif::Build::FILE = __FILE__;
 1;
 __END__
 
@@ -14,7 +15,7 @@ App::bif::Build - build-time constants for App-bif
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
@@ -24,17 +25,19 @@ App::bif::Build - build-time constants for App-bif
     #  $App::bif::Build::BRANCH
     #  $App::bif::Build::COMMIT
     #  $App::bif::Build::DATE
+    #  $App::bif::Build::FILE
     #  $App::bif::Build::VERSION
 
 =head1 DESCRIPTION
 
-B<App::bif::Build> is generated when Makefile.PL is run in the bif
-source tree and simply contains 4 scalar variables. The variables are
+B<App::bif::Build> is generated when the App-bif distribution is
+created from the bif
+source tree and simply contains 5 scalar variables. The variables are
 used by the C<bif show VERSION> command to display relevant build
 information.
 
-When this version of App-bif was built the variables were set as
-follows:
+When this version of App-bif was built and installed the variables
+were set as follows:
 
 =over
 
@@ -43,16 +46,21 @@ follows:
 The Git branch name which was current when the App-bif distribution was
 created.
 
-=item $App::bif::Build::COMMIT = "d1b396ba3524d59a85fcbabba876221a75eeddf9"
+=item $App::bif::Build::COMMIT = "f2307c8e309ec0332002181ab69fb55fb648220c"
 
 The Git commit hash at the head of the branch when the App-bif
 distribution was created.
 
-=item $App::bif::Build::DATE = "2014-06-14 12:05:39"
+=item $App::bif::Build::DATE = "2014-07-23 21:10:22"
 
 The UTC date that the Makefile.PL file was run.
 
-=item $App::bif::Build::VERSION = "0.1.0_25"
+=item $App::bif::Build::FILE
+
+The installation location of this module, which cannot be
+documented here as it is only known at runtime.
+
+=item $App::bif::Build::VERSION = "0.1.0_26"
 
 The version of the App-bif distribution.
 

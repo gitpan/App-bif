@@ -25,13 +25,41 @@ BEFORE INSERT ON
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        'hub_related_updates_bi_1',
         NEW.hub_id,
         NEW.update_id,
         NEW.merkled
     );
 
 END;
+
+
+CREATE TRIGGER
+    hub_related_updates_ai_1
+AFTER INSERT ON
+    hub_related_updates
+FOR EACH ROW
+BEGIN
+    SELECT debug(
+        NEW.hub_id,
+        NEW.update_id
+    );
+
+    INSERT INTO
+        hub_entities(
+            hub_id,
+            entity_id
+        )
+    SELECT
+        NEW.hub_id,
+        u.identity_id
+    FROM
+        updates u
+    WHERE
+        u.id = NEW.update_id
+    ;
+
+END;
+
 
 CREATE TRIGGER
     hub_related_updates_bu_1

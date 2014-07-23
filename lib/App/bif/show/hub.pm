@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use App::bif::show;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 my $yellow = '';
 
@@ -65,7 +65,7 @@ bif-show-hub - display a hub's current status
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

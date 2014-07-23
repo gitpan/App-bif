@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -17,7 +17,7 @@ sub run {
     }
 
     if ( $info->{update_id} ) {
-        $ctx->update_repo(
+        $ctx->update_localhub(
             {
                     message => 'drop '
                   . $info->{kind} . ' '
@@ -36,7 +36,7 @@ sub run {
         $ctx->ok( 'Drop' . ucfirst( $info->{kind} ) . 'Update', $info );
     }
     else {
-        $ctx->update_repo(
+        $ctx->update_localhub(
             {
                 message => 'drop ' . $info->{kind} . ' ' . $info->{id},
             }
@@ -61,7 +61,7 @@ bif-drop - delete a topic or topic update
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

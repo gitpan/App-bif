@@ -1,4 +1,4 @@
-package App::bif::import;
+package App::bif::pull::project;
 use strict;
 use warnings;
 use App::bif::Context;
@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 my $stderr;
 my $stderr_watcher;
@@ -53,7 +53,7 @@ sub run {
         push( @pinfo, $pinfo );
     }
 
-    return $ctx->ok('Import')
+    return $ctx->ok('PullProject')
       unless @pinfo;
 
     $|++;    # no buffering
@@ -61,11 +61,11 @@ sub run {
     my $cv = AE::cv;
 
     my $client = Bif::Client->new(
-        db       => $db,
-        location => $hub->{location},
-        debug    => $ctx->{debug},
-        debug_bs => $ctx->{debug_bs},
-        on_error => sub {
+        db            => $db,
+        location      => $hub->{location},
+        debug         => $ctx->{debug},
+        debug_bifsync => $ctx->{debug_bifsync},
+        on_error      => sub {
             $error = shift;
             $cv->send;
         },
@@ -86,10 +86,10 @@ sub run {
         eval {
             $db->txn(
                 sub {
-                    $ctx->update_repo(
+                    $ctx->update_localhub(
                         {
                             message =>
-                              "import @{$ctx->{path}} $hub->{location}",
+                              "pull project @{$ctx->{path}} $hub->{location}",
                         }
                     );
 
@@ -161,7 +161,7 @@ sub run {
 
     if ( $cv->recv ) {
         $db->do('ANALYZE');
-        return $ctx->ok('Import');
+        return $ctx->ok('PullProject');
     }
 
     return $ctx->err( 'Unknown', $error );
@@ -172,22 +172,22 @@ __END__
 
 =head1 NAME
 
-bif-import -  import projects from a remote hub
+bif-pull-project -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
-    bif import PATH... HUB
+    bif pull project PATH... HUB
 
 =head1 DESCRIPTION
 
-Import projects from a hub. If are project has been imported, then it
-is considered "local". If it has not been imported then we call it
-"non-local". A project that we have visibility of but have not
-registered the hub for we call "remote."
+The C<bif pull project> command imports projects from a hub. If a
+project has been imported, then it is considered "local". If it has not
+been imported then we call it "non-local". A project that we have
+visibility of but have not registered the hub for we call "remote."
 
 =head1 ARGUMENTS
 

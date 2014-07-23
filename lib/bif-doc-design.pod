@@ -5,7 +5,7 @@ management tool does what it does.
 
 =head1 Version
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 Background
 
@@ -353,9 +353,9 @@ user can see what projects are available on the hub.
 
 =head2 Project Export
 
-The first part of a project export is a local operation. The local
-project-only updates are added to hub_related_updates. The next time a
-hub sync happens the details will be transferred across.
+The first part of a project export (push) is a local operation. The
+local project-only updates are added to hub_related_updates. The next
+time a hub sync happens the details will be transferred across.
 
 =begin graph-easy
 

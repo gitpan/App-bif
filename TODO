@@ -1,20 +1,32 @@
-* After being exported to a hub does a project need to keep
+* Record update_id created by each command in
+repo_deltas.first_update_id and repo_deltas.last_update_id. Then "show
+$SOMETHING repo.update_id" can indicate the changes that occured when a
+"sync" was performed. Or maybe "bif list sync-updates". Perhaps "bif
+log repo" should be renamed to "bif list repo-updates"? or just "bif
+list updates"
+
+* Show related projects in "show project"
+
+* Remove unused func_new_task.message
+
+* Properly fix the whole reply/update mess
+
+* After being pushed to a hub does a project need to keep
 hub_related_updates for the local hub?
 
 * Don't print Hub: lines for "show project" when project has no (or
 local) hub.
 
 * Think about the difference in transactions between clients and
-servers. For example, an export can fail due to an issue/task problem,
-but at the moment Bif::Server will commit the addition of the project
-to its hub_related_updates table while the client doesn't. One solution
-is possibly to dynamically generate and sync the hub merkle tree based
-on ... project_only_updates_merkle if it existed? We might want that
-table anyway because of shallow exports for hub-to-hub cooperation.
+servers. For example, a project push can fail due to an issue/task
+problem, but at the moment Bif::Server will commit the addition of the
+project to its hub_related_updates table while the client doesn't. One
+solution is possibly to dynamically generate and sync the hub merkle
+tree based on ... project_only_updates_merkle if it existed? We might
+want that table anyway because of shallow exports for hub-to-hub
+cooperation.
 
 * Hide IDs in show issue for projects that are not local.
-
-* Rename Bif::Client->debug_bs to debug_bifsync
 
 * Use Test::Kit[2]
 
@@ -137,7 +149,7 @@ desired behaviour?
         #  With a self hosted hub server (defaults to bif@mydomain..)
         bif register mydomain.com [mydomain]
 
-        bif export todo org
+        bif push project todo org
         bif push 39 libdata-uuid debian.org
         bif mv 39 libdata-uuid/version debian.org
         bif push 441 project/subproject org
@@ -167,7 +179,7 @@ desired behaviour?
     # - copy public key to ssh://signup@bifhub.com
     # - bif import --type hub bifhub.com ssh://bifhub.com
     # - bif new account --from-contact $CONTACT_ID
-    # - bif export $ACCOUNT_ID bifhub.com
+    # - bif push project $ACCOUNT_ID bifhub.com
     # - Confirmation key sent to email address
 
     bifhub list [providers] [--contact $ID]
@@ -241,8 +253,8 @@ the following for inspiration:
 * Subtasks are probably useful. What do they look like? How do they
  relate? See https://trello.com/tour for a checklist idea. Need to
  think about tasks that have multiple interested parties, and if you
- push a task can it be treated like an export (one status everywhere),
- instead of like an issue (multiple status).
+ push a task can it be treated like a project push (one status
+ everywhere), instead of like an issue (multiple status).
 
 * Use File::UserConfig
 

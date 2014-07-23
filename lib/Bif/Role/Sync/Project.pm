@@ -6,25 +6,31 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 my %import_functions = (
     NEW => {
-        issue          => 'func_import_issue',
-        issue_status   => 'func_import_issue_status',
-        project        => 'func_import_project',
-        project_status => 'func_import_project_status',
-        task           => 'func_import_task',
-        task_status    => 'func_import_task_status',
-        update         => 'func_import_update',
+        entity                => 'func_import_entity',
+        entity_contact_method => 'func_import_entity_contact_method',
+        identity              => 'func_import_identity',
+        issue                 => 'func_import_issue',
+        issue_status          => 'func_import_issue_status',
+        project               => 'func_import_project',
+        project_status        => 'func_import_project_status',
+        task                  => 'func_import_task',
+        task_status           => 'func_import_task_status',
+        update                => 'func_import_update',
     },
     UPDATE => {
-        issue          => 'func_import_issue_delta',
-        issue_status   => 'func_import_issue_status_delta',
-        project        => 'func_import_project_delta',
-        project_status => 'func_import_project_status_delta',
-        task           => 'func_import_task_delta',
-        task_status    => 'func_import_task_status_delta',
+        entity                => 'func_import_entity_delta',
+        entity_contact_method => 'func_import_entity_contact_method_delta',
+        identity              => 'func_import_identity_delta',
+        issue                 => 'func_import_issue_delta',
+        issue_status          => 'func_import_issue_status_delta',
+        project               => 'func_import_project_delta',
+        project_status        => 'func_import_project_status_delta',
+        task                  => 'func_import_task_delta',
+        task_status           => 'func_import_task_status_delta',
     },
     QUIT   => {},
     CANCEL => {},
@@ -32,7 +38,6 @@ my %import_functions = (
 
 sub recv_project_deltas {
     my $self = shift;
-    my $uuid = shift;
     my $db   = $self->db;
 
     my ( $action, $total ) = $self->read;
@@ -60,28 +65,49 @@ sub recv_project_deltas {
             return "not implemented: $action $type";
         }
 
-        if ( $action eq 'NEW' and $type eq 'update' ) {
-            $ucount = delete $ref->{ucount};
-        }
-
         my $func = $import_functions{$action}->{$type};
 
-        # This should be a savepoint?
-        $db->xdo(
-            insert_into => $func,
-            values      => $ref,
-        );
+        my $id;
+        if ( $action eq 'NEW' and $type eq 'update' ) {
+            $ucount = delete $ref->{ucount};
 
-        $ucount--;
-        if ( 0 == $ucount ) {
-            $db->xdo(
-                insert_into => 'func_merge_updates',
-                values      => { merge => 1 },
+            ($id) = $db->xarray(
+                select => 'u.id',
+                from   => 'updates u',
+                where  => { 'u.uuid' => $ref->{uuid} },
             );
         }
 
         $got++;
+        $ucount--;
         $self->updates_recv( $self->updates_recv + 1 );
+
+        # If we already have this update then skip the rest of the
+        # deltas
+        if ($id) {
+            while ($ucount) {
+                $self->read;
+                $got++;
+                $ucount--;
+                $self->updates_recv( $self->updates_recv + 1 );
+            }
+        }
+        else {
+
+            # This should be a savepoint?
+            my $res = $db->xdo(
+                insert_into => $func,
+                values      => $ref,
+            );
+
+            if ( 0 == $ucount ) {
+                $db->xdo(
+                    insert_into => 'func_merge_updates',
+                    values      => { merge => 1 },
+                );
+            }
+        }
+
         $self->trigger_on_update;
     }
 
@@ -216,14 +242,17 @@ sub real_transfer_project_related_updates {
         my $update_list = $self->db->xprepare(
             select => [
                 'u.id',                  'u.uuid',
-                'p.uuid AS parent_uuid', 'u.mtime',
-                'u.mtimetz',             'u.author',
-                'u.email',               'u.lang',
-                'u.message',             'u.ucount',
+                'p.uuid AS parent_uuid', 't.uuid AS identity_uuid',
+                'u.mtime',               'u.mtimetz',
+                'u.author',              'u.email',
+                'u.lang',                'u.message',
+                'u.ucount',
             ],
-            from       => "$tmp t",
+            from       => "$tmp tmp",
             inner_join => 'updates u',
-            on         => 'u.id = t.id',
+            on         => 'u.id = tmp.id',
+            inner_join => 'topics t',
+            on         => 't.id = u.identity_id',
             left_join  => 'updates p',
             on         => 'p.id = u.parent_id',
             order_by   => 'u.id ASC',
@@ -269,14 +298,17 @@ sub real_export_project {
     my $sth = $self->db->xprepare(
         select => [
             'updates.id',                  'updates.uuid',
-            'parents.uuid AS parent_uuid', 'updates.mtime',
-            'updates.mtimetz',             'updates.author',
-            'updates.email',               'updates.lang',
-            'updates.message',             'updates.ucount',
+            'parents.uuid AS parent_uuid', 't.uuid AS identity_uuid',
+            'updates.mtime',               'updates.mtimetz',
+            'updates.author',              'updates.email',
+            'updates.lang',                'updates.message',
+            'updates.ucount',
         ],
         from       => 'project_related_updates AS pru',
         inner_join => 'updates',
         on         => 'updates.id = pru.update_id',
+        inner_join => 'topics t',
+        on         => 't.id = u.identity_id',
         left_join  => 'updates AS parents',
         on         => 'parents.id = updates.parent_id',
         where      => { 'pru.project_id' => $id },

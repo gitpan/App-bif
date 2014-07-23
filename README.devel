@@ -1,0 +1,81 @@
+README.devel - how to hack on bif
+---------------------------------
+
+Congratulations on checking out the bif repository, and thanks for
+taking the time and effort to contribute something back to the
+community.
+
+Dependencies
+------------
+
+We recommend the use of direnv (http://direnv.net) to keep bif
+development dependencies away from the rest of your system. Once you
+have that installed you can allow the local .envrc file from your copy
+of the Git repository:
+
+    direnv allow .
+
+To build directly from the Git repository you need to install
+dependencies using a cpanm that has the --with-develop option. The
+cpanminus packages in the current stable versions of Ubuntu and Debian
+do not. The latest cpanm version can be installed manually using curl
+and perl as shown below.
+
+    curl -L http://cpanmin.us | perl - --sudo App::cpanminus
+
+Development dependencies can then be installed like so:
+
+    cpanm --installdeps --with-develop $PWD
+
+Tidy Code
+---------
+
+All Perl and POD content is expected to be "tidy" according to the
+.perltidyrc and .podtidy-opts files in the source tree. The easiest way
+to ensure this happens on commit is to run githook-perltidy
+(automatically installed as one of the --with-develop dependencies):
+
+    githook-perltidy install
+
+Development bif script
+----------------------
+
+A test bif script is created in the tbin/ directory when you run
+Makefile.PL.
+
+    perl Makefile.PL
+    export PATH=$PWD/tbin:$PATH    # if you don't use direnv
+    which bif                      # tbin/bif
+
+The great thing about direnv is that the local tbin/bif will be used
+when your current directory is in the repository, but not when you are
+elsewhere.
+
+Personal Git Branches
+---------------------
+
+We encourage personal development branches in the git repository. Send
+a request to the mailing list with your *public* ssh key (something
+like $HOME/.ssh/id_rsa.pub) and your desired USERNAME (branch name).
+Once the permissions are configured on the server then you can do
+something like the following:
+
+    # Tell git to use ssh authentication
+    git config remote.origin.url ssh://git@bifax.org:bif.git
+
+    # Create your own feature branch
+    git checkout -b u/USERNAME/feature devel
+
+    # $EDIT files
+    git commit
+
+    # Rebase your tree against most recent devel
+    git fetch
+    git rebase origin/devel
+
+    # Upload and tell the mailing list what you have done
+    git push --force origin u/USERNAME/feature
+
+This allows anyone who clones the repository to see, modify and merge
+your work from the command line, without having to visit a website to
+find where all the forks are.

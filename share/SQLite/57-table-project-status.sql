@@ -10,29 +10,22 @@ CREATE TABLE project_status (
 );
 
 CREATE TRIGGER
-    project_status_bi_1
-BEFORE INSERT ON
-    project_status
-FOR EACH ROW
-BEGIN
-    SELECT debug(
-        'TRIGGER project_status_bi_1',
-        NEW.id,
-        NEW.project_id,
-        NEW.status,
-        NEW.rank
-    );
-END;
-
-CREATE TRIGGER
     project_status_ad_1
 AFTER DELETE ON
     project_status
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        OLD.id
+        OLD.id,
+        OLD.status
     );
+
+    /*
+        The following is necessary, because although FK relationships
+        do result in the remove of rows from project_status_tomerge, the
+        deletion of rows from project_status_deltas just inserts more
+        rows.
+    */
 
     DELETE FROM
         project_status_tomerge
@@ -40,16 +33,5 @@ BEGIN
         project_status_id = OLD.id
     ;
 
-    DELETE FROM
-        updates
-    WHERE
-        id = (
-            SELECT
-                first_update_id
-            FROM
-                topics
-            WHERE
-                id = OLD.id
-        )
-    ;
 END;
+

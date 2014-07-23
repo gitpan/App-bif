@@ -64,7 +64,7 @@ run_in_tempdir {
     #    hub( qw/update/, $iinfo->{id}, qw/-m m2/ );
 
     isa_ok bif2( qw/register/, '../hub' ), 'Bif::OK::Register';
-    bif2(qw/export todo hub/);
+    bif2(qw/push project todo hub/);
 
     isa_ok bif(qw/register hub/), 'Bif::OK::Register';
     my $list = bif(qw/list hubs/);

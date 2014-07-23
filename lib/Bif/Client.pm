@@ -4,11 +4,12 @@ use warnings;
 use AnyEvent;
 use Bif::Mo;
 use Coro::Handle;
+use DBIx::ThinSQL qw/sq/;
 use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 with 'Bif::Role::Sync';
 
@@ -21,13 +22,24 @@ has debug => ( is => 'ro' );
 
 has location => ( is => 'ro', );
 
-has hub_id => ( is => 'rw', );
+has hub_id => (
+    is      => 'rw',
+    default => sub {
+        my $self = shift;
+        my ($hub_id) = $self->db->xarray(
+            select => 'hr.hub_id',
+            from   => 'hub_repos hr',
+            where  => { 'hr.location' => $self->location },
+        );
+        return $hub_id;
+    },
+);
 
 has child => ( is => 'rw' );
 
 has child_watcher => ( is => 'rw' );
 
-has debug_bs => ( is => 'ro' );
+has debug_bifsync => ( is => 'ro' );
 
 has updates_tosend => ( is => 'rw', default => 0 );
 
@@ -55,6 +67,18 @@ has on_error => ( is => 'ro', required => 1 );
 has temp_table => (
     is       => 'rw',
     init_arg => undef,
+    default  => sub {
+        my $self = shift;
+        my $tmp = 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) );
+
+        $self->db->do( "CREATE TEMPORARY TABLE "
+              . $tmp . "("
+              . "id INTEGER UNIQUE ON CONFLICT IGNORE,"
+              . "ucount INTEGER"
+              . ")" );
+
+        return $tmp;
+    },
 );
 
 sub BUILD {
@@ -62,34 +86,20 @@ sub BUILD {
 
     if ( $self->location =~ m!^ssh://(.+)! ) {
         $self->child(
-            spawn( 'ssh', $1, 'bifsync', $self->debug_bs ? '--debug' : (), ) );
+            spawn( 'ssh', $1, 'bifsync', $self->debug_bifsync ? '--debug' : (),
+            )
+        );
     }
     else {
         $self->child(
             spawn(
-                  'bifsync', $self->debug_bs
+                  'bifsync', $self->debug_bifsync
                 ? '--debug'
                 : (),
                 $self->location
             )
         );
     }
-
-    $self->hub_id(
-        $self->db->xarray(
-            select => 'hr.hub_id',
-            from   => 'hub_repos hr',
-            where  => { 'hr.location' => $self->location },
-        )
-    );
-
-    $self->temp_table( 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) ) );
-
-    $self->db->do( "CREATE TEMPORARY TABLE "
-          . $self->temp_table . "("
-          . "id INTEGER UNIQUE ON CONFLICT IGNORE,"
-          . "ucount INTEGER"
-          . ")" );
 
     $self->child_watcher(
         AE::child $self->child->pid,
@@ -105,6 +115,43 @@ sub BUILD {
 
     $self->json->pretty if $self->debug;
     return;
+}
+
+sub bootstrap_identity {
+    my $self = shift;
+
+    $self->write( 'IMPORT', 'self' );
+
+    my ( $action, $type, $uuid ) = $self->read;
+    return $action
+      unless ( $action eq 'EXPORT' and $type eq 'identity', and $uuid );
+
+    my $status = $self->real_import_identity;
+    return $status unless $status eq 'IdentityImported';
+
+    my $dbw = $self->db;
+    my ( $iid, $uid ) = $dbw->xarray(
+        select     => [ 't.id', 't.first_update_id' ],
+        from       => 'topics t',
+        inner_join => 'identities i',
+        on         => 'i.id = t.id',
+        where => { 't.uuid' => $uuid, },
+    );
+
+    return 'IdentityNotImported' unless $iid;
+
+    $dbw->xdo(
+        insert_into => 'identity_self',
+        values      => { id => $iid },
+    );
+
+    $dbw->xdo(
+        update => 'updates',
+        set    => { identity_id => $iid },
+        where  => { id => $uid },
+    );
+
+    return $status;
 }
 
 sub register {
@@ -271,7 +318,7 @@ Bif::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
@@ -319,7 +366,7 @@ B<Bif::Client> is a class for communicating with a bif hub.
 
 =item child_watcher
 
-=item debug_bs
+=item debug_bifsync
 
 =item hub_id
 

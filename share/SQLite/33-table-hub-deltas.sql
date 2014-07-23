@@ -86,10 +86,10 @@ BEGIN
     ;
 
     INSERT OR IGNORE INTO
-        hub_tomerge(hub_id) VALUES (NEW.hub_id);
+        hubs_tomerge(hub_id) VALUES (NEW.hub_id);
 
     UPDATE
-        hub_tomerge
+        hubs_tomerge
     SET
         name = name + (NEW.name IS NOT NULL)
     WHERE
@@ -111,10 +111,10 @@ BEGIN
     );
 
     INSERT OR IGNORE INTO
-        hub_tomerge(hub_id) VALUES (OLD.hub_id);
+        hubs_tomerge(hub_id) VALUES (OLD.hub_id);
 
     UPDATE
-        hub_tomerge
+        hubs_tomerge
     SET
         name = name + (OLD.name IS NOT NULL)
     WHERE

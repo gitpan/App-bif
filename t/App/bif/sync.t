@@ -27,7 +27,7 @@ run_in_tempdir {
     bif(qw/init bif2/);
     bif2(qw!register ../hub!);
     my $pinfo = bif2(qw/new project todo title -m m1/);
-    bif2(qw/export todo hub/);
+    bif2(qw/push project todo hub/);
 
     isa_ok bif(qw/sync -m m2/), 'Bif::OK::Sync';
     isa_ok exception { bif(qw/show todo/) }, 'Bif::Error::TopicNotFound';
@@ -35,7 +35,7 @@ run_in_tempdir {
 
     bif2(qw/update todo -m m3/);
 
-    bif(qw/import todo hub/);
+    bif(qw/pull project todo hub/);
     isa_ok bif2(qw/sync -m m4/), 'Bif::OK::Sync';
     isa_ok bif(qw/sync -m m5/),  'Bif::OK::Sync';
 

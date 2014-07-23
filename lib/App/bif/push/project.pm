@@ -1,4 +1,4 @@
-package App::bif::export;
+package App::bif::push::project;
 use strict;
 use warnings;
 use App::bif::Context;
@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 my $stderr;
 my $stderr_watcher;
@@ -63,7 +63,7 @@ sub run {
         push( @new_pinfo, $pinfo );
     }
 
-    return $ctx->ok('Export') unless @new_pinfo;
+    return $ctx->ok('PushProject') unless @new_pinfo;
     @pinfo = @new_pinfo;
 
     $|++;    # no buffering
@@ -71,11 +71,11 @@ sub run {
     my $cv = AE::cv;
 
     my $client = Bif::Client->new(
-        db       => $db,
-        location => $hub->{location},
-        debug    => $ctx->{debug},
-        debug_bs => $ctx->{debug_bs},
-        on_error => sub {
+        db            => $db,
+        location      => $hub->{location},
+        debug         => $ctx->{debug},
+        debug_bifsync => $ctx->{debug_bifsync},
+        on_error      => sub {
             $error = shift;
             $cv->send;
         },
@@ -96,25 +96,18 @@ sub run {
         eval {
             $db->txn(
                 sub {
-                    $ctx->update_repo(
+                    $ctx->update_localhub(
                         {
                             related_update_id => $ctx->{update_id},
                             message =>
-                              "export @{$ctx->{path}} $hub->{location}",
+                              "push project @{$ctx->{path}} $hub->{location}",
                         }
                     );
 
                     foreach my $pinfo (@pinfo) {
-                        my $uid = $db->nextval('updates');
-                        $db->xdo(
-                            insert_into => 'updates',
-                            values      => {
-                                id        => $uid,
-                                parent_id => $hub->{first_update_id},
-                                author    => $ctx->{user}->{name},
-                                email     => $ctx->{user}->{email},
-                                message   => "Imported $pinfo->{path}",
-                            },
+                        my $uid = $ctx->new_update(
+                            parent_id => $hub->{first_update_id},
+                            message   => "Imported $pinfo->{path}",
                         );
 
                         $db->xdo(
@@ -129,27 +122,19 @@ sub run {
                         $db->xdo(
                             delete_from => 'hub_related_projects',
                             where       => {
-                                hub_id     => $db->get_local_hub_id,
+                                hub_id     => $db->get_localhub_id,
                                 project_id => $pinfo->{id},
                             },
                         );
 
-                        my $msg = "[Exported to $hub->{location}]";
+                        my $msg = "[ push: $hub->{location} ($hub->{name}) ]";
                         if ( $ctx->{message} ) {
                             $msg .= "\n\n$ctx->{message}\n";
                         }
 
-                        $ctx->{update_id} = $db->nextval('updates');
-
-                        $db->xdo(
-                            insert_into => 'updates',
-                            values      => {
-                                id        => $ctx->{update_id},
-                                parent_id => $pinfo->{first_update_id},
-                                author    => $ctx->{user}->{name},
-                                email     => $ctx->{user}->{email},
-                                message   => $msg,
-                            },
+                        $ctx->{update_id} = $ctx->new_update(
+                            parent_id => $pinfo->{first_update_id},
+                            message   => $msg,
                         );
 
                         $db->xdo(
@@ -221,7 +206,7 @@ sub run {
 
     if ( $cv->recv ) {
         print "Project(s) exported: @{ $ctx->{path} }\n";
-        return $ctx->ok('Export');
+        return $ctx->ok('PushProject');
     }
     return $ctx->err( 'Unknown', $error );
 }
@@ -231,19 +216,19 @@ __END__
 
 =head1 NAME
 
-bif-export -  export a project to a remote hub
+bif-push-project -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
-    bif export PATH... HUB [OPTIONS...]
+    bif push project PATH... HUB [OPTIONS...]
 
 =head1 DESCRIPTION
 
-Export a project to a hub.
+The C<bif push project> command exports a project to a hub.
 
 =head1 ARGUMENTS & OPTIONS
 

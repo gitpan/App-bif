@@ -4,8 +4,9 @@ use warnings;
 use utf8;
 use App::bif::Context;
 use DBIx::ThinSQL qw/ qv sq case concat /;
+use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub _invalid_status {
     my $self   = shift;
@@ -79,7 +80,7 @@ sub run {
         $data = _get_data2($ctx);
     }
 
-    return $ctx->ok('ListProjects') unless @$data;
+    return $ctx->ok('ListProjects') unless $data;
 
     require Term::ANSIColor;
     my $dark  = Term::ANSIColor::color('dark');
@@ -89,14 +90,14 @@ sub run {
     foreach my $i ( 0 .. $#$data ) {
         my $row = $data->[$i];
         if ( !$row->[7] ) {
-            $row->[0] = $dark . $row->[0];
+            $row->[1] = $dark . $row->[1];
             $row->[4] = $row->[5] = $row->[6] = '*';
             $row->[6] = '*' . $reset;
         }
         else {
             if ( $row->[6] ) {
                 $row->[6] =
-                  int( 100 * $row->[6] / ( $row->[6] + $row->[4] + $row->[5] ) )
+                  int( 100 * $row->[6] / ( $row->[6] + $row->[5] + $row->[4] ) )
                   . '%';
             }
             else {
@@ -110,11 +111,8 @@ sub run {
     $ctx->start_pager( scalar @$data );
 
     print $ctx->render_table(
-        ' l  l  l  l  r r rl',
-        [
-            'Project', 'Hub',     'Title',    'Phase',
-            'Open',    'Stalled', 'Progress', ''
-        ],
+        ' l l  l  l  r r rl',
+        [ 'Type', 'Path', 'Title', 'Phase', 'Open', 'Stalled', 'Progress', '' ],
         $data
     );
 
@@ -125,14 +123,15 @@ sub run {
 
 sub _get_data {
     my $ctx = shift;
+
     return $ctx->db->xarrays(
         select => [
-            'p.path',
+            qv( color('dark') . 'project' . color('reset') )->as('type'),
             case (
-                when => 'h.id IS NOT NULL',
-                then => 'h.name',
-                else => qv(''),
-              )->as('hub'),
+                when => 'h.local',
+                then => 'p.path',
+                else => 'h.name || ":" || p.path',
+              )->as('xpath'),
             'p.title',
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
@@ -247,20 +246,21 @@ sub _get_data {
         on       => 'p.id = total.id',
         where    => { 'hrp.hub_id' => $ctx->{hub_id} },
         group_by => [ 'p.path', 'p.title', 'project_status.status', ],
-        order_by => 'p.path',
+        order_by => "REPLACE(xpath,':',' ')",
     );
 }
 
 sub _get_data2 {
     my $ctx = shift;
+
     return $ctx->db->xarrays(
         select => [
-            'p.path',
+            qv( color('dark') . 'project' . color('reset') )->as('type'),
             case (
-                when => 'h.id IS NOT NULL',
-                then => 'h.name',
-                else => qv(''),
-              )->as('hub'),
+                when => 'h.local',
+                then => 'p.path',
+                else => 'h.name || ":" || p.path',
+              )->as('xpath'),
             'p.title',
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
@@ -359,8 +359,8 @@ sub _get_data2 {
                 ();
             }
         },
-        group_by => [ 'p.path', 'p.title', 'project_status.status', ],
-        order_by => 'p.path',
+        group_by => [ 'path', 'p.title', 'project_status.status', ],
+        order_by => "REPLACE(xpath,':',' ')",
     );
 }
 
@@ -374,7 +374,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

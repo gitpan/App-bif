@@ -8,7 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-my $VERSION = '0.1.0_25';
+my $VERSION = '0.1.0_26';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -20,6 +20,8 @@ repository 'git://bifax.org/bif.git/';
 
 version $VERSION;
 perl_version '5.010';
+
+readme_from 'README.pod';
 
 install_share 'share';
 install_script 'bin/bif';
@@ -109,6 +111,7 @@ HIDDEN\$App::bif::Build::VERSION = '$VERSION';
 HIDDEN\$App::bif::Build::COMMIT = '$commit';
 HIDDEN\$App::bif::Build::BRANCH = '$branch';
 HIDDEN\$App::bif::Build::DATE = '$when';
+HIDDEN\$App::bif::Build::FILE = __FILE__;
 HIDDEN1;
 HIDDEN__END__
 HIDDEN
@@ -118,7 +121,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_25 (2014-06-14)
+HIDDEN0.1.0_26 (2014-07-23)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN
@@ -128,17 +131,19 @@ HIDDEN    # Do something with:
 HIDDEN    #  \$App::bif::Build::BRANCH
 HIDDEN    #  \$App::bif::Build::COMMIT
 HIDDEN    #  \$App::bif::Build::DATE
+HIDDEN    #  \$App::bif::Build::FILE
 HIDDEN    #  \$App::bif::Build::VERSION
 HIDDEN
 HIDDEN=head1 DESCRIPTION
 HIDDEN
-HIDDENB<App::bif::Build> is generated when Makefile.PL is run in the bif
-HIDDENsource tree and simply contains 4 scalar variables. The variables are
+HIDDENB<App::bif::Build> is generated when the App-bif distribution is
+HIDDENcreated from the bif
+HIDDENsource tree and simply contains 5 scalar variables. The variables are
 HIDDENused by the C<bif show VERSION> command to display relevant build
 HIDDENinformation.
 HIDDEN
-HIDDENWhen this version of App-bif was built the variables were set as
-HIDDENfollows:
+HIDDENWhen this version of App-bif was built and installed the variables
+HIDDENwere set as follows:
 HIDDEN
 HIDDEN=over
 HIDDEN
@@ -155,6 +160,11 @@ HIDDEN
 HIDDEN=item \$App::bif::Build::DATE = "$when"
 HIDDEN
 HIDDENThe UTC date that the Makefile.PL file was run.
+HIDDEN
+HIDDEN=item \$App::bif::Build::FILE
+HIDDEN
+HIDDENThe installation location of this module, which cannot be
+HIDDENdocumented here as it is only known at runtime.
 HIDDEN
 HIDDEN=item \$App::bif::Build::VERSION = "$VERSION"
 HIDDEN

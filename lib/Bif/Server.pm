@@ -8,7 +8,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 with 'Bif::Role::Sync';
 
@@ -59,6 +59,7 @@ my %METHODS = (
     IMPORT => {
         hub     => 'export_hub',
         project => 'sync_project',
+        self    => 'export_self',
     },
     SYNC => {
         hub      => 'sync_hub',
@@ -74,7 +75,7 @@ my %METHODS = (
 sub BUILD {
     my $self = shift;
     $self->json->pretty if $self->debug;
-    $self->hub_id( $self->db->get_local_hub_id );
+    $self->hub_id( $self->db->get_localhub_id );
 }
 
 sub run {
@@ -155,10 +156,30 @@ sub run {
     return;
 }
 
+sub export_self {
+    my $self = shift;
+    my $db   = $self->db;
+
+    my ( $id, $uuid ) = $db->xarray(
+        select     => [ 'ids.id', 't.uuid' ],
+        from       => 'identity_self ids',
+        inner_join => 'topics t',
+        on         => 't.id = ids.id',
+    );
+
+    if ( !$uuid ) {
+        $self->write( 'SelfNotFound', 'self identity not found here' );
+        return 'SelfNotFound';
+    }
+
+    $self->write( 'EXPORT', 'identity', $uuid );
+    return $self->real_export_identity($id);
+}
+
 sub export_hub {
     my $self = shift;
     my $db   = $self->db;
-    my $id   = shift || $db->get_local_hub_id;
+    my $id   = shift || $db->get_localhub_id;
 
     my ($uuid) = $db->xarray(
         select => 't.uuid',

@@ -1,6 +1,7 @@
 CREATE TABLE func_import_update(
     uuid char(40) NOT NULL, -- to check later?
     parent_uuid VARCHAR(40),
+    identity_uuid VARCHAR(40),
     author VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
     lang VARCHAR(8) NOT NULL,
@@ -21,6 +22,7 @@ BEGIN
         'TRIGGER func_import_update_bi_1',
         NEW.uuid,
         NEW.parent_uuid,
+        NEW.identity_uuid,
         NEW.author,
         NEW.email,
         NEW.mtime,
@@ -33,6 +35,7 @@ BEGIN
             id,
             uuid,
             parent_id,
+            identity_id,
             author,
             email,
             mtime,
@@ -44,6 +47,7 @@ BEGIN
         nextval('updates'),
         NEW.uuid,
         updates.id,
+        COALESCE(t.id,-1),
         NEW.author,
         NEW.email,
         NEW.mtime,
@@ -56,6 +60,10 @@ BEGIN
         updates
     ON
         updates.uuid = NEW.parent_uuid
+    LEFT JOIN
+        topics t
+    ON
+        t.uuid = NEW.identity_uuid
     ;
 
     SELECT RAISE(IGNORE);

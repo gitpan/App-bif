@@ -70,8 +70,16 @@ AFTER DELETE ON
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        OLD.id
+        OLD.id,
+        OLD.status
     );
+
+    /*
+        The following is necessary, because although FK relationships
+        do result in the remove of rows from issue_status_tomerge, the
+        deletion of rows from issue_status_deltas just inserts more
+        rows.
+    */
 
     DELETE FROM
         issue_status_tomerge
@@ -79,16 +87,5 @@ BEGIN
         issue_status_id = OLD.id
     ;
 
-    DELETE FROM
-        updates
-    WHERE
-        id = (
-            SELECT
-                first_update_id
-            FROM
-                topics
-            WHERE
-                id = OLD.id
-        )
-    ;
 END;
+

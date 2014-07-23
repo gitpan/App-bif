@@ -116,7 +116,7 @@ BEGIN
     );
 
     DELETE FROM
-        issues
+        topics
     WHERE
         id = OLD.issue_id
     ;

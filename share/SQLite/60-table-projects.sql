@@ -21,19 +21,6 @@ CREATE TABLE projects (
 CREATE UNIQUE INDEX projects_path_hub_id ON projects(path,hub_id);
 
 CREATE TRIGGER
-    projects_bd_1
-BEFORE DELETE ON
-    projects
-FOR EACH ROW
-BEGIN
-    SELECT debug(
-        OLD.id
-    );
---    select debug('select * from topics where id=?', OLD.status_id);
---    select debug('select ?', OLD.status_id);
-END;
-
-CREATE TRIGGER
     projects_ad_1
 AFTER DELETE ON
     projects
@@ -44,22 +31,21 @@ BEGIN
     );
 
     DELETE FROM
+        topics
+    WHERE
+        id = OLD.id
+    ;
+
+    /*
+        The following is necessary, because although FK relationships
+        do result in the remove of rows from [project_]issues_tomerge,
+        the deletion of rows from issue_deltas just inserts more rows.
+    */
+
+    DELETE FROM
         projects_tomerge
     WHERE
         project_id = OLD.id
-    ;
-
-    DELETE FROM
-        updates
-    WHERE
-        id = (
-            SELECT
-                first_update_id
-            FROM
-                topics
-            WHERE
-                id = OLD.id
-        )
     ;
 
 END;

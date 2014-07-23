@@ -71,9 +71,6 @@ run_in_tempdir {
 
         isa_ok exception { bif( qw/show/, $i->{id} ) },
           'Bif::Error::TopicNotFound';
-
-        isa_ok exception { bif( qw/show/, $i->{id} ) },
-          'Bif::Error::TopicNotFound';
     };
 
 };

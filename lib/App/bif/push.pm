@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -95,7 +95,6 @@ sub _push_issue {
     $db->txn(
         sub {
             my $rid = $db->nextval('updates');
-            my $uid = $db->nextval('updates');
 
             my ( $proj, $hub ) = $db->xarray(
                 select     => [qw/ p.path h.name /],
@@ -115,17 +114,11 @@ sub _push_issue {
                 where      => { 'p.id' => $pinfo->{id} },
             );
 
-            $db->xdo(
-                insert_into => 'updates',
-                values      => {
-                    id        => $uid,
-                    parent_id => $info->{first_update_id},
-                    email     => $ctx->{user}->{email},
-                    author    => $ctx->{user}->{name},
-                    message   => "[ push: "
-                      . "$proj\@$hub -> $pinfo->{path}\@$dhub ]\n\n"
-                      . $ctx->{message},
-                },
+            my $uid = $ctx->new_update(
+                parent_id => $info->{first_update_id},
+                message   => "[ push: "
+                  . " $hub:$proj -> $dhub:$pinfo->{path} ]\n\n"
+                  . $ctx->{message},
             );
 
             my ($status_id) = $db->xarray(
@@ -154,7 +147,7 @@ sub _push_issue {
                 values      => { merge => 1 },
             );
 
-            $ctx->update_repo(
+            $ctx->update_localhub(
                 {
                     id      => $rid,
                     message => 'push '
@@ -180,7 +173,7 @@ bif-push - push a topic to another project
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

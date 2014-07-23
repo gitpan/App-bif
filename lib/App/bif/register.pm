@@ -8,7 +8,7 @@ use Coro;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $opts = shift;
@@ -42,11 +42,11 @@ sub run {
     my $cv = AE::cv;
 
     my $client = Bif::Client->new(
-        db       => $dbw,
-        location => $ctx->{location},
-        debug    => $ctx->{debug},
-        debug_bs => $ctx->{debug_bs},
-        on_error => sub {
+        db            => $dbw,
+        location      => $ctx->{location},
+        debug         => $ctx->{debug},
+        debug_bifsync => $ctx->{debug_bifsync},
+        on_error      => sub {
             $error = shift;
             $cv->send;
         },
@@ -69,7 +69,7 @@ sub run {
         eval {
             $dbw->txn(
                 sub {
-                    $ctx->update_repo(
+                    $ctx->update_localhub(
                         {
                             message => "register $ctx->{location}",
                         }
@@ -145,7 +145,7 @@ bif-register -  register with a remote repository
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
@@ -156,12 +156,11 @@ bif-register -  register with a remote repository
 The C<bif register> command connects to a hub repository to obtain the
 list of projects hosted there.  A hub has a name (use the C<list hubs>
 command to display it) which is useable after registration with all
-other hub-aware commands (import,export,push) to save typing the full
-address.
+other hub-aware commands to save typing the full address.
 
-The retrieved project list is stored locally and is used by the
-C<import>, and C<push> commands, and updated by the C<sync> command.
-
+The retrieved project list is stored locally and is used by the C<pull
+project>, and C<push issue> commands, and updated by the C<sync>
+command.
 
 =head1 ARGUMENTS & OPTIONS
 

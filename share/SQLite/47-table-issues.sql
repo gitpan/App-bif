@@ -11,8 +11,21 @@ AFTER DELETE ON
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        OLD.id
+        OLD.id,
+        OLD.title
     );
+
+    DELETE FROM
+        topics
+    WHERE
+        id = OLD.id
+    ;
+
+    /*
+        The following is necessary, because although FK relationships
+        do result in the remove of rows from [project_]issues_tomerge,
+        the deletion of rows from issue_deltas just inserts more rows.
+    */
 
     DELETE FROM
         issues_tomerge
@@ -24,19 +37,6 @@ BEGIN
         project_issues_tomerge
     WHERE
         issue_id = OLD.id
-    ;
-
-    DELETE FROM
-        updates
-    WHERE
-        id = (
-            SELECT
-                first_update_id
-            FROM
-                topics
-            WHERE
-                id = OLD.id
-        )
     ;
 
 END;

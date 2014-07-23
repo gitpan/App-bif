@@ -29,6 +29,21 @@ BEGIN
 
 
     INSERT INTO
+        project_entities(
+            project_id,
+            entity_id
+        )
+    SELECT
+        NEW.project_id,
+        u.identity_id
+    FROM
+        updates u
+    WHERE
+        u.id = NEW.update_id
+    ;
+
+
+    INSERT INTO
         hub_related_updates(
             hub_id,
             update_id
@@ -42,3 +57,5 @@ BEGIN
         hrp.project_id = NEW.project_id
     ;
 END;
+
+-- TODO deletes?

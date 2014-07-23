@@ -5,9 +5,13 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
-with qw/ Bif::Role::Sync::Repo Bif::Role::Sync::Project /;
+with qw/
+  Bif::Role::Sync::Identity
+  Bif::Role::Sync::Repo
+  Bif::Role::Sync::Project
+  /;
 
 sub read {
     my $self = shift;
@@ -69,8 +73,76 @@ sub send_updates {
 
         my $parts = $db->xprepare(
 
-            # hubs
+            # entities
             select => [
+                qv('entity')->as('kind'),                    # 0
+                'ed.new',                                    # 1
+                'ed.name',                                   # 2
+                'u.uuid AS update_uuid',                     # 3
+                't2.uuid AS contact_uuid',                   # 4
+                't3.uuid AS default_contact_method_uuid',    # 5
+                't.uuid AS entity_uuid',                     # 6
+                7,                                           # 7
+                't.kind AS real_kind',                       # 8
+                'ed.id AS update_order',                     # 9
+            ],
+            from       => 'entity_deltas ed',
+            inner_join => 'updates u',
+            on         => 'u.id = ed.update_id',
+            inner_join => 'topics t',
+            on         => 't.id = ed.entity_id',
+            left_join  => 'topics t2',
+            on         => 't2.id = ed.contact_id',
+            left_join  => 'topics t3',
+            on         => 't3.id = ed.default_contact_method_id',
+            where      => { 'ed.update_id' => $id },
+
+            # entity_contact_methods
+            union_all_select => [
+                qv('entity_contact_method')->as('kind'),    # 0
+                'ecmd.new',                                 # 1
+                'ecmd.method',                              # 2
+                'ecmd.mvalue',                              # 3
+                'u.uuid AS update_uuid',                    # 4
+                't.uuid AS entity_contact_method_uuid',     # 5
+                't2.uuid AS entity_uuid',                   # 6
+                7,                                          # 7
+                8,                                          # 8
+                'ecmd.id AS update_order',                  # 9
+            ],
+            from       => 'entity_contact_method_deltas ecmd',
+            inner_join => 'updates u',
+            on         => 'u.id = ecmd.update_id',
+            inner_join => 'entity_contact_methods ecm',
+            on         => 'ecm.id = ecmd.entity_contact_method_id',
+            inner_join => 'topics t',
+            on         => 't.id = ecm.id',
+            inner_join => 'topics t2',
+            on         => 't2.id = ecm.entity_id',
+            where      => { 'ecmd.update_id' => $id },
+
+            # identities
+            union_all_select => [
+                qv('identity')->as('kind'),    # 0
+                'id.new',                      # 1
+                'u.uuid AS update_uuid',       # 2
+                't.uuid AS identity_uuid',     # 3
+                4,                             # 4
+                5,                             # 5
+                6,                             # 6
+                7,                             # 7
+                8,                             # 8
+                'id.id AS update_order',       # 9
+            ],
+            from       => 'identity_deltas id',
+            inner_join => 'updates u',
+            on         => 'u.id = id.update_id',
+            inner_join => 'topics t',
+            on         => 't.id = id.identity_id',
+            where      => { 'id.update_id' => $id },
+
+            # hubs
+            union_all_select => [
                 qv('hub')->as('kind'),
                 'hub_deltas.new',
                 'hubs.uuid',    # for update
@@ -295,7 +367,82 @@ sub write_parts {
     my $parts = shift;
 
     while ( my $part = $parts->array ) {
-        if ( $part->[0] eq 'hub' ) {
+        if ( $part->[0] eq 'entity' ) {
+            if ( $part->[1] ) {
+                $self->write(
+                    'NEW',
+                    $part->[0],
+                    {
+                        update_uuid => $part->[3],
+                        name        => $part->[2],
+                        kind        => $part->[8],
+                    }
+                );
+            }
+            else {
+                $self->write(
+                    'UPDATE',
+                    $part->[0],
+                    {
+                        entity_uuid                 => $part->[6],
+                        name                        => $part->[2],
+                        update_uuid                 => $part->[3],
+                        contact_uuid                => $part->[4],
+                        default_contact_method_uuid => $part->[5],
+                    }
+
+                );
+            }
+        }
+        elsif ( $part->[0] eq 'entity_contact_method' ) {
+            if ( $part->[1] ) {
+                $self->write(
+                    'NEW',
+                    $part->[0],
+                    {
+                        method      => $part->[2],
+                        mvalue      => $part->[3],
+                        update_uuid => $part->[4],
+                        entity_uuid => $part->[6],
+                    }
+                );
+            }
+            else {
+                $self->write(
+                    'UPDATE',
+                    $part->[0],
+                    {
+                        method                     => $part->[2],
+                        mvalue                     => $part->[3],
+                        update_uuid                => $part->[4],
+                        entity_contact_method_uuid => $part->[5],
+                    }
+                );
+            }
+        }
+        elsif ( $part->[0] eq 'identity' ) {
+            if ( $part->[1] ) {
+                $self->write(
+                    'NEW',
+                    $part->[0],
+                    {
+                        update_uuid => $part->[2],
+                        entity_uuid => $part->[3],
+                    }
+                );
+            }
+            else {
+                $self->write(
+                    'UPDATE',
+                    $part->[0],
+                    {
+                        update_uuid   => $part->[2],
+                        identity_uuid => $part->[3],
+                    }
+                );
+            }
+        }
+        elsif ( $part->[0] eq 'hub' ) {
             if ( $part->[1] ) {
                 $self->write(
                     'NEW', 'hub',

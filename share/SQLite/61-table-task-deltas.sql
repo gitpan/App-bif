@@ -8,8 +8,7 @@ CREATE TABLE task_deltas (
     UNIQUE(update_id,task_id), -- one change per update
     FOREIGN KEY(update_id) REFERENCES updates(id) ON DELETE CASCADE,
     FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-    FOREIGN KEY(status_id) REFERENCES task_status(id)--,
---    UNIQUE (update_id,status_id) -- tasks FK to this
+    FOREIGN KEY(status_id) REFERENCES task_status(id) ON DELETE CASCADE
 ) WITHOUT ROWID;
 
 CREATE TRIGGER

@@ -29,15 +29,17 @@ BEGIN
         operations that use updates.uuid as a sort field
     */
 
-    UPDATE hub_tomerge              SET resolve = 1;
-    UPDATE hub_repos_tomerge        SET resolve = 1;
-    UPDATE projects_tomerge         SET resolve = 1;
-    UPDATE project_status_tomerge   SET resolve = 1;
-    UPDATE task_status_tomerge      SET resolve = 1;
-    UPDATE issue_status_tomerge     SET resolve = 1;
-    UPDATE tasks_tomerge            SET resolve = 1;
-    UPDATE issues_tomerge           SET resolve = 1;
-    UPDATE project_issues_tomerge   SET resolve = 1;
+    UPDATE entities_tomerge               SET resolve = 1;
+    UPDATE entity_contact_methods_tomerge SET resolve = 1;
+    UPDATE hubs_tomerge                   SET resolve = 1;
+    UPDATE hub_repos_tomerge              SET resolve = 1;
+    UPDATE projects_tomerge               SET resolve = 1;
+    UPDATE project_status_tomerge         SET resolve = 1;
+    UPDATE task_status_tomerge            SET resolve = 1;
+    UPDATE issue_status_tomerge           SET resolve = 1;
+    UPDATE tasks_tomerge                  SET resolve = 1;
+    UPDATE issues_tomerge                 SET resolve = 1;
+    UPDATE project_issues_tomerge         SET resolve = 1;
 
     /*
         The following updates the hub_related_updates_merkle table

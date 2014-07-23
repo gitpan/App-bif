@@ -16,15 +16,59 @@ About Bif
     This flexibility comes with minimal additional complexity; bif commands
     are designed for consistency and ease of use.
 
-    Bif runs on any system that supports Perl and SQLite.
+    Bif should eventually run on any system that supports Perl and SQLite,
+    but at present tests are only successful on Linux and BSD systems.
+
+  Who is bif for?
+    Bif is typically useful for software development teams and other
+    distributed project organisations. Bif could work for you if the
+    following statements resonate:
+
+    *   You are comfortable working in a command-line environment
+
+    *   Your team is spread across different locations
+
+    *   Your projects have external dependencies
+
+    Bif (or other user interfaces based on bif) may also be suitable for
+    companies with business-to-business relationships and within
+    multinational organisations.
+
+  What problems does bif attempt to address?
+    In addition to the generic problems facing every project organisation,
+    bif aims to answer the following specific challenges:
+
+    *   The high costs of context switching
+
+        It takes a certain amount of effort to get your mind fully into a
+        good edit/compile/test cycle. Switching contexts to record your
+        progress in a browser is a painful and inefficient way to break up
+        your day. You would be better off going for a walk.
+
+    *   When your network connectivity is unreliable
+
+        It is a difficult task to maintain communication and status tracking
+        within a distributed project when the data network is an uncertain,
+        or expensive resource. If developers can check in code, but can't
+        update the bug tracker because they are travelling, productivity
+        drops. When you cannot always link your project data with internal
+        systems (e.g. billing) then other business functions can suffer.
+
+    *   When your success depends on factors outside the project
+        organisation
+
+        Projects can experience time and cost difficulties when they have
+        external dependencies. Keeping track of the status in someone else's
+        issue tracking system is a thankless, manual process. If you can't
+        find the resources to do so then the lack of coordination leads to
+        duplication of effort, delays, or important issues falling through
+        the cracks.
 
 Software Status
-    Bif is still under active development. Much of the functionality is
-    missing, documentation is incomplete (or in some cases ahead of the
-    implementation) and test coverage is lacking and/or failing. DO NOT USE
-    BIF FOR REAL DATA!
-
-    We are actively seeking contributors. See below for how you can help.
+    Although functional, bif is still under active development.
+    Documentation and tests are incomplete, and the database schema changes
+    regularly. DO NOT USE BIF FOR REAL DATA! We are actively seeking
+    contributors. See below for how you can help.
 
 Community Organisation
     Bif is community supported software, and the community expects (and
@@ -56,23 +100,15 @@ Installing
 
 Documentation
     The main entry point for reference documentation is the bif manual.
-    After installation you should be able to access it by running "bif doc",
-    or "perldoc bif", or "man bif". You can also browse the documentation
-    online at <http://bifax.org/bif/doc/>.
+    After installation you should be able to access it by running "man bif"
+    or "perldoc bif". You can also browse the documentation table of
+    contents at <http://bifax.org/bif/doc/>.
 
 Contributing
     You do not have to be a developer to contribute to bif! It is arguable
     that many key aspects of successful open source projects have more to do
     with the community and non-development contributions than technical
-    skills.
-
-    What long-term project members lose relatively quickly are those fresh
-    eyes and first impressions that easily identify missing, broken and
-    unexplained things. Therefore feedback from first-time users, both
-    positive and negative, is extremely valuable. Please get in touch!
-
-    For the currently planned activities see the bif-doc-roadmap. Otherwise
-    help would be appreciated for practically anything:
+    skills. Help would be appreciated for practically anything:
 
     *   Editing the reference documentation
 
@@ -92,15 +128,20 @@ Contributing
         third-party analysis.
 
     *   Security Analyst? Feel like starting a bif-doc-security document or
-        otherwise letting us know which vectors are most vunerable? I find
+        otherwise letting us know which vectors are most vulnerable? I find
         it important to put some effort in here before bif becomes (if ever)
         widely used.
 
     *   Big-picture thinker? How could the bif model of information
-        distribution be applied to addressbooks, slow-changing datasets
+        distribution be applied to address books, slow-changing datasets
         (e.g. country lists, currencies), business transactions, etc.
 
     *   Financial sponsorship would also be more than welcome.
+
+    What long-term project members lose relatively quickly are those fresh
+    eyes and first impressions that easily identify missing, broken and
+    unexplained things. Therefore feedback from first-time users, both
+    positive and negative, is extremely valuable. Please get in touch!
 
 Development
     For those comfortable with git, development takes place on the "devel"
@@ -111,70 +152,7 @@ Development
         git clone git://bifax.org/bif.git --branch devel
         cd bif
 
-    For development we recommend the use of direnv
-    <https://github.com/zimbatm/direnv> to keep installed files away from
-    the rest of your system. Something like the following in a local .envrc
-    file will do the trick:
-
-        source_up
-        layout perl
-        PATH_add $PWD/t
-
-    Make sure that you have a recent "cpanm" that has the "--with-develop"
-    option. The cpanminus packages in the current stable versions of Ubuntu
-    and Debian do not. The latest version can be installed manually using
-    "curl" and "perl" as shown below.
-
-        #!sh
-        curl -L http://cpanmin.us | perl - --sudo App::cpanminus
-
-    Development dependencies can then be installed like so:
-
-        #!sh
-        cpanm --installdeps --with-develop $PWD
-
-    All Perl and POD content is expected to be "tidy" according to the
-    .perltidyrc and .podtidy-opts files in the source tree. The easiest way
-    to ensure this happens on commit is to run "githook-perltidy" (installed
-    as one of the "--with-develop" dependencies):
-
-        #!sh
-        githook-perltidy install
-
-    A test bif script is created in the tbin/ directory when you run
-    Makefile.PL.
-
-        #!sh
-        perl Makefile.PL
-        export PATH=$PWD/tbin:$PATH    # if you don't use direnv
-        which bif                      # tbin/bif
-
-    We encourage personal development branches in the git repository. Send a
-    request to the mailing list with your public ssh key (something like
-    $HOME/.ssh/id_rsa.pub) and your desired *username*. Once the permissions
-    are configured on the server then you can do something like the
-    following:
-
-        #!sh
-        # Tell git to use ssh authentication
-        git config remote.origin.url ssh://git@bifax.org:bif.git
-
-        # Create your own feature branch
-        git checkout -b u/USERNAME/feature devel
-
-        # $EDIT files
-        git commit
-
-        # Rebase your tree against most recent devel
-        git fetch
-        git rebase origin/devel
-
-        # Upload and tell the mailing list what you have done
-        git push origin u/USERNAME/feature
-
-    This allows anyone who clones the repository to see, modify and merge
-    your work from the command line, without having to visit a website to
-    find where all the forks are.
+    The README.devel file in the repository describes how to hack on bif.
 
 License
     Bif is free software: you can redistribute it and/or modify it under the

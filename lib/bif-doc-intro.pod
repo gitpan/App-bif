@@ -2,16 +2,12 @@
 
 Bif is a project management tool with a command-line interface. It
 helps you track tasks, issues and bugs using a local database,
-exchanging updates with remote databases on demand.
+exchanging updates with remote databases on demand.  This introduction
+to bif is based on situations typically encountered by software
+developers; It is assumed that you are comfortable working with command
+line programs and your operating system shell (e.g. bash).
 
-The examples given in this introduction are based on project management
-situations typically encountered by software developers.  It is assumed
-that you are comfortable working with command line programs and your
-operating system shell (e.g. bash).
-
-=head1 Version
-
-This document is based on bif version 0.1.0_25 (2014-06-14).
+This document is based on bif version 0.1.0_26 (2014-07-23).
 
 =begin comment
 
@@ -124,7 +120,7 @@ just call C<sync>:
 
 =head1 See Also
 
-L<bif>(1), L<bif-doc-faq>(1), L<bif-doc-index>(1)
+L<bif>(1), L<bif-doc-faq>(1), L<bif-doc-toc>(1)
 
 =head1 Author
 

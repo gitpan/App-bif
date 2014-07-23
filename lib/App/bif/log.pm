@@ -3,9 +3,10 @@ use strict;
 use warnings;
 use App::bif::Context;
 use Text::Autoformat qw/autoformat/;
+use feature 'state';
 use locale;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 our $NOW;
 our $bold;
@@ -45,7 +46,7 @@ sub run {
         return $func->( $ctx, $info );
     }
 
-    return _log_hub( $ctx, $ctx->get_topic( $db->get_local_hub_id ) );
+    return _log_hub( $ctx, $ctx->get_topic( $db->get_localhub_id ) );
 
 }
 
@@ -237,11 +238,16 @@ sub _log_task {
     my $db   = $ctx->db;
     my $info = shift;
 
+    state $have_dbix = DBIx::ThinSQL->import(qw/ qv concat /);
+
     my $sth = $db->xprepare(
         select => [
             'task_deltas.task_id AS id',
             "task_deltas.task_id ||'.' || task_deltas.update_id AS update_id",
-            'SUBSTR(updates.uuid,1,8) AS update_uuid',
+            concat( 'task_deltas.task_id', qv('.'), 'task_deltas.update_id' )
+              ->as('update_id'),
+            concat( 'SUBSTR(t.uuid,1,8)', qv('.'), 'SUBSTR(updates.uuid,1,8)' )
+              ->as('update_uuid'),
             'task_deltas.title',
             'updates.mtime',
             'updates.mtimetz',
@@ -257,6 +263,8 @@ sub _log_task {
         from       => 'task_deltas',
         inner_join => 'updates',
         on         => 'updates.id = updates_tree.child',
+        inner_join => 'topics t',
+        on         => 't.id = task_deltas.task_id',
         left_join  => 'task_status',
         on         => 'task_status.id = task_deltas.status_id',
         left_join  => 'projects',
@@ -286,14 +294,16 @@ sub _log_issue {
     my $db   = $ctx->db;
     my $info = shift;
 
-    DBIx::ThinSQL->import(qw/concat case qv/);
+    state $have_dbix = DBIx::ThinSQL->import(qw/ qv concat /);
+
     my $sth = $db->xprepare(
         select => [
             'project_issues.issue_id AS "id"',
             'updates.uuid',
             concat( 'project_issues.id', qv('.'), 'updates.id' )
               ->as('update_id'),
-            'SUBSTR(updates.uuid,1,8) AS update_uuid',
+            concat( 'SUBSTR(t.uuid,1,8)', qv('.'), 'SUBSTR(updates.uuid,1,8)' )
+              ->as('update_uuid'),
             'updates.mtime',
             'updates.mtimetz',
             'updates.author',
@@ -308,6 +318,8 @@ sub _log_issue {
             'updates_tree.depth',
         ],
         from       => 'issue_deltas',
+        inner_join => 'topics t',
+        on         => 't.id = issue_deltas.issue_id',
         inner_join => 'updates',
         on         => 'updates.id = issue_deltas.update_id',
         inner_join => 'projects',
@@ -406,11 +418,15 @@ sub _log_project {
     my $db   = $ctx->db;
     my $info = shift;
 
+    state $have_dbix = DBIx::ThinSQL->import(qw/ qv concat /);
+
     my $sth = $db->xprepare(
         select => [
             'project_deltas.project_id AS id',
-            "project_deltas.project_id ||'.' || updates.id AS update_id",
-            'SUBSTR(updates.uuid,1,8) AS update_uuid',
+            concat( 'project_deltas.project_id', qv('.'), 'updates.id' )
+              ->as('update_id'),
+            concat( 'SUBSTR(t.uuid,1,8)', qv('.'), 'SUBSTR(updates.uuid,1,8)' )
+              ->as('update_uuid'),
             'project_deltas.title',
             'updates.mtime',
             'updates.mtimetz',
@@ -426,10 +442,10 @@ sub _log_project {
         from       => 'project_deltas',
         inner_join => 'projects',
         on         => 'projects.id = project_deltas.project_id',
-        inner_join => 'topics',
-        on         => 'topics.id = projects.id',
+        inner_join => 'topics t',
+        on         => 't.id = projects.id',
         inner_join => 'updates_tree',
-        on         => 'updates_tree.parent = topics.first_update_id AND
+        on         => 'updates_tree.parent = t.first_update_id AND
                        updates_tree.child = project_deltas.update_id',
         inner_join => 'updates',
         on         => 'updates.id = updates_tree.child',
@@ -464,7 +480,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

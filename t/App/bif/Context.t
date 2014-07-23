@@ -41,20 +41,24 @@ subtest 'Bif::Error', sub {
 
 };
 
-subtest 'App::bif::Context', sub {
+run_in_tempdir {
 
-    like exception { App::bif::Context->new },
-      qr/missing ref/, 'App::bif::Context->new no arg';
+    subtest 'new', sub {
+        like exception { App::bif::Context->new },
+          qr/missing ref/, 'App::bif::Context->new no arg';
 
-    my $ctx = App::bif::Context->new( { no_color => 1 } );
-    isa_ok $ctx, 'App::bif::Context';
+        my $ctx = App::bif::Context->new( { no_color => 1 } );
+        isa_ok $ctx, 'App::bif::Context';
 
-    # When testing anything related to debug it is important to specify
-    # 'no_pager', otherwise you'll spend ages looking for an issue in
-    # IO::Pager. The Test::Bif functions normally take care of this for
-    # us.
-    App::bif::Context->new( { debug => 1, no_pager => 1 } );
-    $log->contains_ok( qr/ctx:/, 'debugging on' );
+        # When testing anything related to debug it is important to specify
+        # 'no_pager', otherwise you'll spend ages looking for an issue in
+        # IO::Pager. The Test::Bif functions normally take care of this for
+        # us.
+        App::bif::Context->new( { debug => 1, no_pager => 1 } );
+        $log->contains_ok( qr/ctx:/, 'debugging on' );
+    };
+
+    my $ctx = App::bif::Context->new( {} );
 
     # color - not tested
 
@@ -78,85 +82,56 @@ subtest 'App::bif::Context', sub {
 
     # end_pager - not tested
 
-    subtest 'repo', sub {
-        run_in_tempdir {
-            my $ctx = App::bif::Context->new( {} );
-            isa_ok exception { $ctx->repo }, 'Bif::Error::RepoNotFound';
-
-            my $repo = cwd->child('.bif');
-            mkdir $repo;
-            $ctx = App::bif::Context->new( {} );
-            is $ctx->repo, $repo, 'repo .bif';
-
-            mkdir 'subdir';
-            local $CWD = 'subdir';
-            $ctx = App::bif::Context->new( {} );
-            is $ctx->repo, $repo, 'repo ../.bif';
-
-            my $repo2 = cwd->child('.bif');
-            mkdir $repo2;
-            $ctx = App::bif::Context->new( {} );
-            is $ctx->repo, $repo2, 'found current with parent repo existing';
-        };
+    subtest 'not found exceptions' => sub {
+        isa_ok exception { $ctx->user_repo }, 'Bif::Error::UserRepoNotFound';
+        isa_ok exception { $ctx->user_db },   'Bif::Error::UserRepoNotFound';
+        isa_ok exception { $ctx->user_dbw },  'Bif::Error::UserRepoNotFound';
+        isa_ok exception { $ctx->repo },      'Bif::Error::RepoNotFound';
+        isa_ok exception { $ctx->db },        'Bif::Error::RepoNotFound';
+        isa_ok exception { $ctx->dbw },       'Bif::Error::RepoNotFound';
     };
 
-    subtest 'conf', sub {
-        run_in_tempdir {
-            my $ctx = App::bif::Context->new( {} );
-            my $userconf = path( $ctx->{_bif_user_config} );
-            $userconf->spew("option1 = 1\noption2 = 1\n");
+    bif('init');
+    $ctx = App::bif::Context->new( {} );
 
-            $ctx = App::bif::Context->new( {} );
-            is $ctx->{option1}, 1, 'user config';
-            is $ctx->{option2}, 1, 'user config';
+    subtest 'repo', sub {
+        isa_ok $ctx->repo, 'Path::Tiny';
 
-            my $bifdir = path('.bif');
-            $bifdir->mkpath;
-            $bifdir->child('config')->spew("option2 = 2\n");
+        mkdir 'subdir';
+        local $CWD = 'subdir';
+        my $ctx2 = App::bif::Context->new( {} );
+        is $ctx2->repo, $ctx->repo, 'subdir';
 
-            $ctx = App::bif::Context->new( {} );
-            is $ctx->{option1}, 1, 'repo config';
-            is $ctx->{option2}, 2, 'repo config';
-        };
+        bif('init');
+        my $ctx3 = App::bif::Context->new( {} );
+        is $ctx3->repo, $ctx->repo->parent->child(qw/subdir .bif/),
+          'subdir repo';
+    };
+
+    subtest 'config', sub {
+        ok $ctx->{'user.alias'}->{ls}, $ctx->{'user.alias'}->{ls};
     };
 
     subtest 'db', sub {
-        run_in_tempdir {
-            my $ctx = App::bif::Context->new( {} );
-            isa_ok exception { $ctx->db }, 'Bif::Error::RepoNotFound';
+        my $db = $ctx->db;
+        isa_ok $db, 'Bif::DB::db';
 
-            mkdir '.bif';
-            $ctx = App::bif::Context->new( {} );
-            my $db = $ctx->db;
-            isa_ok $db, 'Bif::DB::db';
-
-            like exception { $db->do('select sha(1)') }, qr/no such function/,
-              'read-only';
-        };
+        like exception { $db->do('select sha(1)') }, qr/no such function/,
+          'read-only';
     };
 
     subtest '$ctx->dbw', sub {
-        run_in_tempdir {
-            my $ctx = App::bif::Context->new( {} );
-            isa_ok exception { $ctx->dbw }, 'Bif::Error::RepoNotFound';
-
-            mkdir '.bif';
-            $ctx = App::bif::Context->new( {} );
-            my $dbw = $ctx->dbw;
-            isa_ok $dbw, 'Bif::DBW::db';
-            my $sha1 = Digest::SHA::sha1_hex(1);
-            my ($sha) = $dbw->selectrow_array('select sha1_hex(1)');
-            is $sha, $sha1, 'read-write';
-        };
+        my $dbw = $ctx->dbw;
+        isa_ok $dbw, 'Bif::DBW::db';
+        my $sha1 = Digest::SHA::sha1_hex(1);
+        my ($sha) = $dbw->selectrow_array('select sha1_hex(1)');
+        is $sha, $sha1, 'read-write';
     };
 
     subtest '$ctx->uuid2id', sub {
-        run_in_tempdir {
-            my $ctx = App::bif::Context->new( {} );
-            is 1, $ctx->uuid2id(1), 'uuid2id with no uuid';
-            $ctx->{uuid}++;
-            isa_ok exception { $ctx->uuid2id(1) }, 'Bif::Error::RepoNotFound';
-        };
+        is 1, $ctx->uuid2id(1), 'uuid2id with no uuid';
+        $ctx->{uuid}++;
+        isa_ok exception { $ctx->uuid2id('X') }, 'Bif::Error::UuidNotFound';
     };
 
     subtest 'render_table', sub {
@@ -196,67 +171,62 @@ END
     };
 
     subtest 'get_topic', sub {
-        run_in_tempdir {
-            bif('init');
-            my $ctx = App::bif::Context->new( {} );
-            my $dbw = $ctx->dbw;
-            $dbw->txn(
-                sub {
-                    my $update  = new_test_update($dbw);
-                    my $project = new_test_project($dbw);
+        my $dbw = $ctx->dbw;
+        $dbw->txn(
+            sub {
+                my $uid     = $ctx->new_update;
+                my $project = new_test_project($dbw);
 
-                    my $ps = new_test_project_status( $dbw, $project );
-                    my $ts = new_test_task_status( $dbw, $project );
-                    my $is = new_test_issue_status( $dbw, $project );
-                    my $task = new_test_task( $dbw, $ts );
-                    my $issue = new_test_issue( $dbw, $is );
+                my $ps = new_test_project_status( $dbw, $project );
+                my $ts = new_test_task_status( $dbw, $project );
+                my $is = new_test_issue_status( $dbw, $project );
+                my $task = new_test_task( $dbw, $ts );
+                my $issue = new_test_issue( $dbw, $is );
 
-                    my $ref;
+                my $ref;
 
-                    isa_ok exception { $ctx->get_topic(-1) },
-                      'Bif::Error::TopicNotFound';
+                isa_ok exception { $ctx->get_topic(-1) },
+                  'Bif::Error::TopicNotFound';
 
-                    is_deeply $ref = $ctx->get_topic( $project->{id} ), {
-                        id              => $project->{id},
-                        first_update_id => $project->{update_id},
-                        kind            => 'project',
-                        uuid => $ref->{uuid},    # hard to know this in advance
-                        project_issue_id => undef,
-                        project_id       => undef,
-                      },
-                      'get_topic project ID';
+                is_deeply $ref = $ctx->get_topic( $project->{id} ), {
+                    id              => $project->{id},
+                    first_update_id => $project->{update_id},
+                    kind            => 'project',
+                    uuid => $ref->{uuid},    # hard to know this in advance
+                    project_issue_id => undef,
+                    project_id       => undef,
+                  },
+                  'get_topic project ID';
 
-                    my @ids = $dbw->uuid2id( $ref->{uuid} );
-                    is_deeply \@ids, [ [ $project->{id} ] ], 'uuid2id()';
+                my @ids = $dbw->uuid2id( $ref->{uuid} );
+                is_deeply \@ids, [ [ $project->{id} ] ], 'uuid2id()';
 
-                    @ids = $dbw->uuid2id( substr( $ref->{uuid}, 0, 13 ) );
-                    is_deeply \@ids, [ [ $project->{id} ] ],
-                      'uuid2id() partial';
+                @ids = $dbw->uuid2id( substr( $ref->{uuid}, 0, 13 ) );
+                is_deeply \@ids, [ [ $project->{id} ] ], 'uuid2id() partial';
 
-                    is_deeply $ref = $ctx->get_topic( $task->{id} ), {
-                        id              => $task->{id},
-                        first_update_id => $task->{update_id},
-                        kind            => 'task',
-                        uuid => $ref->{uuid},    # hard to know this in advance
-                        project_issue_id => undef,
-                        project_id       => undef,
-                      },
-                      'get_topic task ID';
+                is_deeply $ref = $ctx->get_topic( $task->{id} ), {
+                    id              => $task->{id},
+                    first_update_id => $task->{update_id},
+                    kind            => 'task',
+                    uuid => $ref->{uuid},    # hard to know this in advance
+                    project_issue_id => undef,
+                    project_id       => undef,
+                  },
+                  'get_topic task ID';
 
-                    is_deeply $ref = $ctx->get_topic( $issue->{id} ), {
-                        id              => $issue->{id},
-                        first_update_id => $issue->{update_id},
-                        kind            => 'issue',
-                        uuid => $ref->{uuid},    # hard to know this in advance
-                        project_issue_id => $issue->{id},
-                        project_id       => $project->{id},
-                      },
-                      'get_topic issue ID';
+                is_deeply $ref = $ctx->get_topic( $issue->{id} ), {
+                    id              => $issue->{id},
+                    first_update_id => $issue->{update_id},
+                    kind            => 'issue',
+                    uuid => $ref->{uuid},    # hard to know this in advance
+                    project_issue_id => $issue->{id},
+                    project_id       => $project->{id},
+                  },
+                  'get_topic issue ID';
 
-                    $dbw->rollback;
-                }
-            );
-        };
+                $dbw->rollback;
+            }
+        );
     };
 
 };

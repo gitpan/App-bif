@@ -10,7 +10,7 @@ use Path::Tiny qw/path rootdir cwd/;
 use Term::Size ();
 use feature 'state';
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 our ( $term_width, $term_height ) = Term::Size::chars(*STDOUT);
 $term_width  ||= 80;
@@ -41,7 +41,7 @@ sub new {
     $log->debugf( 'ctx: %s %s', (caller)[0], $opts );
     $log->debugf( 'ctx: terminal %dx%d', $term_width, $term_height );
 
-    $self->load_user_conf;
+    $self->find_user_repo;
     $self->find_repo;
 
     # Merge in the command line options with the (user/repo) config
@@ -49,60 +49,26 @@ sub new {
     return $self;
 }
 
-sub create_user_conf {
-    my $self     = shift;
+sub find_user_repo {
+    my $self = shift;
+    return if $self->{_bif_user_repo};
+
     my $home_dir = File::HomeDir->my_home;
     my $data_dir = File::HomeDir->my_data;
 
-    my $conf_dir =
+    my $user_repo =
       $home_dir eq $data_dir
-      ? path( $home_dir, '.bif-user' )
-      : path( $data_dir, 'bif-user' );
+      ? path( $home_dir, '.bif-user' )->absolute
+      : path( $data_dir, 'bif-user' )->absolute;
 
-    $conf_dir->mkpath unless -d $conf_dir;
-    my $file = path( $conf_dir, 'config' );
+    return unless -e $user_repo;
+    $self->{_bif_user_repo} = $user_repo;
+    $log->debug( 'ctx: user_repo: ' . $user_repo );
 
-    return $file if -e $file;
-
-    require IO::Prompt::Tiny;
-    $log->debug( 'ctx: creating user_conf: ' . $file );
-
-    print "Initial Setup, please provide the following details:\n";
-
-    my $git_conf_file = path( File::HomeDir->my_home, '.gitconfig' );
-    my $git_conf = Config::Tiny->read($git_conf_file) || {};
-
-    my $name  = $git_conf->{user}->{name}  || 'Your Name';
-    my $email = $git_conf->{user}->{email} || 'your@email.adddr';
-
-    $name =~ s/(^")|("$)//g;
-    $email =~ s/(^")|("$)//g;
-
-    my $conf = Config::Tiny->new;
-    $conf->{user}->{name}  = IO::Prompt::Tiny::prompt( 'Name:',  $name );
-    $conf->{user}->{email} = IO::Prompt::Tiny::prompt( 'Email:', $email );
-    $conf->{'user.alias'}->{l} = 'list projects define plan run';
-    $conf->{'user.alias'}->{ls} =
-      'list topics --status open --project-status run';
-    $conf->{'user.alias'}->{lss} =
-      'list topics --status stalled --project-status run';
-
-    print "Writing $file\n";
-    $conf->write($file);
-
-    $self->{$_} ||= $conf->{$_} for keys %$conf;
-
-    return $file;
-}
-
-sub load_user_conf {
-    my $self = shift;
-    my $file = $self->create_user_conf;
+    my $file = $user_repo->child('config');
 
     my $conf = Config::Tiny->read($file)
-      || confess $Config::Tiny::errstr;
-
-    $log->debug( 'ctx: user_conf: ' . $file );
+      || Carp::confess $Config::Tiny::errstr;
 
     while ( my ( $k1, $v1 ) = each %$conf ) {
         if ( ref $v1 eq 'HASH' ) {
@@ -121,12 +87,14 @@ sub load_user_conf {
     }
 
     # Used by t/App/bif/Context.t
-    $self->{_bif_user_config} = $file;
+    $self->{_bif_user_conf} = $file;
     return;
 }
 
 sub find_repo {
     my $self = shift;
+    return if $self->{_bif_repo};
+
     my $root = rootdir;
     my $try  = cwd;
 
@@ -236,11 +204,50 @@ sub end_pager {
     return;
 }
 
+sub user_repo {
+    my $self = shift;
+
+    return $self->{_bif_user_repo}
+      || $self->err( 'UserRepoNotFound', 'directory not found: .bif-user' );
+}
+
+sub user_db {
+    my $self = shift;
+    return $self->{_bif_user_db} if $self->{_bif_user_db};
+
+    my $dsn = 'dbi:SQLite:dbname=' . $self->user_repo->child('db.sqlite3');
+
+    $log->debug( 'ctx: user_db: ' . $dsn );
+
+    require Bif::DB;
+    my $db = Bif::DB->connect( $dsn, undef, undef, undef, $self->{debug} );
+
+    $log->debug( 'ctx: SQLite version: ' . $db->{sqlite_version} );
+    $self->{_bif_user_db} = $db;
+    return $db;
+}
+
+sub user_dbw {
+    my $self = shift;
+    return $self->{_bif_user_dbw} if $self->{_bif_user_dbw};
+
+    my $dsn = 'dbi:SQLite:dbname=' . $self->user_repo->child('db.sqlite3');
+
+    $log->debug( 'ctx: user_dbw: ' . $dsn );
+
+    require Bif::DB;
+    my $db = Bif::DBW->connect( $dsn, undef, undef, undef, $self->{debug} );
+
+    $log->debug( 'ctx: SQLite version: ' . $db->{sqlite_version} );
+    $self->{_bif_user_dbw} = $db;
+    return $db;
+}
+
 sub repo {
     my $self = shift;
 
     return $self->{_bif_repo}
-      || $self->err( 'RepoNotFound', 'directory not found: .bif/' );
+      || $self->err( 'RepoNotFound', 'directory not found: .bif' );
 }
 
 sub db {
@@ -275,6 +282,15 @@ sub dbw {
     $log->debug( 'ctx: SQLite version: ' . $dbw->{sqlite_version} );
     $self->{_bif_dbw} = $dbw;
     return $dbw;
+}
+
+sub user_id {
+    my $self = shift;
+    my ($id) = $self->db->xarray(
+        select => 'ids.id',
+        from   => 'identity_self ids',
+    );
+    return $id;
 }
 
 sub uuid2id {
@@ -454,41 +470,60 @@ sub get_topic {
         'topic, update or path not found: ' . $token );
 }
 
-sub update_repo {
+sub new_update {
     my $self = shift;
-    my $ref  = shift;
-    my $dbw  = $self->{_bif_dbw} || $self->db;
+    my %vals = @_;
 
-    $ref->{author} ||= $self->{user}->{name};
-    $ref->{email}  ||= $self->{user}->{email};
-    $ref->{id}     ||= $dbw->nextval('updates');
-    my $hub = $self->get_topic( $dbw->get_local_hub_id );
+    my $dbw = $self->{_bif_dbw} || $self->dbw;
+    my $id     = ( delete $vals{id} ) // $dbw->nextval('updates');
+    my $author = delete $vals{author};
+    my $email  = delete $vals{email};
+
+    state $have_dbix = DBIx::ThinSQL->import(qw/ qv coalesce /);
 
     $dbw->xdo(
-        insert_into => 'updates',
-        values      => {
-            id        => $ref->{id},
-            parent_id => $hub->{first_update_id},
-            author    => $ref->{author},
-            email     => $ref->{email},
-            message   => $ref->{message},
-        },
+        insert_into => [
+            'updates', 'id', 'identity_id', 'author', 'email', sort keys %vals
+        ],
+        select => [
+            qv($id),
+            'ids.id',
+            coalesce( qv($author), 'e.name' ),
+            coalesce( qv($email),  'ecm.mvalue' ),
+            map { qv( $vals{$_} ) } sort keys %vals
+        ],
+        from       => 'identity_self ids',
+        inner_join => 'entities e',
+        on         => 'e.id = ids.id',
+        inner_join => 'entity_contact_methods ecm',
+        on         => 'ecm.id = e.default_contact_method_id',
+    );
+
+    return $id;
+}
+
+sub update_localhub {
+    my $self = shift;
+    my $ref  = shift;
+
+    my $dbw = $self->{_bif_dbw} || $self->dbw;
+    my $hub = $self->get_topic( $dbw->get_localhub_id );
+    my $uid = $self->new_update(
+        id        => $ref->{id},
+        parent_id => $hub->{first_update_id},
+        message   => $ref->{message},
     );
 
     # TODO related_update_uuid is useless because we now do the
-    # update_repo generally before the actual update and uuid isn't
+    # update_localhub generally before the actual update and uuid isn't
     # calculated. Get rid of it.
 
     state $have_qv = DBIx::ThinSQL->import(qw/ qv /);
     $dbw->xdo(
         insert_into =>
           [ 'hub_deltas', qw/hub_id update_id project_id related_update_uuid/ ],
-        select => [
-            qv( $hub->{id} ),
-            qv( $ref->{id} ),
-            qv( $ref->{project_id} ),
-            'u.uuid',
-        ],
+        select =>
+          [ qv( $hub->{id} ), qv($uid), qv( $ref->{project_id} ), 'u.uuid', ],
         from      => '(select 1)',
         left_join => 'updates u',
         on        => {
@@ -556,7 +591,7 @@ App::bif::Context - A context class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
@@ -661,6 +696,21 @@ being less than C<$rows>.
 
 Stops the pager on STDOUT if it was previously started.
 
+=item user_repo -> Path::Tiny
+
+Returns the location of the user repository directory.  Raises a
+'UserRepoNotFound' error on failure.
+
+=item user_db -> Bif::DB::db
+
+Returns a read-only handle for the SQLite database containing
+user-specific data.
+
+=item user_dbw -> Bif::DBW::db
+
+Returns a read-write handle for the SQLite database containing
+user-specific data.
+
 =item repo -> Path::Tiny
 
 Return the path to the first '.bif' directory found starting from the
@@ -686,6 +736,10 @@ operations.
 You should manually import any L<DBIx::ThinSQL> functions you need only
 after calling C<$ctx->dbw>, in order to keep startup time short for
 cases such as when the repository is not found.
+
+=item user_id -> Int
+
+Returns the topic ID for the user (self) identity.
 
 =item uuid2id( $try ) -> Int
 
@@ -747,13 +801,18 @@ contain valid values:
 
 =back
 
+=item new_update( %args ) -> Int
 
-=item update_repo($hashref)
+Creates a new row in the updates table according to the content of
+C<%args> (must include at least a C<message> value) and the current
+context (identity). Returns the integer ID of the update.
+
+=item update_localhub($hashref)
 
 Create an update of the local repo from a hashref containing a ruid (an
 update_id), user name, a user email, and a message. C<$hashref> can
 optionally contain an update_id which will be converted into a uuid,
-used for uniqueness in the event that multiple calls to update_repo
+used for uniqueness in the event that multiple calls to update_localhub
 with the same values occur in the same second.
 
 =back

@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 my $stderr;
 my $stderr_watcher;
@@ -50,6 +50,7 @@ sub run {
             'h.local' => undef,
             $opts->{hub} ? ( 'h.name' => $opts->{hub} ) : (),
         },
+        order_by => 'h.name',
     );
 
     return $ctx->err( 'SyncNone', 'no (matching) hubs registered' )
@@ -63,11 +64,11 @@ sub run {
         $ctx->lprint("$hub->{name}: connecting...");
 
         my $client = Bif::Client->new(
-            db       => $dbw,
-            location => $hub->{location},
-            debug    => $ctx->{debug},
-            debug_bs => $ctx->{debug_bs},
-            on_error => sub {
+            db            => $dbw,
+            location      => $hub->{location},
+            debug         => $ctx->{debug},
+            debug_bifsync => $ctx->{debug_bifsync},
+            on_error      => sub {
                 $error = shift;
                 $cv->send;
             },
@@ -88,7 +89,7 @@ sub run {
             eval {
                 $dbw->txn(
                     sub {
-                        $ctx->update_repo(
+                        $ctx->update_localhub(
                             {
                                 message => "sync $hub->{location} "
                                   . $ctx->{message},
@@ -181,7 +182,7 @@ bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

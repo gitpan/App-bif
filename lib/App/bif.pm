@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -48,21 +48,6 @@ opt no_color => (
 );
 
 # ------------------------------------------------------------------------
-# bif help
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => 'doc',
-    comment => 'access command documentation',
-);
-
-arg command => (
-    isa     => 'ArrayRef',
-    comment => 'a specific comand to display help for',
-    default => '',
-    greedy  => 1,
-);
-
-# ------------------------------------------------------------------------
 # bif init
 # ------------------------------------------------------------------------
 subcmd(
@@ -80,6 +65,13 @@ opt bare => (
     comment => 'use DIRECTORY directly (no .bif)',
 );
 
+opt debug_bifsync => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
+);
+
 # ------------------------------------------------------------------------
 # bif register
 # ------------------------------------------------------------------------
@@ -95,41 +87,7 @@ arg location => (
     comment  => 'location of a remote repository',
 );
 
-opt debug_bs => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif import
-# ------------------------------------------------------------------------
-
-subcmd(
-    cmd     => [qw/import/],
-    comment => 'import projects from a remote hub',
-);
-
-arg path => (
-    isa      => 'ArrayRef',
-    greedy   => 1,
-    required => 1,
-    comment  => 'path(s) of the project(s) to be imported',
-);
-
-arg hub => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'source hub address or alias',
-);
-
-opt alias => (
-    isa     => 'Str',
-    comment => 'alias for future references to HUB',
-);
-
-opt debug_bs => (
+opt debug_bifsync => (
     isa     => 'Bool',
     alias   => 'E',
     comment => 'turn on bifsync debugging',
@@ -184,6 +142,52 @@ opt message => (
     isa     => 'Str',
     alias   => 'm',
     comment => 'Comment',
+);
+
+# ------------------------------------------------------------------------
+# bif new identity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/new identity/],
+    comment => 'create a new identity',
+);
+
+arg name => (
+    isa     => 'Str',
+    comment => 'The name of the identity',
+);
+
+arg method => (
+    isa     => 'Str',
+    comment => 'The contact type (email, phone, etc)',
+);
+
+arg value => (
+    isa     => 'Str',
+    comment => 'The contact value',
+);
+
+# ------------------------------------------------------------------------
+# bif new entity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/new entity/],
+    comment => 'create a new entity',
+);
+
+arg name => (
+    isa     => 'Str',
+    comment => 'The name of the entity',
+);
+
+arg method => (
+    isa     => 'Str',
+    comment => 'The contact type (email, phone, etc)',
+);
+
+arg value => (
+    isa     => 'Str',
+    comment => 'The contact value',
 );
 
 # ------------------------------------------------------------------------
@@ -264,41 +268,6 @@ opt status => (
 );
 
 # ------------------------------------------------------------------------
-# bif export
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/export/],
-    comment => 'export a project to a hub',
-);
-
-arg path => (
-    isa      => 'ArrayRef',
-    required => 1,
-    greedy   => 1,
-    comment  => 'path(s) of the project(s) to be exported',
-);
-
-arg hub => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'destination hub address or alias',
-);
-
-opt message => (
-    isa     => 'Str',
-    alias   => 'm',
-    default => '',
-    comment => 'optional comment for the associated update',
-);
-
-opt debug_bs => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
 # bif list
 # ------------------------------------------------------------------------
 subcmd(
@@ -310,6 +279,22 @@ arg items => (
     isa      => 'SubCmd',
     comment  => '',
     required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif list identities
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list identities/],
+    comment => 'list identities (contacts)',
+);
+
+# ------------------------------------------------------------------------
+# bif list entities
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list entities/],
+    comment => 'list entities (contacts)',
 );
 
 # ------------------------------------------------------------------------
@@ -480,6 +465,34 @@ opt full => (
 );
 
 # ------------------------------------------------------------------------
+# bif show identity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show identity/],
+    comment => 'display full identity characteristics',
+);
+
+arg id => (
+    isa      => 'Int',
+    comment  => 'identity ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif show entity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show entity/],
+    comment => 'display full entity characteristics',
+);
+
+arg id => (
+    isa      => 'Int',
+    comment  => 'entity ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
 # bif show hub
 # ------------------------------------------------------------------------
 subcmd(
@@ -545,6 +558,34 @@ opt filter => (
 );
 
 # ------------------------------------------------------------------------
+# bif log identity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/log identity/],
+    comment => 'review history of an identity',
+);
+
+arg id => (
+    isa      => 'Str',
+    comment  => 'identity ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif log entity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/log entity/],
+    comment => 'review history of an entity',
+);
+
+arg id => (
+    isa      => 'Str',
+    comment  => 'entity ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
 # bif log hub
 # ------------------------------------------------------------------------
 subcmd(
@@ -573,7 +614,7 @@ arg id => (
 );
 
 # ------------------------------------------------------------------------
-# bif comment
+# bif update
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/update/],
@@ -581,9 +622,15 @@ subcmd(
 );
 
 arg id => (
-    isa      => 'Str',
+    isa      => 'SubCmd',
     required => 1,
     comment  => 'topic ID or project PATH',
+    fallback => {
+        name    => 'id',
+        isa     => 'Str',
+        comment => 'topic ID or project PATH',
+        greedy  => 1,
+    },
 );
 
 arg status => (
@@ -619,6 +666,34 @@ opt message => (
     isa     => 'Str',
     comment => 'Comment',
     alias   => 'm',
+);
+
+# ------------------------------------------------------------------------
+# bif update identity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/update identity/],
+    comment => 'update an identity',
+);
+
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'identity ID',
+);
+
+# ------------------------------------------------------------------------
+# bif update entity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/update entity/],
+    comment => 'update an entity',
+);
+
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'entity ID',
 );
 
 # ------------------------------------------------------------------------
@@ -681,6 +756,49 @@ opt force => (
 );
 
 # ------------------------------------------------------------------------
+# bif pull
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/pull/],
+    comment => 'import a topic from elsewhere',
+);
+
+arg item => (
+    isa      => 'SubCmd',
+    comment  => '',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif pull project
+# ------------------------------------------------------------------------
+
+subcmd(
+    cmd     => [qw/pull project/],
+    comment => 'import projects from a hub',
+);
+
+arg path => (
+    isa      => 'ArrayRef',
+    greedy   => 1,
+    required => 1,
+    comment  => 'path(s) of the project(s) to be imported',
+);
+
+arg hub => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'source hub address or alias',
+);
+
+opt debug_bifsync => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
+);
+
+# ------------------------------------------------------------------------
 # bif push
 # ------------------------------------------------------------------------
 subcmd(
@@ -688,12 +806,18 @@ subcmd(
     comment => 'push a topic to another project',
 );
 
-arg id => (
-    isa      => 'Str',
-    comment  => 'topic ID to be pushed',
+arg item => (
+    isa      => 'SubCmd',
+    comment  => '',
     required => 1,
+    fallback => {
+        name    => 'id',
+        isa     => 'Str',
+        comment => 'topic ID to be pushed',
+    },
 );
 
+# TODO Fix OptArgs so usage is correct with arg after subcmd
 arg path => (
     isa      => 'Str',
     required => 1,
@@ -705,21 +829,45 @@ arg hub => (
     comment => 'hub that hosts the destination project',
 );
 
-opt alias => (
-    isa     => 'Str',
-    comment => 'alias for future references to HUB',
-);
-
-opt copy => (
-    isa     => 'Bool',
-    comment => 'copy instead of linking (issue) or moving (task)',
-    alias   => 'c',
-);
-
 opt message => (
     isa     => 'Str',
     comment => 'reason for this push to the project',
     alias   => 'm',
+);
+
+# ------------------------------------------------------------------------
+# bif push project
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/push project/],
+    comment => 'export a project to a hub',
+);
+
+arg path => (
+    isa      => 'ArrayRef',
+    required => 1,
+    greedy   => 1,
+    comment  => 'path(s) of the project(s) to be exported',
+);
+
+arg hub => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'destination hub address or alias',
+);
+
+opt message => (
+    isa     => 'Str',
+    alias   => 'm',
+    default => '',
+    comment => 'optional comment for the associated update',
+);
+
+opt debug_bifsync => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -750,7 +898,7 @@ opt message => (
     comment => 'message for multiple test script updates / second ',
 );
 
-opt debug_bs => (
+opt debug_bifsync => (
     isa     => 'Bool',
     alias   => 'E',
     comment => 'turn on bifsync debugging',
@@ -790,6 +938,12 @@ opt noprint => (
     isa     => 'Bool',
     comment => 'do not print output but return a data structure',
     alias   => 'n',
+);
+
+opt user => (
+    isa     => 'Bool',
+    comment => 'run query against the user identity database',
+    alias   => 'u',
 );
 
 opt write => (
@@ -834,7 +988,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

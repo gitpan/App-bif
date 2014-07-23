@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 my $NOW;
 my $bold;
@@ -34,7 +34,9 @@ sub run {
         print "version: $App::bif::Build::VERSION\n"
           . "date:    $App::bif::Build::DATE\n"
           . "branch:  $App::bif::Build::BRANCH\n"
-          . "commit:  $App::bif::Build::COMMIT\n";
+          . "commit:  $App::bif::Build::COMMIT\n"
+          . "bin:     $0\n"
+          . "lib:     $App::bif::Build::FILE\n";
         return $ctx->ok('ShowVersion');
     }
 
@@ -405,8 +407,8 @@ sub _show_issue {
                     _header( '  ID', $ref->{id}, $ref->{uuid} ),
                     _header(
                         '  Project',
-                        "$ref->{path}\@$ref->{hub}",
-                        "$ref->{project_uuid}\@$ref->{location}"
+                        "$ref->{hub}:$ref->{path}",
+                        "$ref->{location}:$ref->{project_uuid}"
                     ),
                 );
             }
@@ -450,7 +452,7 @@ bif-show - display a item's current status
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

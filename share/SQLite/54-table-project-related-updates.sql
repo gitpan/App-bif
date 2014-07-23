@@ -33,6 +33,37 @@ CREATE TABLE project_related_updates(
 */
 
 CREATE TRIGGER
+    project_related_updates_ai_1
+AFTER UPDATE ON
+    project_related_updates
+FOR EACH ROW
+BEGIN
+
+    SELECT debug(
+        NEW.project_id,
+        NEW.real_project_id
+    );
+
+    INSERT INTO
+        project_topic_entities(
+            project_id,
+            real_project_id,
+            entity_id
+        )
+    SELECT
+        NEW.project_id,
+        NEW.real_project_id,
+        u.identity_id
+    FROM
+        updates u
+    WHERE
+        u.id = NEW.update_id
+    ;
+
+END;
+
+
+CREATE TRIGGER
     project_related_updates_bu_1
 BEFORE UPDATE OF
     merkled

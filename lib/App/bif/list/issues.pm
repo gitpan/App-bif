@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -56,7 +56,7 @@ sub run {
             order_by => 'id ASC',
         );
 
-        next unless @$data;
+        next unless $data;
 
         require Term::ANSIColor;
         my $dark  = Term::ANSIColor::color('dark');
@@ -100,7 +100,7 @@ bif-list-issues - list projects' issues
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

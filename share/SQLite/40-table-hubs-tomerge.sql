@@ -1,4 +1,4 @@
-CREATE TABLE hub_tomerge(
+CREATE TABLE hubs_tomerge(
     hub_id INTEGER NOT NULL UNIQUE,
     name INTEGER DEFAULT 0,
     resolve INTEGER,
@@ -6,11 +6,11 @@ CREATE TABLE hub_tomerge(
 );
 
 CREATE TRIGGER
-    hub_tomerge_bu_3
+    hubs_tomerge_bu_3
 BEFORE UPDATE OF
     resolve
 ON
-    hub_tomerge
+    hubs_tomerge
 FOR EACH ROW WHEN
     NEW.resolve = 1
 BEGIN
@@ -44,7 +44,7 @@ BEGIN
     ;
 
     DELETE FROM
-        hub_tomerge
+        hubs_tomerge
     WHERE
         hub_id = OLD.hub_id
     ;
@@ -55,11 +55,11 @@ END;
 
 
 CREATE TRIGGER
-    hub_tomerge_bu_1
+    hubs_tomerge_bu_1
 BEFORE UPDATE OF
     resolve
 ON
-    hub_tomerge
+    hubs_tomerge
 FOR EACH ROW WHEN
     NEW.resolve = 1 AND
     OLD.name != 0

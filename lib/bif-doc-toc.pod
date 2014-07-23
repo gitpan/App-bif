@@ -1,36 +1,30 @@
-=head1 Bif Documentation Index
+=head1 Bif Documentation: Table of Contents
 
-=head2 User Documentation
-
-=head3 Introduction & General Information
+=head2 Introduction & General Information
 
 =over
 
 =item * L<bif> - the bif manual
 
-=item * L<bif-doc> - display bif documentation
-
 =item * L<bif-doc-intro> - a hands-on quickstart introduction
-
-=item * L<bif-doc-changelog> - what has changed in each release
-
-=item * L<bif-doc-index> - documentation index (this document)
 
 =item * L<bif-doc-faq> - frequently asked questions
 
+=item * L<bif-doc-changelog> - what has changed in each release
+
+=item * L<bif-doc-toc> - bif documentation: table of contents (this document)
+
 =back
 
-=head3 Initialisation And Configuration
+=head2 Initialisation
 
 =over
 
 =item * L<bif-init> - initialise a bif repository
 
-=item * L<bif-config> - initialise a bif repository
-
 =back
 
-=head3 Topic Creation
+=head2 Topic Creation
 
 =over
 
@@ -42,7 +36,7 @@
 
 =back
 
-=head3 Information Retrieval
+=head2 Current Information Retrieval
 
 =over
 
@@ -52,17 +46,23 @@
 
 =item * L<bif-list-topics> - initialise a bif repository
 
-=item * L<bif-log> - review the repository or topic history
-
-=item * L<bif-log-hub> - review a repository history
-
 =item * L<bif-show> - display a topics current status
 
 =item * L<bif-show-hub> - show a repository current status
 
 =back
 
-=head3 Topic Modification & Collaboration
+=head2 Historical Information Retrieval
+
+=over
+
+=item * L<bif-log> - review the repository or topic history
+
+=item * L<bif-log-hub> - review a repository history
+
+=back
+
+=head2 Topic Modification
 
 =over
 
@@ -70,40 +70,39 @@
 
 =item * L<bif-drop> - delete a topic or topic update
 
-=item * L<bif-push> - push a topic to another project
-
 =item * L<bif-update> - comment on or update a topic
 
 =back
 
-=head3 Project Mirroring & Synchronisation
+=head2 Distribution, Collaboration & Synchronisation
 
 =over
 
-=item * L<bif-export> - initialise a bif repository
-
-=item * L<bif-import> - initialise a bif repository
-
 =item * L<bif-register> - register with a hub
+
+=item * L<bif-push> - push a topic to another project
+
+=item * L<bif-push-project> - export a project to a hub
+
+=item * L<bif-pull-project> - import a project from a hub
 
 =item * L<bif-sync> - initialise a bif repository
 
 =back
 
-=head3 Repository & Hub Management
+=head2 Repository & Hub Management
 
 =over
 
 =item * L<bif-upgrade> - upgrade a repository
 
-=item * L<bif-sql> - run an SQLite command against the database
+=item * L<bif-sql> - run an SQL command against the database
 
 =item * L<bifhub> - bif hub management
 
 =item * L<bifsync> - bif synchronization server
 
 =back
-
 
 =head2 Developer Documentation
 
@@ -115,7 +114,7 @@
 
 =back
 
-=head3 Perl Modules
+=head2 Perl Modules
 
 =over
 
@@ -135,7 +134,7 @@
 
 =back
 
-=head3 Database Tables & Their Triggers
+=head2 Database Tables & Their Triggers
 
 The documentation pages for database tables have titles like
 bif-doc-table-TABLE-NAME.
@@ -202,7 +201,7 @@ bif-doc-table-TABLE-NAME.
 
 =back
 
-=head3 Database Functions
+=head2 Database Functions
 
 The documentation pages for database functions have titles like
 bif-doc-func-TABLE-NAME.

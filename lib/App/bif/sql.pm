@@ -3,11 +3,18 @@ use strict;
 use warnings;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
-    my $db = $ctx->{write} ? $ctx->dbw : $ctx->db;
+    my $db;
+
+    if ( $ctx->{user} ) {
+        $db = $ctx->{write} ? $ctx->user_dbw : $ctx->user_db;
+    }
+    else {
+        $db = $ctx->{write} ? $ctx->dbw : $ctx->db;
+    }
 
     if ( !$ctx->{statement} ) {
         local $/;
@@ -56,21 +63,24 @@ bif-sql -  run an SQL command against the database
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
-    bif sql [STATEMENT...]  [OPTIONS...]
+    bif sql [STATEMENT...] [OPTIONS...]
 
 =head1 DESCRIPTION
 
 The C<bif sql> command runs an SQL statement directly against the
-database. If the statement is not given on the command line it will be
-read from I<stdin>.
+database of the current bif repository.
 
-If STATEMENT begins with "select", "pragma" or "explain" the results of
-the statement will be fetched and displayed. Otherwise the return value
-of the statement (DBI "do" method) will be printed.
+    #!sh
+    bif sql "select id,message from updates"
+
+If C<STATEMENT> is not given on the command line it will be read from
+I<stdin>.  If the statement begins with "select", "pragma" or "explain"
+the results of the statement will be fetched and displayed. Otherwise
+the return value of the statement (DBI "do" method) will be printed.
 
 By default a read-only handle for the database is used. Note that
 "pragma" statements would therefore require the C<--write> flag to
@@ -91,6 +101,11 @@ prevent unwanted shell expansion messing with your query.
 Do not print results but return them to the calling subroutine as a
 Perl data structure.  This option is only useful for internal test
 scripts.
+
+=item --user, -u
+
+Run the statement against the user identity database instead of against
+the current repository database.
 
 =item --write, -w
 

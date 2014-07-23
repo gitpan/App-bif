@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -59,24 +59,14 @@ sub run {
     $db->txn(
         sub {
             my $ruid = $db->nextval('updates');
-            $ctx->{id}        = $db->nextval('topics');
-            $ctx->{update_id} = $db->nextval('updates');
-
-            $db->xdo(
-                insert_into => 'updates',
-                values      => {
-                    id      => $ctx->{update_id},
-                    email   => $ctx->{user}->{email},
-                    author  => $ctx->{user}->{name},
-                    message => $ctx->{message},
-                },
-            );
+            my $id   = $db->nextval('topics');
+            my $uid  = $ctx->new_update( message => $ctx->{message}, );
 
             $db->xdo(
                 insert_into => 'func_new_task',
                 values      => {
-                    id        => $ctx->{id},
-                    update_id => $ctx->{update_id},
+                    id        => $id,
+                    update_id => $uid,
                     status_id => $ctx->{status_id},
                     title     => $ctx->{title},
                 },
@@ -87,17 +77,22 @@ sub run {
                 values      => { merge => 1 },
             );
 
-            $ctx->update_repo(
+            $ctx->update_localhub(
                 {
                     id                => $ruid,
-                    message           => "new task $ctx->{id} [$pinfo->{path}]",
-                    related_update_id => $ctx->{update_id},
+                    message           => "new task $id [$pinfo->{path}]",
+                    related_update_id => $uid,
                 }
             );
+
+            printf( "Task created: %d\n", $id );
+
+            # For test scripts
+            $ctx->{id}        = $id;
+            $ctx->{update_id} = $uid;
         }
     );
 
-    printf( "Task created: %d\n", $ctx->{id} );
     return $ctx->ok('NewTask');
 }
 
@@ -110,7 +105,7 @@ bif-new-task - add a new task to a project
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

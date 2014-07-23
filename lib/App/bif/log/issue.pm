@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use App::bif::log;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx  = App::bif::Context->new(shift);
@@ -26,17 +26,15 @@ sub run {
     my $sth = $db->xprepare(
         select => [
             'project_issues.issue_id AS "id"',
-            'updates.uuid',
             concat( 'project_issues.id', qv('.'), 'updates.id' )
               ->as('update_id'),
-            'updates.uuid AS update_uuid',
+            'SUBSTR(updates.uuid,1,8) AS update_uuid',
             'updates.mtime',
             'updates.mtimetz',
             'updates.author',
             'updates.email',
             'updates.message',
             'updates.ucount',
-            'issue_status.status',
             'issue_status.status',
             'issue_deltas.new',
             'issue_deltas.title',
@@ -70,6 +68,7 @@ sub run {
 
     my $row   = $sth->hash;
     my $title = $row->{title};
+    $row->{uuid} = substr( $info->{uuid}, 0, 8 );
 
     App::bif::log::_log_item( $ctx, $row, 'issue' );
 
@@ -159,7 +158,7 @@ bif-log-issue - review the history of a issue
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

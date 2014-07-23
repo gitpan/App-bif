@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
@@ -30,10 +30,9 @@ bif - distributed project management tool
 
 =head1 STATUS
 
-Bif is still under active development.  Much of the functionality is
-missing, documentation is incomplete (or in some cases ahead of the
-implementation) and test coverage is lacking and/or failing.  B<DO NOT
-USE BIF FOR REAL DATA!>
+Although functional, bif is still under active development.
+Documentation and tests are incomplete, and the database schema changes
+regularly.  B<DO NOT USE BIF FOR REAL DATA!>
 
 =head1 DESCRIPTION
 
@@ -72,16 +71,89 @@ A very quick hands-on introduction to bif.
 
 A list of common questions and answers.
 
-=item L<bif-doc-index>
+=item L<bif-doc-toc>
 
-An overview of every piece of bif documententation for both users and
-developers.
+The table of contents for all bif documentation.
 
 =back
 
 Reference documents for bif commands have titles like
-I<bif-command-name>, which can also be displayed by running C<bif doc
-command name>.
+I<bif-command-name>.
+
+=head2 Design Background
+
+Communication is a core component of project management. For
+decentralized projects up to a certain scale, email often fulfills the
+communication requirements.  Tasks, issues, feature requests and the
+like can exist in multiple inboxes as shared conversation topics.
+Unfortunately, email on its own provides no solution for managing the
+various types of structured meta-data (status, priority, due-date, etc)
+that we may want to assign and query throughout a project's lifetime.
+
+Managing structured data is exactly what relational databases are
+designed for, and bif takes advantage of SQLite for this purpose. A
+database schema helps ensure the integrity of the data, and relevant
+and insightful queries can be created using the full power of SQL.  In
+addition, SQLite gives us fulltime local reporting and data
+modification - a wonderful independence from the network when we need
+it.
+
+However a database on its own is not a decentralized communication
+tool. Database implementations generally do not have a built-in
+functionality for the efficient exchange of updates.  Distributed
+Version Control Systems (DVCS) on the other hand do provide a useful
+information exchange model, but the techniques of mapping textual
+differences to tree structures unfortunately don't translate well to
+row-based relational data sets.
+
+Bif therefore is an attempt at applying some DVCS I<princples> to a
+standard Create, Retrieve, Update and Delete (CRUD) database
+application. The end goal is a distributed communication system that
+carries both conversations and structured meta-data. The finer details
+of the advantages and trade-offs with regards the bif design can be
+found in L<bif-doc-design>(3) and L<bif-doc-faq>(3).
+
+=head2 Terminology
+
+=over
+
+=item Repository
+
+A bif repository is simply a configuration file and an SQLite database
+inside a directory named F<.bif>. All bif commands find the "current"
+repository by searching upwards through the file-system for such a
+directory. The database contains the history, status and relationships
+of a set of topics.  The terms repository and database are often used
+interchangeably.
+
+=item Hub
+
+A bif hub consists of one or more repositories that act as
+synchronisation points for exchanging project activities. Hub
+repositories are usually located on remote servers and accessed through
+a L<ssh>(1) tunnel. A hub can be referred to by its globally unique
+name (typically an organisation's domain name) after it has been
+registered with the local repository.
+
+=item Topic
+
+Topic is is a catch-all term for any task, issue, bug or feature etc
+which has a conversation (the history) plus associated meta data
+(status). Topics are identified by an integer ID which is unique to the
+local repository. Some topic types (issues for example) can be
+associated with multiple projects in which case they have multiple IDs
+and multiple status values.
+
+=item Project
+
+A project is also considered a topic, but one that comes with some
+extra functionality.  The key property of a project is that it is a
+container for grouping together other topics and the status they can
+have.  Multiple projects can be managed within a repository, and can be
+defined hierarchically. Projects are identified by their hub name, a
+colon ":" and their path (name) which includes the parent's path.
+
+=back
 
 =head2 Command Structure
 
@@ -89,10 +161,7 @@ Bif commands are structured where possible the same way an English
 speaker describes actions, verb followed by subject. The entire set of
 bif commands and their arguments are listed below:
 
-    bif doc [COMMAND...]
     bif drop ID
-    bif export PATH... HUB
-    bif import PATH... HUB
     bif init [DIRECTORY]
     bif list ITEMS
         bif list hubs
@@ -111,7 +180,10 @@ bif commands and their arguments are listed below:
         bif new issue [TITLE...]
         bif new project [PATH] [TITLE...]
         bif new task [TITLE...]
+    bif pull ITEM
+        bif pull PATH... HUB
     bif push ID PATH [HUB]
+        bif push project PATH... HUB
     bif register LOCATION
     bif reply ID.UID
     bif show ITEM
@@ -126,9 +198,9 @@ bif commands and their arguments are listed below:
 In addition to the above commands a couple of useful aliases are
 created by default:
 
-    bif l          # bif list projects run
-    bif ls         # bif list topics --status open
-    bif lss        # bif list topics --status stalled
+    bif ls         # bif list projects plan define run
+    bif ll         # bif list topics --status open
+    bif lls        # bif list topics --status stalled
 
 =head2 Global Options
 
@@ -171,90 +243,13 @@ are sent to I<stderr>.
 
 =item Connectivity
 
-The only commands that involve network communication are C<register>,
-C<import>, C<export>, and C<sync>. Everything else is a local action.
+The only commands that (may) involve network communication are
+C<register>, C<pull>, C<push>, and C<sync>. Everything else is a local
+action.
 
 =item Exit Status
 
 An exit value of zero indicates success.
-
-=back
-
-=head1 DESIGN BACKGROUND
-
-Communication is a core component of project management.  Email, a
-decentralized system, often plays a major role
-
-a part in fulfilling the communication requirements of projects up to a
-certain scale.  Tasks, issues, feature requests and the like can exist
-in multiple inboxes as shared conversation topics.  Throughout a
-topic's lifetime we want to assign it various kinds of meta-data
-(status, priority, due date, etc), but this information must be stored
-either in our own memories or using an external tool. It is partly
-because of this lack of ability to deal with structured meta-data that
-email on its own doesn't do the job.
-
-Managing data is exactly what relational databases are designed for,
-and bif takes advantage of SQLite for this purpose. A database schema
-helps ensure the integrity of the data, and relevant and insightful
-queries can be created using the full power of the underlying engine.
-SQLite gives us fulltime local reporting and data modification - a
-wonderful independence from the network when we need it.
-
-But a database on its own is also not a tool for communication.  SQL in
-its various implementations generally provides no built-in
-functionality for the efficient exchange of updates between
-repositories.  Distributed Version Control Systems (DVCS) on the other
-hand provide a useful model for the efficient tracking and exchange of
-updates between repositories. The DVCS ability of mapping textual
-differences to tree structures unfortunately doesn't translate well to
-row-based relational data sets.
-
-Bif therefore is an attempt at applying some DVCS princples to a
-standard Create, Retrieve, Update and Delete (CRUD) database
-application. The end goal is a distributed communication system that
-carries both conversations and structured meta-data. The finer details
-of the advantages and trade-offs with regards the bif design can be
-found in L<bif-doc-design>(3).
-
-=head1 TERMINOLOGY
-
-=over
-
-=item Repository
-
-A bif repository is simply a configuration file and an SQLite database
-inside a directory named F<.bif>. All bif commands find the "current"
-repository by searching upwards through the file-system for such a
-directory. The database contains the history, status and relationships
-of a set of topics.  The terms repository and database are often used
-interchangeably.
-
-=item Topic
-
-Topic is is a catch-all term for any task, issue, bug or feature etc
-which has a conversation (the history) plus associated meta data
-(status). Topics are identified by an integer ID, which is unique to
-the local repository and/or project. The status associated with a topic
-is can sometimes be project specific.
-
-=item Project
-
-A project is also considered a topic, but one that comes with some
-extra functionality.  The key property of a project is that it is a
-container for grouping together other topics and the status they can
-have.  Multiple projects can be managed within a repository, and can be
-defined hierarchically. Projects are identified by their path (name)
-which includes the parent's path.
-
-=item Hub
-
-A bif hub consists of one or more repositories that act as
-synchronisation points for exchanging project activities. Hub
-repositories are usually located on remote servers and accessed through
-a L<ssh>(1) tunnel. A hub can be referred to by its globally unique)
-name (typically an organisation's domain name) after it has been
-registered with the local repository.
 
 =back
 
@@ -310,8 +305,8 @@ Projects can be nested by defining them with a parent path and a "/":
 
 Apart from visual organisation, the main impact of having nested
 projects is that child projects are included when importing or
-exporting. Also, child projects will not be displayed in list commands
-if the parent project will not be displayed.
+exporting them to hubs. Also, child projects will not be displayed in
+list commands if the parent project will not be displayed.
 
 A project has three different types of status associated with it.
 Project status is for the status of the project itself. Task and issue
@@ -441,15 +436,15 @@ the hub alias to the C<list projects> command:
 
 If you are joining an established team with a pre-existing hub then you
 can import any of their projects into your local repository straight
-away. The import command has the general form:
+away. The C<pull project> command has the general form:
 
-    bif import PATH... HUB
+    bif pull project PATH... HUB
 
 So to import the stable project from the hub located at bifax.org/bif
 we run:
 
     #!sh
-    bif import stable bif://bifax.org/bif
+    bif pull project stable bif://bifax.org/bif
 
 Importing a project is a one-time activity. Updates to a project that
 occur after an import are exchanged with the C<sync> command (described
@@ -457,17 +452,17 @@ below).
 
 =head2 Exporting Projects
 
-The inverse of C<import> is C<export> which has the same general form:
+The inverse of C<pull> is C<push> which has the same general form:
 
-    bif export PATH... HUB
+    bif push project PATH... HUB
 
 So to mirror the todo project from the local repository to the hub
 located at bif@bifax.org (which we registered as "bif") we run this:
 
     #!sh
-    bif export todo bif@bifax.org
+    bif push project todo bif@bifax.org
 
-As with importing, doing an export is a one-off activity; further
+As with importing, exporting a project is a one-off activity; further
 updates are exchanged with the C<sync> command.
 
 =head2 Synchronising Updates
@@ -585,15 +580,15 @@ working for some statements.
 
 =item F<.bif/config>
 
-Per-repository configuration file.
+Repository configuration file.
 
 =item F<.bif/db.sqlite3>
 
-Per-repository SQLite database.
+Repository SQLite database.
 
-=item F<$HOME/.config/bif-user/config>
+=item F<$HOME/.local/share/bif-user/config>
 
-Global configuration file.
+User configuration file.
 
 =back
 
@@ -601,7 +596,7 @@ Global configuration file.
 
 L<bifhub>(1), L<bifsync>(1)
 
-=head1 SUPPORT
+=head1 COMMUNITY
 
 Bif is community supported software, and the community expects (and
 should offer) respectful communication with all of its members.
@@ -627,6 +622,8 @@ mail to <bif-devel@freelists.org>.
 
 =back
 
+=head1 SUPPORT
+
 If you have an issue with bif please first make the effort to read the
 documentation and/or search for an answer to your issue in the
 internet. If you are still stuck send us a message as if you were
@@ -636,7 +633,9 @@ answering the following questions:
 
 =item * What does C<bif show VERSION> print?
 
-=item * What are you trying to achieve?
+=item * What are goal you trying to achieve?
+
+=item * What commands are you running?
 
 =item * What (output) did you expect (to see)?
 
@@ -645,7 +644,7 @@ answering the following questions:
 =back
 
 We will most likely need to ask for more information from you. You can
-probably speed things along by already running your commands with the
+possibly speed things along by already running your commands with the
 C<--debug> flag turned on.
 
 =head1 AUTHOR

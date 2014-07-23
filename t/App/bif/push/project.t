@@ -13,13 +13,13 @@ sub bif2 {
 
 run_in_tempdir {
 
-    isa_ok exception { bif(qw/export/) },          'OptArgs::Usage';
-    isa_ok exception { bif(qw/export todo/) },     'OptArgs::Usage';
-    isa_ok exception { bif(qw/export todo hub/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/push project/) },          'OptArgs::Usage';
+    isa_ok exception { bif(qw/push project todo/) },     'OptArgs::Usage';
+    isa_ok exception { bif(qw/push project todo hub/) }, 'Bif::Error::RepoNotFound';
 
     bif(qw/init/);
 
-    isa_ok exception { bif(qw/export todo hub/) },
+    isa_ok exception { bif(qw/push project todo hub/) },
       'Bif::Error::ProjectNotFound';
 
     my $pinfo = bif(qw/new project todo title -m message/);
@@ -31,21 +31,21 @@ run_in_tempdir {
     my $iinfo = bif(qw/new issue -m message -p todo issuetitle/);
     bif( qw/update/, $iinfo->{id}, qw/-m m2/ );
 
-    isa_ok exception { bif( qw/export/, $tinfo->{id}, qw/hub/ ) },
+    isa_ok exception { bif( qw/push project/, $tinfo->{id}, qw/hub/ ) },
       'Bif::Error::ProjectNotFound';
 
-    isa_ok exception { bif(qw/export todo hub/) }, 'Bif::Error::HubNotFound';
+    isa_ok exception { bif(qw/push project todo hub/) }, 'Bif::Error::HubNotFound';
 
     bif(qw/init hub --bare/);
     bif(qw/init bif2/);
     bif2(qw/new project todo title2 -m message2/);
     bif2( qw/register/, '../hub' );
 
-    isa_ok bif2(qw/export todo hub -m m4/), 'Bif::OK::Export';
-    isa_ok bif2(qw/export todo hub -m m5/), 'Bif::OK::Export';
+    isa_ok bif2(qw/push project todo hub -m m4/), 'Bif::OK::PushProject';
+    isa_ok bif2(qw/push project todo hub -m m5/), 'Bif::OK::PushProject';
 
     bif(qw/register hub/);
-    isa_ok exception { bif(qw/export todo hub/) }, 'Bif::Error::PathExists';
+    isa_ok exception { bif(qw/push project todo hub/) }, 'Bif::Error::PathExists';
 
 };
 

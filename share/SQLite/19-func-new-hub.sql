@@ -48,7 +48,8 @@ BEGIN
             updates.lang,
             updates.message,
             updates.mtime,
-            updates.mtimetz
+            updates.mtimetz,
+            NEW.name
         )
     FROM
         updates

@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -55,24 +55,14 @@ sub run {
     $db->txn(
         sub {
             my $ruid = $db->nextval('updates');
-            $ctx->{id}        = $db->nextval('topics');
-            $ctx->{update_id} = $db->nextval('updates');
-
-            $db->xdo(
-                insert_into => 'updates',
-                values      => {
-                    id      => $ctx->{update_id},
-                    email   => $ctx->{user}->{email},
-                    author  => $ctx->{user}->{name},
-                    message => $ctx->{message},
-                },
-            );
+            my $uid  = $ctx->new_update( message => $ctx->{message}, );
+            my $id   = $db->nextval('topics');
 
             $db->xdo(
                 insert_into => 'func_new_project',
                 values      => {
-                    update_id => $ctx->{update_id},
-                    id        => $ctx->{id},
+                    update_id => $uid,
+                    id        => $id,
                     parent_id => $ctx->{parent_id},
                     name      => $ctx->{path},
                     title     => $ctx->{title},
@@ -83,9 +73,9 @@ sub run {
                 update => 'projects',
                 set    => {
                     local  => 1,
-                    hub_id => $db->get_local_hub_id,
+                    hub_id => $db->get_localhub_id,
                 },
-                where => { id => $ctx->{id} },
+                where => { id => $id },
             );
 
             $db->xdo(
@@ -93,12 +83,8 @@ sub run {
                     'func_new_project_status',
                     qw/update_id project_id status status rank/
                 ],
-                select => [
-                    qv( $ctx->{update_id} ),
-                    qv( $ctx->{id} ),
-                    qw/status status rank/,
-                ],
-                from     => 'default_status',
+                select => [ qv($uid), qv($id), qw/status status rank/, ],
+                from   => 'default_status',
                 where    => { kind => 'project' },
                 order_by => 'rank',
             );
@@ -106,15 +92,11 @@ sub run {
             $db->xdo(
                 insert_into =>
                   [ 'project_deltas', qw/update_id project_id status_id/, ],
-                select => [
-                    qv( $ctx->{update_id} ),
-                    qv( $ctx->{id} ),
-                    'project_status.id',
-                ],
+                select     => [ qv($uid), qv($id), 'project_status.id', ],
                 from       => 'default_status',
                 inner_join => 'project_status',
                 on         => {
-                    project_id              => $ctx->{id},
+                    project_id              => $id,
                     'default_status.status' => \'project_status.status',
                 },
                 where => do {
@@ -139,12 +121,8 @@ sub run {
                     'func_new_task_status',
                     qw/update_id project_id status rank def/
                 ],
-                select => [
-                    qv( $ctx->{update_id} ),
-                    qv( $ctx->{id} ),
-                    qw/status rank def/,
-                ],
-                from     => 'default_status',
+                select => [ qv($uid), qv($id), qw/status rank def/, ],
+                from   => 'default_status',
                 where    => { kind => 'task' },
                 order_by => 'rank',
             );
@@ -154,11 +132,7 @@ sub run {
                     'func_new_issue_status',
                     qw/update_id project_id status status rank def/
                 ],
-                select => [
-                    qv( $ctx->{update_id} ),
-                    qv( $ctx->{id} ),
-                    qw/status status rank def/,
-                ],
+                select => [ qv($uid), qv($id), qw/status status rank def/, ],
                 from     => 'default_status',
                 where    => { kind => 'issue' },
                 order_by => 'rank',
@@ -169,19 +143,23 @@ sub run {
                 values      => { merge => 1 },
             );
 
-            $ctx->update_repo(
+            $ctx->update_localhub(
                 {
-                    id         => $ruid,
-                    message    => "new project $ctx->{id} [$ctx->{path}]",
-                    project_id => $ctx->{id},
-                    related_update_id => $ctx->{update_id},
+                    id                => $ruid,
+                    message           => "new project $id [$ctx->{path}]",
+                    project_id        => $id,
+                    related_update_id => $uid,
                 }
             );
 
+            printf( "Project created: %s\n", $path );
+
+            # For test scripts
+            $ctx->{id}        = $id;
+            $ctx->{update_id} = $uid;
         }
     );
 
-    printf( "Project created: %s\n", $path );
     return $ctx->ok('NewProject');
 }
 
@@ -194,7 +172,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

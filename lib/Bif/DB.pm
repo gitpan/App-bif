@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -122,7 +122,7 @@ sub get_update {
     return;
 }
 
-sub get_local_hub_id {
+sub get_localhub_id {
     my $self = shift;
 
     my $hub = $self->xarray(
@@ -132,7 +132,7 @@ sub get_local_hub_id {
     );
 
     if ( !$hub ) {
-        warn "get_local_hub_id: no local repo!";
+        warn "get_localhub_id: no local repo!";
         return;
     }
     return $hub->[0];
@@ -269,6 +269,34 @@ sub get_max_update_id {
 
 }
 
+sub check_fks {
+    my $self = shift;
+    my $sth = $self->table_info( '%', '%', '%' );
+
+    while ( my $t_info = $sth->fetchrow_hashref('NAME_lc') ) {
+        my $sth2 =
+          $self->foreign_key_info( undef, undef, undef, undef, undef,
+            $t_info->{table_name} );
+
+        while ( my $fk_info = $sth2->fetchrow_hashref('NAME_lc') ) {
+
+            my @missing = $self->xarrays(
+                select_distinct => $fk_info->{fkcolumn_name},
+                from            => $fk_info->{fktable_name},
+                where           => "$fk_info->{fkcolumn_name} IS NOT NULL",
+                except_select   => $fk_info->{pkcolumn_name},
+                from            => $fk_info->{pktable_name},
+                where           => "$fk_info->{pkcolumn_name} IS NOT NULL",
+            );
+
+            print "$fk_info->{fktable_name}.$fk_info->{fkcolumn_name}: $_->[0]"
+              . " ($fk_info->{pktable_name}.$fk_info->{pkcolumn_name})\n"
+              for @missing;
+
+        }
+    }
+}
+
 package Bif::DB::st;
 our @ISA = ('DBIx::ThinSQL::st');
 
@@ -280,7 +308,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
@@ -339,7 +367,7 @@ contain valid values:
 =back
 
 
-=item get_local_hub_id -> Int
+=item get_localhub_id -> Int
 
 Returns the ID for the local repository topic.
 
@@ -397,6 +425,11 @@ found.
 =item get_max_update_id
 
 Returns the maximum update ID in the database.
+
+=item check_fks
+
+This is developer aide to print out foreign key relationship that are
+not satisfied (i.e. where the target row/column doesn't exist).
 
 =back
 

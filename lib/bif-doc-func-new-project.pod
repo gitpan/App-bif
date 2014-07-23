@@ -4,7 +4,7 @@ bif-doc-func-new-project - add a new project to an update
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
@@ -63,7 +63,7 @@ update #2.
 
 =back
 
-=item * A row is inserted into F<hub_tomerge> but probably keeps zero
+=item * A row is inserted into F<hubs_tomerge> but probably keeps zero
 values.
 
 =back

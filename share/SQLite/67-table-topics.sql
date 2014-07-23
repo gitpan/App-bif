@@ -47,10 +47,15 @@ BEFORE DELETE ON topics
 FOR EACH ROW
 BEGIN
     SELECT debug(
-        'TRIGGER topics_bd_1',
         OLD.id,
         OLD.first_update_id,
         OLD.kind
     );
+
+    DELETE FROM
+        updates
+    WHERE
+        id = OLD.first_update_id
+    ;
 
 END;

@@ -18,14 +18,14 @@ on 'runtime' => sub {
 
     # Bif::DB
     requires 'DBD::SQLite'   => '1.42';
-    requires 'DBIx::ThinSQL' => '0.0.20';
+    requires 'DBIx::ThinSQL' => '0.0.22';
 
     # Bif::DBW
     requires 'DBIx::ThinSQL::SQLite' => '0.0.10';
     requires 'Digest::SHA'           => 0;
 
     # App::bif
-    requires 'OptArgs' => '0.1.6';
+    requires 'OptArgs' => '0.1.14';
 
     # App::bif::init/upgrade
     requires 'File::ShareDir' => 0;
@@ -78,6 +78,7 @@ on 'develop' => sub {
     requires 'Module::Install';
     requires 'Module::Install::AuthorTests';
     requires 'Module::Install::CPANfile';
+    requires 'Module::Install::ReadmeFromPod';
     requires 'Test::Pod';
     requires 'Test::Pod::Coverage';
 };

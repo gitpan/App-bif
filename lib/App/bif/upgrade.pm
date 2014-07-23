@@ -4,7 +4,7 @@ use warnings;
 use App::bif::Context;
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -31,7 +31,7 @@ bif-upgrade - upgrade a repository
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 

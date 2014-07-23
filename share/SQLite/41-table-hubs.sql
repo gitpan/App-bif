@@ -20,22 +20,28 @@ AFTER DELETE ON
     hubs
 FOR EACH ROW
 BEGIN
-    SELECT debug(
-        OLD.id
+    SELECT debug( 
+        OLD.id,
+        OLD.name
     );
 
-    -- TODO Should this be done generically in topics?
     DELETE FROM
-        updates
+        topics
     WHERE
-        id = (
-            SELECT
-                first_update_id
-            FROM
-                topics
-            WHERE
-                id = OLD.id
-        )
+        id = OLD.id
+    ;
+
+    /*
+        The following is necessary, because although FK relationships
+        do result in the remove of rows from hubs_tomerge, the deletion
+        of rows from hub_deltas just inserts more rows.
+    */
+
+    DELETE FROM
+        hubs_tomerge
+    WHERE
+        hub_id = OLD.id
     ;
 
 END;
+

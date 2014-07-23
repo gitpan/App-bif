@@ -13,7 +13,9 @@ run_in_tempdir {
 
     bif(qw/init/);
 
-    isa_ok bif(qw/log hub -/), 'Bif::OK::LogHub';
+    my $x = bif( qw/sql --noprint/, 'select name from hubs' );
+
+    isa_ok bif( qw/log hub /, $x->[0][0] ), 'Bif::OK::LogHub';
 
     isa_ok exception { bif(qw/ log hub unknown /) }, 'Bif::Error::HubNotFound';
 

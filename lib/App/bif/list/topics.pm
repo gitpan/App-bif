@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use App::bif::Context;
 
-our $VERSION = '0.1.0_25';
+our $VERSION = '0.1.0_26';
 
 sub run {
     my $ctx = App::bif::Context->new(shift);
@@ -15,12 +15,21 @@ sub run {
     my $bold  = Term::ANSIColor::color('white');
     my $reset = Term::ANSIColor::color('reset');
 
-    DBIx::ThinSQL->import(qw/ qv concat coalesce/);
+    DBIx::ThinSQL->import(qw/ qv case concat coalesce/);
 
     my @projects = $db->xarrays(
-        select => [ 'p.id', 'p.path', 0 ],
-        from   => 'projects p',
+        select => [
+            'p.id',
+            case (
+                when => 'h.local',
+                then => 'p.path',
+                else => "h.name || ':' || p.path",
+              )->as('path'),
+            0
+        ],
+        from => 'projects p',
         do {
+
             if ( $ctx->{project_status} ) {
                 (
                     inner_join => 'project_status ps',
@@ -34,24 +43,26 @@ sub run {
                 ();
             }
         },
-        where    => 'p.local = 1',
-        order_by => 'p.path',
+        inner_join => 'hubs h',
+        on         => 'h.id = p.hub_id',
+        where      => 'p.local = 1',
+        order_by   => 'p.path',
     );
 
     return $ctx->ok('ListTopics') unless @projects;
 
     require Text::FormatTable;
-    my $table = Text::FormatTable->new(' l  l  l ');
+    my $table = Text::FormatTable->new(' l l  l  l ');
 
     my $i = 0;
     foreach my $project (@projects) {
 
         my $data = $db->xarrays(
             select => [
+                qv( $dark . 'task' . $reset )->as('type'),
                 'tasks.id AS id',
                 'tasks.title AS title',
-                concat( 'task_status.status',
-                    qv( ' ' . $dark . '(task)' . $reset ) )->as('status'),
+                'task_status.status',
             ],
             from       => 'task_status',
             inner_join => 'tasks',
@@ -68,10 +79,10 @@ sub run {
                 },
             },
             union_all_select => [
+                qv( $dark . 'issue' . $reset )->as('type'),
                 'project_issues.id',
                 'issues.title AS title',
-                concat( 'issue_status.status',
-                    qv( ' ' . $dark . '(issue)' . $reset ) )->as('status'),
+                'issue_status.status',
             ],
             from       => 'issue_status',
             inner_join => 'project_issues',
@@ -92,11 +103,20 @@ sub run {
             order_by => 'id ASC',
         );
 
-        next unless @$data;
+        next unless $data;
 
-        $table->rule(' ') if $i;
-        $table->head( $bold . 'ID', "[$project->[1]] Topic",
-            'Status' . $reset );
+        if ($i) {
+            $i++;
+            $table->rule(' ');
+        }
+
+        $table->head(
+            $bold . 'Type',
+            'ID',
+            "[$project->[1]] Topic",
+            'Status' . $reset
+        );
+        $i++;
 
         if ($dark) {
             $table->rule( $dark . '–' . $reset );
@@ -132,7 +152,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_25 (2014-06-14)
+0.1.0_26 (2014-07-23)
 
 =head1 SYNOPSIS
 
