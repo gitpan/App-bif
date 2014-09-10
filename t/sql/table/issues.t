@@ -32,7 +32,7 @@ run_in_tempdir {
                 },
             );
 
-            my ($status_id) = $db->xarray(
+            my $status_id = $db->xval(
                 select => 'id',
                 from   => 'issue_status',
                 where  => {
@@ -42,7 +42,7 @@ run_in_tempdir {
             );
             ok $status_id, 'new project inserted issue_status default';
 
-            my ($needinfo_status_id) = $db->xarray(
+            my $needinfo_status_id = $db->xval(
                 select => 'id',
                 from   => 'issue_status',
                 where  => {

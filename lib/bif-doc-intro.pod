@@ -7,7 +7,7 @@ to bif is based on situations typically encountered by software
 developers; It is assumed that you are comfortable working with command
 line programs and your operating system shell (e.g. bash).
 
-This document is based on bif version 0.1.0_26 (2014-07-23).
+This document is based on bif version 0.1.0_27 (2014-09-10).
 
 =begin comment
 
@@ -100,10 +100,11 @@ original:
 
 =head1 Collaborating With Others
 
-Need to register with an organisation's hub somewhere.
+Need to import the project details from an organisation's hub
+somewhere.
 
     #!sh
-    bif register organisation@hub.com
+    bif pull hub organisation@hub.com
 
 Then, most likely, someone else already created the project, and you
 just want to work on it too:

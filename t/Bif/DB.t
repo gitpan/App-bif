@@ -113,9 +113,9 @@ run_in_tempdir {
         }
     };
 
-    # get_localhub_id
-    subtest 'get_localhub_id', sub {
-        is $db->get_localhub_id, $hub->{id}, 'get_localhub_id';
+    # get_local_hub_id
+    subtest 'get_local_hub_id', sub {
+        is $db->get_local_hub_id, $hub->{id}, 'get_localhub_id';
     };
 
     # get_projects

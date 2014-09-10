@@ -91,7 +91,7 @@ run_in_tempdir {
         isa_ok exception { $ctx->dbw },       'Bif::Error::RepoNotFound';
     };
 
-    bif('init');
+    bif(qw/init/);
     $ctx = App::bif::Context->new( {} );
 
     subtest 'repo', sub {
@@ -108,9 +108,9 @@ run_in_tempdir {
           'subdir repo';
     };
 
-    subtest 'config', sub {
-        ok $ctx->{'user.alias'}->{ls}, $ctx->{'user.alias'}->{ls};
-    };
+    #    subtest 'config', sub {
+    #        ok $ctx->{'user.alias'}->{ls}, $ctx->{'user.alias'}->{ls};
+    #    };
 
     subtest 'db', sub {
         my $db = $ctx->db;
@@ -170,11 +170,36 @@ END
           'prompt_edit not empty';
     };
 
+    subtest 'get_update', sub {
+        my $dbw = $ctx->dbw;
+        $dbw->txn(
+            sub {
+                is $ctx->get_update(undef), undef, 'undef';
+
+                isa_ok exception { $ctx->get_update('not a uID') },
+                  'Bif::Error::UpdateNotFound';
+
+                isa_ok exception { $ctx->get_update(1000000) },
+                  'Bif::Error::UpdateNotFound';
+
+                isa_ok exception { $ctx->get_update('u1000000') },
+                  'Bif::Error::UpdateNotFound';
+
+                my $uid = $ctx->new_update( action => 'junk', );
+
+                my $res = $ctx->get_update( 'u' . $uid );
+                is $res->{id}, $uid, 'uid found';
+
+                $dbw->rollback;
+            }
+        );
+    };
+
     subtest 'get_topic', sub {
         my $dbw = $ctx->dbw;
         $dbw->txn(
             sub {
-                my $uid     = $ctx->new_update;
+                my $uid = $ctx->new_update( action => 'junk', );
                 my $project = new_test_project($dbw);
 
                 my $ps = new_test_project_status( $dbw, $project );
@@ -215,7 +240,7 @@ END
                   'get_topic task ID';
 
                 is_deeply $ref = $ctx->get_topic( $issue->{id} ), {
-                    id              => $issue->{id},
+                    id              => $issue->{topic_id},
                     first_update_id => $issue->{update_id},
                     kind            => 'issue',
                     uuid => $ref->{uuid},    # hard to know this in advance

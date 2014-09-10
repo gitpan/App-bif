@@ -1,56 +1,9 @@
 package App::bif::drop;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_26';
-
-sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->dbw;
-
-    my $info = $db->get_update( $ctx->{id} ) || $ctx->get_topic( $ctx->{id} );
-
-    if ( !$ctx->{force} ) {
-        print "Nothing dropped (missing --force, -f)\n";
-        return $ctx->ok('DropNoForce');
-    }
-
-    if ( $info->{update_id} ) {
-        $ctx->update_localhub(
-            {
-                    message => 'drop '
-                  . $info->{kind} . ' '
-                  . $info->{id}
-                  . ' update '
-                  . $info->{update_id},
-            }
-        );
-
-        $db->xdo(
-            delete_from => 'updates',
-            where       => { id => $info->{update_id} },
-        );
-
-        print "Dropped: $info->{kind} $info->{id}.$info->{update_id}\n";
-        $ctx->ok( 'Drop' . ucfirst( $info->{kind} ) . 'Update', $info );
-    }
-    else {
-        $ctx->update_localhub(
-            {
-                message => 'drop ' . $info->{kind} . ' ' . $info->{id},
-            }
-        );
-
-        $db->xdo(
-            delete_from => $info->{kind} . 's',
-            where       => { id => $info->{id} },
-        );
-
-        print "Dropped: $info->{kind} $info->{id}\n";
-        $ctx->ok( 'Drop' . ucfirst( $info->{kind} ), $info );
-    }
-}
+our $VERSION = '0.1.0_27';
 
 1;
 __END__
@@ -61,18 +14,23 @@ bif-drop - delete a topic or topic update
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
-    bif drop ID [OPTIONS...]
+    bif drop ITEM ID [OPTIONS...]
 
 =head1 DESCRIPTION
 
-Delete a thread or thread update from the database. This really only
-makes sense if what you wish to drop does not exist on a hub somewhere,
+Delete a topic or an update from the database. This really only makes
+sense if what you wish to drop does not exist on a hub somewhere,
 otherwise the next time you sync it would come back from the dead to
 haunt you.
+
+There is a difference between dropping a project that is local only,
+and a project that exists on a hub. The same goes for issues which
+exists in multiple projects. See the respective bif-drop-* pages for
+details.
 
 Drop is a hidden command that only appears in usage messages when
 C<--help> (C<-h>) is given.
@@ -81,9 +39,15 @@ C<--help> (C<-h>) is given.
 
 =over
 
+=item ITEM
+
+A topic type such as issue, task, update, etc.
+
+=back
+
 =item ID
 
-Either a thread ID, a thread update ID, or a project PATH. Required.
+Either a topic ID, an update uID, or a project PATH. Required.
 
 =back
 
@@ -100,7 +64,7 @@ stop you shooting yourself in the foot.
 
 =head1 SEE ALSO
 
-L<bif>(1)
+L<bif-drop-issue>(1), L<bif-drop-project>(1), L<bif-drop-task>(1), L<bif-drop-update>(1), L<bif>(1)
 
 =head1 AUTHOR
 

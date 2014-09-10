@@ -1,49 +1,24 @@
 package App::bif::pull::project;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_26';
-
-my $stderr;
-my $stderr_watcher;
-
-sub cleanup_errors {
-    my $hub = shift;
-
-    undef $stderr_watcher;
-    $stderr->blocking(0);
-
-    while ( my $line = $stderr->getline ) {
-        print STDERR "$hub: $line";
-    }
-
-    return;
-}
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = shift;
-    $ctx->{no_pager}++;    # causes problems with something in Coro?
-    $ctx = App::bif::Context->new($ctx);
+    my $self = shift;
+    $self->{no_pager}++;    # causes problems with something in Coro?
+    $self = __PACKAGE__->new($self);
 
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
-    my $db = $ctx->dbw;
-
-    my @locations = $db->get_hub_repos( $ctx->{hub} );
-    $ctx->err( 'HubNotFound', 'hub not found: %s', $ctx->{hub} )
-      unless @locations;
-
-    my $hub = $locations[0];
+    my $db = $self->dbw;
 
     my @pinfo;
-    foreach my $path ( @{ $ctx->{path} } ) {
-        my $pinfo = $ctx->get_project( $path, $hub->{name} );
-
-        return $ctx->err( 'ProjectNotFound', 'project not found: %s', $path )
-          unless $pinfo;
+    foreach my $path ( @{ $self->{path} } ) {
+        my $pinfo = $self->get_project($path);
 
         if ( $pinfo->{local} ) {
             print "Already imported: $pinfo->{path}\n";
@@ -53,57 +28,68 @@ sub run {
         push( @pinfo, $pinfo );
     }
 
-    return $ctx->ok('PullProject')
+    return $self->ok('PullProject')
       unless @pinfo;
+
+    my %hubs = map { $_->{hub_id} => 1 } @pinfo;
+    return $self->err( 'TooManyHubs', 'can only pull from a single hub' )
+      unless 1 == scalar keys %hubs;
+
+    my @repos = $db->get_hub_repos( keys %hubs );
+    my $hub   = $repos[0];
 
     $|++;    # no buffering
     my $error;
     my $cv = AE::cv;
 
     my $client = Bif::Client->new(
+        name          => $hub->{name},
         db            => $db,
         location      => $hub->{location},
-        debug         => $ctx->{debug},
-        debug_bifsync => $ctx->{debug_bifsync},
+        debug         => $self->{debug},
+        debug_bifsync => $self->{debug_bifsync},
         on_error      => sub {
             $error = shift;
             $cv->send;
         },
     );
 
-    $stderr = $client->child->stderr;
-
-    $stderr_watcher = AE::io $stderr, 0, sub {
-        my $line = $stderr->getline;
-        if ( !defined $line ) {
-            undef $stderr_watcher;
-            return;
-        }
-        print STDERR "$hub->{name}: $line";
-    };
-
     my $coro = async {
         eval {
             $db->txn(
                 sub {
-                    $ctx->update_localhub(
-                        {
-                            message =>
-                              "pull project @{$ctx->{path}} $hub->{location}",
-                        }
-                    );
+                    my $uid;
 
                     foreach my $pinfo (@pinfo) {
+                        my $tmp = $self->new_update(
+                            action =>
+                              "pull project $pinfo->{path}\@$hub->{name}",
+                            message =>
+                              "pull project $pinfo->{path}\@$hub->{name}"
+                              . " from $hub->{location}"
+                        );
+
                         $db->xdo(
                             update => 'projects',
                             set    => 'local = 1',
                             where  => { id => $pinfo->{id} },
                         );
+
+                        if ( !$uid ) {
+                            $uid = $tmp;
+                            $db->xdo(
+                                insert_or_replace_into => 'bifkv',
+                                values                 => {
+                                    key       => 'last_sync',
+                                    update_id => $uid,
+                                },
+                            );
+                        }
                     }
 
                     $client->on_update(
                         sub {
-                            $ctx->lprint("$hub->{name}: $_[0]");
+                            $self->lprint("$hub->{name} : $_[0] ");
                         }
                     );
 
@@ -113,8 +99,8 @@ sub run {
                         or $status eq 'RepoSync' )
                     {
                         $db->rollback;
-                        $error = "unexpected status received: $status";
-                        return cleanup_errors( $hub->{name} );
+                        $error = " unexpected status received : $status ";
+                        return;
 
                     }
 
@@ -123,8 +109,8 @@ sub run {
 
                         if ( $status ne 'TransferHubUpdates' ) {
                             $db->rollback;
-                            $error = "unexpected status received: $status";
-                            return cleanup_errors( $hub->{name} );
+                            $error = " unexpected status received : $status ";
+                            return;
                         }
                     }
 
@@ -132,27 +118,27 @@ sub run {
 
                     unless ( $status eq 'ProjectSync' ) {
                         $db->rollback;
-                        $error = "unexpected status received: $status";
-                        return cleanup_errors( $hub->{name} );
+                        $error = " unexpected status received : $status ";
+                        return;
                     }
 
                     $status = $client->transfer_project_related_updates;
 
                     if ( $status ne 'TransferProjectRelatedUpdates' ) {
                         $db->rollback;
-                        $error = "unexpected status received: $status";
-                        return cleanup_errors( $hub->{name} );
+                        $error = " unexpected status received : $status ";
+                        return;
                     }
-                    print "\n";
+                    print " \n ";
 
-                    return cleanup_errors( $hub->{name} );
+                    return;
                 }
             );
         };
 
         if ($@) {
             $error .= $@;
-            print "\n";
+            print " \n ";
         }
 
         $client->disconnect;
@@ -161,10 +147,10 @@ sub run {
 
     if ( $cv->recv ) {
         $db->do('ANALYZE');
-        return $ctx->ok('PullProject');
+        return $self->ok('PullProject');
     }
 
-    return $ctx->err( 'Unknown', $error );
+    return $self->err( 'Unknown', $error );
 }
 
 1;
@@ -176,30 +162,37 @@ bif-pull-project -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
-    bif pull project PATH... HUB
+    bif pull project PATH...
 
 =head1 DESCRIPTION
 
-The C<bif pull project> command imports projects from a hub. If a
-project has been imported, then it is considered "local". If it has not
-been imported then we call it "non-local". A project that we have
-visibility of but have not registered the hub for we call "remote."
+The L<bif-pull-project> command imports remote projects from a hub. If
+a project has been imported, then it is considered "local". If it has
+not been imported then we call it "remote".
+
+For example:
+
+=begin bif
+
+    bif init
+    bif pull hub org@provider
+
+=end bif
+
+    bif pull todo@hub
 
 =head1 ARGUMENTS
 
 =over
 
-=item PATHS...
+=item PATH...
 
-The path of the remote project to import.
-
-=item HUB
-
-The name of a previously registered hub.
+The full path(s) (in the form PATH@HUB) of the remote project(s) to
+import.
 
 =back
 

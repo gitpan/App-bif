@@ -15,8 +15,9 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/ show hub unknown /) }, 'Bif::Error::HubNotFound';
 
-    my $x = bif( qw/sql --noprint/, 'select name from hubs' );
-    isa_ok bif( qw/ show hub/, $x->[0][0] ), 'Bif::OK::ShowHub';
+    bifhub(qw/new hub myhub/);
+
+    isa_ok bif(qw/ show hub myhub/), 'Bif::OK::ShowHub';
 
 };
 

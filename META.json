@@ -55,6 +55,7 @@
             "Module::Install::AuthorTests" : "0",
             "Module::Install::CPANfile" : "0",
             "Module::Install::ReadmeFromPod" : "0",
+            "String::Diff" : "0",
             "Test::Pod" : "0",
             "Test::Pod::Coverage" : "0"
          }
@@ -66,7 +67,7 @@
             "Coro" : "0",
             "Coro::Handle" : "0",
             "DBD::SQLite" : "1.42",
-            "DBIx::ThinSQL" : "v0.0.22",
+            "DBIx::ThinSQL" : "v0.0.26",
             "DBIx::ThinSQL::SQLite" : "v0.0.10",
             "Digest::SHA" : "0",
             "File::HomeDir" : "0",
@@ -113,5 +114,5 @@
          "url" : "git://bifax.org/bif.git/"
       }
    },
-   "version" : "0.1.0_26"
+   "version" : "0.1.0_27"
 }

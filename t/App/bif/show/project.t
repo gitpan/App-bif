@@ -16,7 +16,7 @@ run_in_tempdir {
     isa_ok exception { bif(qw/ show project todo /) },
       'Bif::Error::ProjectNotFound';
 
-    my $p1 = bif(qw/ new project todo --message message title /);
+    my $p1 = bif(qw/ new project todo --message m1 title /);
 
     my $show = bif(qw/show project todo/);
     isa_ok( $show, 'Bif::OK::ShowProject' );

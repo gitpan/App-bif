@@ -1,35 +1,20 @@
 package App::bif::show::project;
 use strict;
 use warnings;
-use App::bif::Context;
-use App::bif::show;
+use parent 'App::bif::show';
 
-our $VERSION = '0.1.0_26';
-
-my $yellow = '';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->db;
-
-    my $info = $ctx->get_project( $ctx->{id}, $ctx->{hub} )
-      || return $ctx->err(
-        'ProjectNotFound',
-        "project not found: $ctx->{id}"
-          . (
-            $ctx->{hub}
-            ? "($ctx->{hub})"
-            : ''
-          )
-      );
-
-    App::bif::show::_init;
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->db;
+    my $info = $self->get_project( $self->{path} );
 
     my @data;
 
     DBIx::ThinSQL->import(qw/sum case coalesce concat qv/);
 
-    my $ref = $db->xhash(
+    my $ref = $db->xhashref(
         select => [
             'topics.id',             'substr(topics.uuid,1,8) as uuid',
             'projects.path',         'projects.title',
@@ -57,34 +42,25 @@ sub run {
         where      => { 'projects.id' => $info->{id} },
     );
 
-    push(
-        @data,
-        App::bif::show::_header(
-            $yellow . 'Project',
-            $yellow . $ref->{title}
-        ),
+    $self->init;
+    my ($bold) = $self->colours('bold');
 
-        App::bif::show::_header( '  Path', $ref->{path}, $ref->{uuid} ),
-    );
+    push( @data, $self->header( '  Path', $ref->{path}, $ref->{uuid} ), );
 
-    push( @data,
-        App::bif::show::_header( '  Hub', $ref->{hub}, $ref->{location} ),
-    ) if $ref->{hub};
+    push( @data, $self->header( '  Hub', $ref->{hub}, $ref->{location} ), )
+      if $ref->{hub};
 
-    if ( $ctx->{full} ) {
+    if ( $self->{full} ) {
         push(
             @data,
-            App::bif::show::_header(
-                '  Creator', $ref->{author}, $ref->{email}
-            ),
-            App::bif::show::_header(
-                '  Created',
-                App::bif::show::_new_ago( $ref->{ctime}, $ref->{ctimetz} )
+            $self->header( '  Creator', $ref->{author}, $ref->{email} ),
+            $self->header(
+                '  Created', $self->ago( $ref->{ctime}, $ref->{ctimetz} )
             ),
         );
     }
 
-    my @phases = $db->xarrays(
+    my @phases = $db->xarrayrefs(
         select => [
             case (
                 when => { status => $ref->{status} },
@@ -97,15 +73,12 @@ sub run {
         order_by => 'rank',
     );
 
-    push(
-        @data,
-        App::bif::show::_header(
-            '  Phases', join( ', ', map { $_->[0] } @phases )
-        ),
+    push( @data,
+        $self->header( '  Phases', join( ', ', map { $_->[0] } @phases ) ),
     );
 
     if ( $ref->{local} ) {
-        my ( $ai, $si, $ri, $ii ) = $db->xarray(
+        my ( $ai, $si, $ri, $ii ) = $db->xlist(
             select => [
                 coalesce( sum( { status => 'open' } ),    0 )->as('open'),
                 coalesce( sum( { status => 'stalled' } ), 0 )->as('stalled'),
@@ -118,7 +91,7 @@ sub run {
             where      => { 'project_issues.project_id' => $info->{id} },
         );
 
-        my ( $at, $st, $rt, $it ) = $db->xarray(
+        my ( $at, $st, $rt, $it ) = $db->xlist(
             select => [
                 coalesce( sum( { status => 'open' } ),    0 )->as('open'),
                 coalesce( sum( { status => 'stalled' } ), 0 )->as('stalled'),
@@ -138,29 +111,28 @@ sub run {
 
         push(
             @data,
-            App::bif::show::_header( '  Progress', $progress . '%' ),
-            App::bif::show::_header(
+            $self->header( '  Progress', $progress . '%' ),
+            $self->header(
                 '  Tasks', "$at open, $st stalled, $rt closed, $it ignored"
             ),
 
             # TODO "Updated:..."
-            App::bif::show::_header(
+            $self->header(
                 '  Issues', "$ai open, $si stalled, $ri closed, $ii ignored"
             ),
 
             # TODO "Updated:..."
-            App::bif::show::_header(
-                '  Updated',
-                App::bif::show::_new_ago( $ref->{mtime}, $ref->{mtimetz} )
+            $self->header(
+                '  Updated', $self->ago( $ref->{mtime}, $ref->{mtimetz} )
             ),
         );
     }
 
-    if ( $ctx->{full} ) {
+    if ( $self->{full} ) {
         require Text::Autoformat;
         push(
             @data,
-            App::bif::show::_header(
+            $self->header(
                 'Description',
                 Text::Autoformat::autoformat(
                     $ref->{message},
@@ -172,11 +144,12 @@ sub run {
             ),
         );
     }
-    $ctx->start_pager;
-    print $ctx->render_table( 'l  l', undef, \@data );
-    $ctx->end_pager;
+    $self->start_pager;
+    print $self->render_table( 'l  l',
+        $self->header( 'Project', $ref->{title} ), \@data );
+    $self->end_pager;
 
-    return $ctx->ok( 'ShowProject', \@data );
+    return $self->ok( 'ShowProject', \@data );
 }
 
 1;
@@ -188,11 +161,11 @@ bif-show-project - display a project's current status
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
-    bif show project PATH [HUB] [OPTIONS...]
+    bif show project PATH [OPTIONS...]
 
 =head1 DESCRIPTION
 
@@ -216,18 +189,13 @@ current status.
 
 =item PATH
 
-A project path or ID. Required. By default only local projects are
-looked up in the database.
-
-=item HUB
-
-An optional hub name or location to look for matches.
+A project path of the form PATH[@HUB]. Required.
 
 =item --full, -f
 
 Display a more verbose version of the current status.
 
-=item --uuid, -u
+=item --uuid, -U
 
 Lookup the topic using ID as a UUID string instead of a topic integer.
 

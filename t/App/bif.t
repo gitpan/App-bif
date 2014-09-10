@@ -6,15 +6,11 @@ use Test::Fatal;
 use Test::More;
 
 run_in_tempdir {
-
     isa_ok exception { bif() }, 'OptArgs::Usage';
-    debug_on;
-    ok bif(qw/init/), 'init';
-
-    like exception { bif( 'init', '--unknown-option' ) }, qr/usage/,
-      'unknown option';
+    isa_ok exception { bif( 'init', '--unknown-option' ) }, 'OptArgs::Usage';
 
     # Check that aliases work
+    ok bif(qw/init/),    'init';
     isa_ok bif(qw/lsp/), 'Bif::OK::ListProjects';
     isa_ok bif(qw/ls/),  'Bif::OK::ListTopics';
 

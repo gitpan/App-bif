@@ -32,7 +32,7 @@ run_in_tempdir {
                   ),
                   'new_task_status';
 
-                my $row = $db->xarray(
+                my $row = $db->xarrayref(
                     select     => 1,
                     from       => 'task_status',
                     inner_join => 'topics',

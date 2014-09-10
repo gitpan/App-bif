@@ -6,16 +6,12 @@ use Test::Bif;
 use Test::Fatal;
 use Test::More;
 
-sub bif2 {
-    local $CWD = 'bif2';
-    bif(@_);
-}
-
 run_in_tempdir {
 
-    isa_ok exception { bif(qw/push project/) },          'OptArgs::Usage';
-    isa_ok exception { bif(qw/push project todo/) },     'OptArgs::Usage';
-    isa_ok exception { bif(qw/push project todo hub/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/push project/) },      'OptArgs::Usage';
+    isa_ok exception { bif(qw/push project todo/) }, 'OptArgs::Usage';
+    isa_ok exception { bif(qw/push project todo hub/) },
+      'Bif::Error::RepoNotFound';
 
     bif(qw/init/);
 
@@ -34,18 +30,20 @@ run_in_tempdir {
     isa_ok exception { bif( qw/push project/, $tinfo->{id}, qw/hub/ ) },
       'Bif::Error::ProjectNotFound';
 
-    isa_ok exception { bif(qw/push project todo hub/) }, 'Bif::Error::HubNotFound';
+    isa_ok exception { bif(qw/push project todo hub/) },
+      'Bif::Error::HubNotFound';
 
-    bif(qw/init hub --bare/);
-    bif(qw/init bif2/);
+    bif(qw/init hub hub/);
+
+    bif2(qw/init/);
     bif2(qw/new project todo title2 -m message2/);
-    bif2( qw/register/, '../hub' );
+    bif2( qw/pull hub/, '../hub' );
 
     isa_ok bif2(qw/push project todo hub -m m4/), 'Bif::OK::PushProject';
-    isa_ok bif2(qw/push project todo hub -m m5/), 'Bif::OK::PushProject';
 
-    bif(qw/register hub/);
-    isa_ok exception { bif(qw/push project todo hub/) }, 'Bif::Error::PathExists';
+    bif(qw/pull hub hub/);
+    isa_ok exception { bif(qw/push project todo hub/) },
+      'Bif::Error::PathExists';
 
 };
 

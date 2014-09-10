@@ -5,7 +5,7 @@ management tool does what it does.
 
 =head1 Version
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 Background
 
@@ -280,9 +280,9 @@ remote repositories (hubs).
 
 =head3 Project Meta Data
 
-When a local user registers a hub all project-only details are
-imported.  Initially this so that the local user can see what projects
-are available on the hub. Therefore, for each hub we track the related
+When a local user pulls a hub all project-only details are imported. 
+Initially this so that the local user can see what projects are
+available on the hub. Therefore, for each hub we track the related
 project_deltas and *_status_deltas in the "hub_related_updates" table.
 
 Current state of topics, table for updates to topics, tables to track
@@ -335,7 +335,7 @@ commands until the client sends a QUIT message:
 
 =head2 Hub Registration
 
-When a local user registers a hub all project-only details are imported
+When a local user pulls a hub all project-only details are imported
 from the "hub_related_updates" table.  Initially this so that the local
 user can see what projects are available on the hub.
 

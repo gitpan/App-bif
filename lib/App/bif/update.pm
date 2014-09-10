@@ -1,251 +1,26 @@
 package App::bif::update;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx  = App::bif::Context->new(shift);
-    my $db   = $ctx->dbw;
-    my $info = $ctx->get_topic( $ctx->{id} );
+    my $self  = __PACKAGE__->new(shift);
+    my $info  = $self->get_topic( $self->uuid2id( $self->{id} ) );
+    my $class = "App::bif::update::$info->{kind}";
 
-    $info->{update_id} = $info->{first_update_id};
+    if ( eval "require $class" ) {
+        $self->{path} = delete $self->{id}
+          if ( $info->{kind} eq 'project' );
 
-    my $func = __PACKAGE__->can( '_update_' . $info->{kind} )
-      || return $ctx->err(
-        'Update' . ucfirst( $info->{kind} ) . 'Unimplemented',
-        "cannnot update topics of type \"$info->{kind}\""
-      );
-
-    $ctx->{lang} ||= 'en';
-
-    # TODO calculate parent_update_id
-
-    return $func->( $ctx, $db, $info );
-}
-
-sub _update_project {
-    my $ctx  = shift;
-    my $db   = shift;
-    my $info = shift;
-
-    my ( $status_ids, $invalid );
-    if ( $ctx->{status} ) {
-
-        ( $status_ids, $invalid ) =
-          $db->status_ids( $info->{id}, 'project', $ctx->{status} );
-
-        return $ctx->err( 'InvalidStatus',
-            'unknown status(s): ' . join( ', ', @$invalid ) )
-          if @$invalid;
+        return $class->can('run')->($self);
     }
 
-    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    die $@ if $@;
 
-    my ($path) = $db->xarray(
-        select => 'p.path',
-        from   => 'projects p',
-        where  => { id => $info->{id} },
-    );
-
-    $db->txn(
-        sub {
-            my $ruid = $db->nextval('updates');
-            my $uid  = $ctx->new_update(
-                parent_id => $info->{update_id},
-                message   => $ctx->{message},
-            );
-
-            $db->xdo(
-                insert_into => 'func_update_project',
-                values      => {
-                    id        => $info->{id},
-                    update_id => $uid,
-                    $ctx->{title} ? ( title     => $ctx->{title} )    : (),
-                    $status_ids   ? ( status_id => $status_ids->[0] ) : (),
-                },
-            );
-
-            $db->xdo(
-                insert_into => 'func_merge_updates',
-                values      => { merge => 1 },
-            );
-
-            $ctx->update_localhub(
-                {
-                    id                => $ruid,
-                    related_update_id => $uid,
-                    message           => 'update project '
-                      . "$info->{id} [$path]"
-                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
-                }
-            );
-
-            $ctx->{update_id} = $uid;
-        }
-    );
-
-    print "Project updated: $path.$ctx->{update_id}\n";
-
-    # For testing
-    $ctx->{id}     = $info->{id};
-    $ctx->{status} = $status_ids;
-    return $ctx->ok('UpdateProject');
-}
-
-sub _update_issue {
-    my $ctx  = shift;
-    my $db   = shift;
-    my $info = shift;
-
-    my ($project_id) = $db->xarray(
-        select => 'project_issues.project_id',
-        from   => 'project_issues',
-        where  => { 'project_issues.id' => $info->{id} },
-    );
-
-    my ( $status_ids, $invalid ) =
-      $db->status_ids( $info->{project_id}, 'issue', $ctx->{status} );
-
-    return $ctx->err( 'InvalidStatus',
-        'unknown status(s): ' . join( ', ', @$invalid ) )
-      if @$invalid;
-
-    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
-
-    $db->txn(
-        sub {
-            my ($path) = $db->xarray(
-                select => 'p.path',
-                from   => 'projects p',
-                where  => { 'p.id' => $info->{project_id} },
-            );
-
-            my $ruid = $db->nextval('updates');
-            $ctx->{update_id} = $ctx->new_update(
-                parent_id => $info->{update_id},
-                message   => $ctx->{message},
-            );
-
-            $db->xdo(
-                insert_into => 'func_update_issue',
-                values      => {
-                    id         => $info->{id},
-                    update_id  => $ctx->{update_id},
-                    project_id => $info->{project_id},
-                    $ctx->{title} ? ( title     => $ctx->{title} )    : (),
-                    @$status_ids  ? ( status_id => $status_ids->[0] ) : (),
-                },
-            );
-
-            $db->xdo(
-                insert_into => 'func_merge_updates',
-                values      => { merge => 1 },
-            );
-
-            $ctx->update_localhub(
-                {
-                    id                => $ruid,
-                    related_update_id => $ctx->{update_id},
-                    message           => 'update issue '
-                      . $info->{project_issue_id}
-                      . " [$path]"
-                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
-                }
-            );
-
-        }
-    );
-
-    print "Issue updated: $info->{project_issue_id}.$ctx->{update_id}\n";
-
-    # For testing
-    $ctx->{id}               = $info->{id};
-    $ctx->{parent_update_id} = $info->{update_id};
-    $ctx->{status}           = $status_ids;
-    return $ctx->ok('UpdateIssue');
-}
-
-sub _update_task {
-    my $ctx  = shift;
-    my $db   = shift;
-    my $info = shift;
-
-    my ( $status_ids, $invalid );
-    if ( $ctx->{status} ) {
-        my ($project_id) = $db->xarray(
-            select     => 'task_status.project_id',
-            from       => 'tasks',
-            inner_join => 'task_status',
-            on         => 'task_status.id = tasks.status_id',
-            where      => { 'tasks.id' => $info->{id} },
-        );
-
-        ( $status_ids, $invalid ) =
-          $db->status_ids( $project_id, 'task', $ctx->{status} );
-
-        return $ctx->err( 'InvalidStatus',
-            'unknown status(s): ' . join( ', ', @$invalid ) )
-          if @$invalid;
-    }
-
-    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
-
-    $db->txn(
-        sub {
-            my $ruid = $db->nextval('updates');
-
-            my ($path) = $db->xarray(
-                select     => 'p.path',
-                from       => 'tasks t',
-                inner_join => 'task_status ts',
-                on         => 'ts.id = t.status_id',
-                inner_join => 'projects p',
-                on         => 'p.id = ts.project_id',
-                where      => { 't.id' => $info->{id} },
-            );
-
-            $ctx->{update_id} = $ctx->new_update(
-                parent_id => $info->{update_id},
-                message   => $ctx->{message},
-            );
-
-            $db->xdo(
-                insert_into => 'func_update_task',
-                values      => {
-                    id        => $info->{id},
-                    update_id => $ctx->{update_id},
-                    $ctx->{title} ? ( title     => $ctx->{title} )    : (),
-                    $status_ids   ? ( status_id => $status_ids->[0] ) : (),
-                },
-            );
-
-            $db->xdo(
-                insert_into => 'func_merge_updates',
-                values      => { merge => 1 },
-            );
-
-            $ctx->update_localhub(
-                {
-                    id                => $ruid,
-                    related_update_id => $ctx->{update_id},
-                    message           => 'update task '
-                      . $info->{id}
-                      . " [$path]"
-                      . ( $ctx->{status} ? ("[$ctx->{status}]") : '' ),
-                }
-            );
-        }
-    );
-
-    print "Task updated: $info->{id}.$ctx->{update_id}\n";
-
-    # For testing
-    $ctx->{id}               = $info->{id};
-    $ctx->{parent_update_id} = $info->{update_id};
-    $ctx->{status}           = $status_ids;
-    return $ctx->ok('UpdateTask');
+    return $self->err( 'UpdateUnimplemented',
+        'cannnot update type: ' . $info->{kind} );
 }
 
 1;
@@ -257,7 +32,7 @@ bif-update - update or comment a topic
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

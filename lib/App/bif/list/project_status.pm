@@ -1,19 +1,19 @@
 package App::bif::list::project_status;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->db;
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->db;
 
-    my $pinfo = $ctx->get_project( $ctx->{path} );
+    my $pinfo = $self->get_project( $self->{path} );
 
     DBIx::ThinSQL->import(qw/ qv case /);
 
-    my $data = $db->xarrays(
+    my $data = $db->xarrayrefs(
         select => [ 'id', 'status', 'status', 'rank', ],
         from   => 'project_status',
         where    => { project_id => $pinfo->{id} },
@@ -21,12 +21,12 @@ sub run {
 
     );
 
-    $ctx->start_pager( scalar @$data );
+    $self->start_pager( scalar @$data );
 
-    print $ctx->render_table( ' l  l  l  r ',
+    print $self->render_table( ' l  l  l  r ',
         [ 'ID', 'State', 'Status', 'Rank' ], $data );
 
-    $ctx->end_pager;
+    $self->end_pager;
 
     return $data;
 }
@@ -40,7 +40,7 @@ bif-list-project-status - list valid project status/status values
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

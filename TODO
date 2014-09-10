@@ -1,3 +1,35 @@
+- Store tree information for issue push history to be shown by
+  bif-show-issue?
+    
+    [todo@hub] 3 days ago
+    ├── [todo2@hub] 3 days ago
+    └── [p2@upstream] 1 minute ago
+
+- Conceptual thought: at the moment creating an issue in a project
+  means that the issue is automatically synchronised with the
+  projects.hub_id just like a project is. What if:
+
+    - projects are visible on hubs other than projects.hub_id
+    - issues create against the projects from other hubs are associated
+      only with the hub where the issue is created, and not necessarily
+      auto-synchronised up to the projects.hub_id.
+
+    - bif push issue ID .... HUB? Perhaps one needs globally unique
+      project names with the full path referring to the organisation:
+
+        my.project@hub.one
+        my.project@hub.two
+
+      where the my.project uuid is common, as opposed to the current
+      model where the uuids (and therefore the projects) are different
+      even if they have the same name.
+  
+* entrypted bifax.org
+
+* Handle trailing spaces in YAML formatting when columns are NULL
+
+* Use Term::Readline::Tiny
+
 * Record update_id created by each command in
 repo_deltas.first_update_id and repo_deltas.last_update_id. Then "show
 $SOMETHING repo.update_id" can indicate the changes that occured when a
@@ -6,8 +38,6 @@ log repo" should be renamed to "bif list repo-updates"? or just "bif
 list updates"
 
 * Show related projects in "show project"
-
-* Remove unused func_new_task.message
 
 * Properly fix the whole reply/update mess
 
@@ -22,7 +52,7 @@ servers. For example, a project push can fail due to an issue/task
 problem, but at the moment Bif::Server will commit the addition of the
 project to its hub_related_updates table while the client doesn't. One
 solution is possibly to dynamically generate and sync the hub merkle
-tree based on ... project_only_updates_merkle if it existed? We might
+tree based on ... project_updates_merkle if it existed? We might
 want that table anyway because of shallow exports for hub-to-hub
 cooperation.
 
@@ -440,3 +470,15 @@ Descriptions:
     Two systems, outward- and inward-facing, tracking two different kinds
     of things, each with its own life cycle.
 
+
+from http://collectivebim.com/future-issue-tracking-aec/:
+
+At a minimum, a proper issue tracking method should include the ability to:
+
+    define the type of issue (clash, data deficiency, model craft)
+    store meta-data about an issue (priority, location, date found)
+    take an issue through a defined workflow / change of status manage
+    comments from multiple parties define who is responsible for
+    resolving the issue keep all information above intact throughout
+    model development be accessed by entire team regardless of their
+    platform or experience.

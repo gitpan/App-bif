@@ -17,18 +17,18 @@ run_in_tempdir {
     isa_ok exception { bif(qw/ new issue -p todo title/) },
       'Bif::Error::ProjectNotFound';
 
-    my $p = bif(qw/ new project todo --message message title /);
+    my $p = bif(qw/ new project todo --message m1 title /);
 
     isa_ok exception { bif(qw/ new issue -p todo this is the title/) },
       'Bif::Error::EmptyContent';
 
-    my $i = bif(qw/new issue -p todo title -m message/);
+    my $i = bif(qw/new issue -p todo title -m m2/);
     isa_ok $i, 'Bif::OK::NewIssue';
 
     isa_ok exception { bif(qw/ new issue -p todo title -s unknown/) },
       'Bif::Error::InvalidStatus';
 
-    my $i2 = bif(qw/new issue -p todo title -m message2 -s stalled/);
+    my $i2 = bif(qw/new issue -p todo title -m m3 -s stalled/);
     isa_ok $i2, 'Bif::OK::NewIssue';
 
 };

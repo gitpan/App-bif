@@ -8,7 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-my $VERSION = '0.1.0_26';
+my $VERSION = '0.1.0_27';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -42,16 +42,19 @@ no_index package => 'Bif::Error';
 
 WriteAll;
 
-# Create t/bif and t/bifsync scripts for testing
+# Create t/bif* scripts for testing
 {
     use Path::Tiny;
     my $bif     = path( $Bin, 'bin', 'bif' );
+    my $bifhub  = path( $Bin, 'bin', 'bifhub' );
     my $bifsync = path( $Bin, 'bin', 'bifsync' );
     my $lib     = path( $Bin, 'lib' );
     my $share   = path( $Bin, 'share' );
     my $tbin    = path( $Bin, 'tbin' );
     my $tbif    = $tbin->child('bif');
+    my $tbifu   = $tbin->child('bifu');
     my $tbifsync = $tbin->child('bifsync');
+    my $tbifhub  = $tbin->child('bifhub');
 
     mkdir $tbin;
 
@@ -76,6 +79,28 @@ EOF
     $pod =~ s/.*__END__//sm;
     $tbif->append_utf8($pod);
 
+    $tbifu->spew_utf8(<<EOF);
+#!$^X
+use strict;
+use lib "$lib";
+use OptArgs qw/dispatch/;
+
+# Make sure that any subcommands that call bifsync locally find the
+# local testing version in t/bifsync
+\$ENV{PATH} = "$tbin" .':'.\$ENV{PATH};
+
+\$main::BIF_SHARE_DIR = "$share";
+
+push(\@ARGV, '--user-repo');
+dispatch(qw/run App::bif/);
+__END__
+EOF
+    chmod 0755, $tbifu or warn "chmod: $!";
+
+    my $pod = $bif->slurp_utf8;
+    $pod =~ s/.*__END__//sm;
+    $tbif->append_utf8($pod);
+
     $tbifsync->spew_utf8(<<EOF);
 #!$^X
 use strict;
@@ -90,6 +115,27 @@ EOF
     $pod = $bifsync->slurp_utf8;
     $pod =~ s/.*__END__//sm;
     $tbifsync->append_utf8($pod);
+
+    $tbifhub->spew_utf8(<<EOF);
+#!$^X
+use strict;
+use lib "$lib";
+use OptArgs qw/dispatch/;
+
+# Make sure that any subcommands that call bifsync locally find the
+# local testing version in t/bifsync
+\$ENV{PATH} = "$tbin" .':'.\$ENV{PATH};
+
+\$main::BIF_SHARE_DIR = "$share";
+
+dispatch(qw/run App::bif/);
+__END__
+EOF
+    chmod 0755, $tbifhub or warn "chmod: $!";
+
+    $pod = $bifhub->slurp_utf8;
+    $pod =~ s/.*__END__//sm;
+    $tbifhub->append_utf8($pod);
 }
 
 # Setup App::bif::Build if we are a developer
@@ -121,7 +167,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_26 (2014-07-23)
+HIDDEN0.1.0_27 (2014-09-10)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN

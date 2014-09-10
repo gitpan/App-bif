@@ -1,40 +1,38 @@
 package App::bif::log::identity;
 use strict;
 use warnings;
-use App::bif::Context;
-use App::bif::log;
+use parent 'App::bif::log';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx  = App::bif::Context->new(shift);
-    my $db   = $ctx->db;
-    my $info = $ctx->get_topic( $ctx->{id} );
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->db;
+    my $info = $self->get_topic( $self->{id} );
 
-    return $ctx->err( 'TopicNotFound', "topic not found: $ctx->{id}" )
+    return $self->err( 'TopicNotFound', "topic not found: $self->{id}" )
       unless $info;
 
-    return $ctx->err( 'NotAnIdentity', "not an identity ID: $ctx->{id}" )
+    return $self->err( 'NotAnIdentity', "not an identity ID: $self->{id}" )
       unless $info->{kind} eq 'identity';
 
-    App::bif::log::init;
-    my $dark   = $App::bif::log::dark;
-    my $reset  = $App::bif::log::reset;
-    my $yellow = $App::bif::log::yellow;
+    $self->init;
+
+    my ( $dark, $reset, $yellow ) = $self->colours(qw/dark reset yellow/);
 
     DBIx::ThinSQL->import(qw/concat case qv/);
     my $sth = $db->xprepare(
         select => [
             'id.id AS id',
-            concat( 'id.identity_id', qv('.'), 'u.id' )->as('update_id'),
+            concat( qv('u'), 'u.id' )->as('update_id'),
             'SUBSTR(u.uuid,1,8) AS update_uuid',
             'u.mtime AS mtime',
             'u.mtimetz AS mtimetz',
+            'u.action AS action',
             'u.author AS author',
             'u.email AS email',
             'u.message AS message',
             'u.ucount AS ucount',
-            'id.new AS new',
             qv(undef)->as('name'),
             qv(undef)->as('method'),
             qv(undef)->as('mvalue'),
@@ -51,15 +49,15 @@ sub run {
         where            => { 'id.identity_id' => $info->{id}, },
         union_all_select => [
             'ed.id AS id',
-            concat( 'ed.entity_id', qv('.'), 'u.id' )->as('update_id'),
+            concat( qv('u'), 'u.id' )->as('update_id'),
             'SUBSTR(u.uuid,1,8) AS update_uuid',
             'u.mtime AS mtime',
             'u.mtimetz AS mtimetz',
+            'u.action AS action',
             'u.author AS author',
             'u.email AS email',
             'u.message AS message',
             'u.ucount AS ucount',
-            'ed.new AS new',
             'ed.name AS name',
             qv(undef)->as('method'),
             qv(undef)->as('mvalue'),
@@ -76,16 +74,16 @@ sub run {
         where            => { 'ed.entity_id' => $info->{id}, },
         union_all_select => [
             'ecmd.id AS id',
-            concat( 'ecm.id', qv('.'), 'u.id' )
+            concat( qv('u'), 'u.id' )
               ->as('update_id'),
             'SUBSTR(u.uuid,1,8) AS update_uuid',
             'u.mtime',
             'u.mtimetz',
+            'u.action',
             'u.author',
             'u.email',
             'u.message',
             'u.ucount',
-            'ecmd.new',
             qv(undef),    # 'ecmd.name',
             'ecmd.method',
             'ecmd.mvalue',
@@ -107,11 +105,11 @@ sub run {
 
     $sth->execute;
 
-    $ctx->start_pager;
+    $self->start_pager;
     my $name;
     my $i = 0;
 
-    while ( my $row = $sth->hash ) {
+    while ( my $row = $sth->hashref ) {
 
         $name = $row->{name} if $row->{name};
         my @mvs;
@@ -122,7 +120,7 @@ sub run {
         if ( $i++ ) {
             push(
                 @data,
-                App::bif::log::_header(
+                $self->header(
                     $dark
                       . $yellow
                       . ( $row->{depth} > 1 ? 'reply' : 'update' ),
@@ -136,7 +134,7 @@ sub run {
 
             push(
                 @data,
-                App::bif::log::_header(
+                $self->header(
                     $yellow . 'identity',
                     $row->{update_id},
                     substr( $info->{uuid}, 0, 8 ) . '.' . $row->{update_uuid}
@@ -146,35 +144,33 @@ sub run {
 
         push(
             @data,
-            App::bif::log::_header( 'From', $row->{author}, $row->{email} ),
-            App::bif::log::_header(
-                'When',
-                App::bif::log::_new_ago( $row->{mtime}, $row->{mtimetz} )
+            $self->header( 'From', $row->{author}, $row->{email} ),
+            $self->header(
+                'When', $self->ago( $row->{mtime}, $row->{mtimetz} )
             ),
         );
 
         for my $i ( 1 .. ( $row->{ucount} - 2 ) ) {
-            my $r = $sth->hash;
+            my $r = $sth->hashref;
             $name = $r->{name} if $r->{name};
             push( @mvs, [ $r->{method}, $r->{mvalue} ] )
               if defined $r->{method};
         }
 
-        push( @data, App::bif::log::_header( 'Subject', "$name" ) );
+        push( @data, $self->header( 'Subject', "$name" ) );
 
-        push( @data, App::bif::log::_header( ucfirst( $_->[0] ), $_->[1] ) )
-          for @mvs;
+        push( @data, $self->header( ucfirst( $_->[0] ), $_->[1] ) ) for @mvs;
 
-        print $ctx->render_table( 'l  l', undef, \@data,
+        print $self->render_table( 'l  l', undef, \@data,
             4 * ( $row->{depth} - 1 ) )
           . "\n";
 
-        print App::bif::log::_reformat( $row->{message}, $row->{depth} ), "\n";
+        print $self->reformat( $row->{message}, $row->{depth} ), "\n";
 
     }
 
-    $ctx->end_pager;
-    return $ctx->ok('LogIdentity');
+    $self->end_pager;
+    return $self->ok('LogIdentity');
 }
 
 1;
@@ -186,7 +182,7 @@ bif-log-identity - review the history of a identity
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

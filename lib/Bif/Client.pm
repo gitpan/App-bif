@@ -9,11 +9,16 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 with 'Bif::Role::Sync';
 
 has db => (
+    is       => 'ro',
+    required => 1,
+);
+
+has name => (
     is       => 'ro',
     required => 1,
 );
@@ -25,8 +30,8 @@ has location => ( is => 'ro', );
 has hub_id => (
     is      => 'rw',
     default => sub {
-        my $self = shift;
-        my ($hub_id) = $self->db->xarray(
+        my $self   = shift;
+        my $hub_id = $self->db->xval(
             select => 'hr.hub_id',
             from   => 'hub_repos hr',
             where  => { 'hr.location' => $self->location },
@@ -38,6 +43,8 @@ has hub_id => (
 has child => ( is => 'rw' );
 
 has child_watcher => ( is => 'rw' );
+
+has stderr_watcher => ( is => 'rw' );
 
 has debug_bifsync => ( is => 'ro' );
 
@@ -108,6 +115,22 @@ sub BUILD {
         }
     );
 
+    my $stderr = $self->child->stderr;
+    my $name   = $self->name;
+
+    $self->stderr_watcher(
+        AE::io $stderr,
+        0,
+        sub {
+            my $line = $stderr->getline;
+            if ( !defined $line ) {
+                $self->stderr_watcher(undef);
+                return;
+            }
+            print STDERR "$name: $line";
+        }
+    );
+
     $self->rh(
         Coro::Handle->new_from_fh( $self->child->stdout, timeout => 30 ) );
     $self->wh(
@@ -130,7 +153,7 @@ sub bootstrap_identity {
     return $status unless $status eq 'IdentityImported';
 
     my $dbw = $self->db;
-    my ( $iid, $uid ) = $dbw->xarray(
+    my ( $iid, $uid ) = $dbw->xlist(
         select     => [ 't.id', 't.first_update_id' ],
         from       => 'topics t',
         inner_join => 'identities i',
@@ -141,8 +164,8 @@ sub bootstrap_identity {
     return 'IdentityNotImported' unless $iid;
 
     $dbw->xdo(
-        insert_into => 'identity_self',
-        values      => { id => $iid },
+        insert_into => 'bifkv',
+        values      => { key => 'self', identity_id => $iid },
     );
 
     $dbw->xdo(
@@ -154,7 +177,7 @@ sub bootstrap_identity {
     return $status;
 }
 
-sub register {
+sub pull_hub {
     my $self = shift;
     my $info = shift;
 
@@ -171,7 +194,7 @@ sub sync_hub {
     my $self = shift;
     my $id = shift || die 'sync_hub($id)';
 
-    my $hub = $self->db->xhash(
+    my $hub = $self->db->xhashref(
         select     => [ 'h.hash', 't.uuid' ],
         from       => 'hubs h',
         inner_join => 'topics t',
@@ -203,7 +226,7 @@ sub import_project {
     my $self  = shift;
     my $pinfo = shift;
 
-    my ($hash) = $self->db->xarray(
+    my $hash = $self->db->xval(
         select => 'hrp.hash',
         from   => 'hub_related_projects hrp',
         where  => {
@@ -247,7 +270,7 @@ sub import_project {
 sub sync_projects {
     my $self = shift;
 
-    my @projects = $self->db->xarrays(
+    my @projects = $self->db->xarrayrefs(
         select     => [ 't.uuid', 'hrp.hash', 't.id' ],
         from       => 'projects p',
         inner_join => 'hub_related_projects hrp',
@@ -295,8 +318,27 @@ sub export_project {
     return $action;
 }
 
+sub cleanup_errors {
+    my $self = shift;
+    return unless $self->stderr_watcher || $self->child;
+
+    my $name = $self->name;
+
+    $self->stderr_watcher(undef);
+    my $stderr = $self->child->stderr;
+    $stderr->blocking(0);
+
+    while ( my $line = $stderr->getline ) {
+        print STDERR "$name: $line";
+    }
+
+    return;
+}
+
 sub disconnect {
     my $self = shift;
+    $self->cleanup_errors;
+
     $self->write('QUIT') if $self->child_watcher;
     $self->child_watcher(undef);
 
@@ -306,6 +348,11 @@ sub disconnect {
     $self->child(undef);
 
     return;
+}
+
+sub DESTROY {
+    my $self = shift;
+    $self->disconnect;
 }
 
 1;
@@ -318,7 +365,7 @@ Bif::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
@@ -337,7 +384,7 @@ Bif::Client - client for communication with a bif hub
     # Bif::Client is a Coro::Handle user so you want
     # to do things inside a coroutine
     async {
-        $client->register;
+        $client->pull_hub;
     };
 
     AnyEvent->condvar->recv;
@@ -393,7 +440,7 @@ B<Bif::Client> is a class for communicating with a bif hub.
 =over 4
 
 
-=item register
+=item pull_hub
 
 
 =item sync_hub($hub_id)

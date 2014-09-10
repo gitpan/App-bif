@@ -2,13 +2,14 @@ package App::bif::list::topics;
 use strict;
 use warnings;
 use utf8;
-use App::bif::Context;
+use parent 'App::bif::Context';
+use Time::Duration qw/concise ago/;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->db;
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->db;
 
     require Term::ANSIColor;
     my $dark  = Term::ANSIColor::color('dark');
@@ -17,25 +18,18 @@ sub run {
 
     DBIx::ThinSQL->import(qw/ qv case concat coalesce/);
 
-    my @projects = $db->xarrays(
-        select => [
-            'p.id',
-            case (
-                when => 'h.local',
-                then => 'p.path',
-                else => "h.name || ':' || p.path",
-              )->as('path'),
-            0
-        ],
+    my @projects = $db->xarrayrefs(
+        select =>
+          [ 'p.id', "p.path || COALESCE('\@' || h.name, '') AS path", 0 ],
         from => 'projects p',
         do {
 
-            if ( $ctx->{project_status} ) {
+            if ( $self->{project_status} ) {
                 (
                     inner_join => 'project_status ps',
                     on         => {
                         'p.status_id' => \' ps.id',
-                        'ps.status'   => $ctx->{project_status},
+                        'ps.status'   => $self->{project_status},
                     }
                 );
             }
@@ -43,35 +37,37 @@ sub run {
                 ();
             }
         },
-        inner_join => 'hubs h',
-        on         => 'h.id = p.hub_id',
-        where      => 'p.local = 1',
-        order_by   => 'p.path',
+        left_join => 'hubs h',
+        on        => 'h.id = p.hub_id',
+        order_by  => [ 'p.path', 'h.name' ],
     );
 
-    return $ctx->ok('ListTopics') unless @projects;
+    return $self->ok('ListTopics') unless @projects;
 
     require Text::FormatTable;
-    my $table = Text::FormatTable->new(' l l  l  l ');
+    my $table = Text::FormatTable->new(' l r  l  l  r ');
 
     my $i = 0;
     foreach my $project (@projects) {
 
-        my $data = $db->xarrays(
+        my $data = $db->xarrayrefs(
             select => [
                 qv( $dark . 'task' . $reset )->as('type'),
                 'tasks.id AS id',
                 'tasks.title AS title',
                 'task_status.status',
+                "strftime('%s','now') - t.ctime",
             ],
             from       => 'task_status',
             inner_join => 'tasks',
             on         => 'tasks.status_id = task_status.id',
+            inner_join => 'topics t',
+            on         => 't.id = tasks.id',
             where      => {
                 'task_status.project_id' => $project->[0],
                 do {
-                    if ( $ctx->{status} ) {
-                        ( 'task_status.status' => $ctx->{status} );
+                    if ( $self->{status} ) {
+                        ( 'task_status.status' => $self->{status} );
                     }
                     else {
                         ();
@@ -83,17 +79,20 @@ sub run {
                 'project_issues.id',
                 'issues.title AS title',
                 'issue_status.status',
+                "strftime('%s','now') - t.ctime",
             ],
             from       => 'issue_status',
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
             inner_join => 'issues',
             on         => 'issues.id = project_issues.issue_id',
+            inner_join => 'topics t',
+            on         => 't.id = issues.id',
             where      => {
                 'issue_status.project_id' => $project->[0],
                 do {
-                    if ( $ctx->{status} ) {
-                        ( 'issue_status.status' => $ctx->{status} );
+                    if ( $self->{status} ) {
+                        ( 'issue_status.status' => $self->{status} );
                     }
                     else {
                         ();
@@ -112,9 +111,8 @@ sub run {
 
         $table->head(
             $bold . 'Type',
-            'ID',
-            "[$project->[1]] Topic",
-            'Status' . $reset
+            'ID', "[$project->[1]] Topic",
+            'Status', 'Age' . $reset
         );
         $i++;
 
@@ -128,19 +126,20 @@ sub run {
         $i++;
 
         foreach (@$data) {
+            ( $_->[4] = concise( ago( $_->[4], 1 ) ) ) =~ s/ ago//;
             $table->row(@$_);
             $project->[2]++;
             $i++;
         }
     }
 
-    $ctx->start_pager($i);
+    $self->start_pager($i);
 
     print $table->render($App::bif::Context::term_width);
 
-    $ctx->end_pager;
+    $self->end_pager;
 
-    $ctx->ok( 'ListTopics', \@projects );
+    $self->ok( 'ListTopics', \@projects );
 }
 
 1;
@@ -152,7 +151,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

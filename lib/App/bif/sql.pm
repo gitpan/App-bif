@@ -1,31 +1,31 @@
 package App::bif::sql;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
+    my $self = __PACKAGE__->new(shift);
     my $db;
 
-    if ( $ctx->{user} ) {
-        $db = $ctx->{write} ? $ctx->user_dbw : $ctx->user_db;
+    if ( $self->{user} ) {
+        $db = $self->{write} ? $self->user_dbw : $self->user_db;
     }
     else {
-        $db = $ctx->{write} ? $ctx->dbw : $ctx->db;
+        $db = $self->{write} ? $self->dbw : $self->db;
     }
 
-    if ( !$ctx->{statement} ) {
+    if ( !$self->{statement} ) {
         local $/;
-        $ctx->{statement} = <STDIN>;
+        $self->{statement} = <STDIN>;
     }
 
-    if ( $ctx->{statement} =~ m/^(select)|(pragma)|(explain)/i ) {
-        my $sth = $db->prepare( $ctx->{statement} );
+    if ( $self->{statement} =~ m/^(select)|(pragma)|(explain)/i ) {
+        my $sth = $db->prepare( $self->{statement} );
         $sth->execute(@_);
 
-        if ( $ctx->{noprint} ) {
+        if ( $self->{noprint} ) {
             return $sth->fetchall_arrayref;
         }
 
@@ -40,15 +40,15 @@ sub run {
             }
         }
 
-        $ctx->start_pager;
+        $self->start_pager;
 
-        print $ctx->render_table( $header, $sth->{NAME}, $data );
+        print $self->render_table( $header, $sth->{NAME}, $data );
 
-        $ctx->end_pager;
+        $self->end_pager;
 
     }
     else {
-        print $db->do( $ctx->{statement} ) . "\n";
+        print $db->do( $self->{statement} ) . "\n";
     }
 
     return 'BifSQL';
@@ -63,7 +63,7 @@ bif-sql -  run an SQL command against the database
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
@@ -102,7 +102,7 @@ Do not print results but return them to the calling subroutine as a
 Perl data structure.  This option is only useful for internal test
 scripts.
 
-=item --user, -u
+=item --user, -U
 
 Run the statement against the user identity database instead of against
 the current repository database.

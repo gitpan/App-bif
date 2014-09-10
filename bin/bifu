@@ -1,0 +1,68 @@
+#!perl
+use strict;
+use warnings;
+use OptArgs qw/dispatch/;
+
+push( @ARGV, '--user-repo' );
+eval { dispatch(qw/run App::bif/) };
+
+if ($@) {
+    print STDERR $@;
+    exit 1;
+}
+
+1;
+
+__END__
+
+=encoding utf-8
+
+=head1 NAME
+
+bifu - run bif commands in your user repository
+
+=head1 VERSION
+
+0.1.0_27 (2014-09-10)
+
+=head1 SYNOPSIS
+
+  bifu COMMAND [...]
+
+=head1 DESCRIPTION
+
+B<bifu> is a version of L<bif> that runs commands against your user
+repository instead of the current local repository. It is basically an
+alias for C<bif --user-repo>.
+
+This is convenient for using bifu as a personal addressbook program, or
+for managing personal projects that you want to access regardless of
+which current directory your shell is in.
+
+=head1 FILES
+
+=over
+
+=item F<$HOME/.local/share/bif-user/>
+
+User repository directory.
+
+=back
+
+=head1 SEE ALSO
+
+L<bif>(1)
+
+=head1 AUTHOR
+
+Mark Lawrence E<lt>nomad@null.netE<gt>
+
+=head1 COPYRIGHT AND LICENSE
+
+Copyright 2013-2014 Mark Lawrence <nomad@null.net>
+
+This program is free software; you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation; either version 3 of the License, or (at your
+option) any later version.
+

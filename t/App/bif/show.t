@@ -20,23 +20,20 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/ show todo /) }, 'Bif::Error::TopicNotFound';
 
-    my $p1 = bif(qw/ new project todo --message message title /);
-
-    # ID 7 should be somehting like project_status
-    isa_ok exception { bif(qw/ show 7 /) }, 'Bif::Error::ShowUnimplemented';
+    my $p1 = bif(qw/ new project todo --message m1 title /);
 
     my $show = bif(qw/show todo/);
     isa_ok( $show, 'Bif::OK::ShowProject' );
 
-    my $t1 = bif(qw/ new task todo --message message task title /);
+    my $t1 = bif(qw/ new task todo --message m2 task title /);
     $show = bif( qw/show /, $t1->{id} );
     isa_ok( $show, 'Bif::OK::ShowTask' );
 
-    my $i1 = bif(qw/ new issue todo --message message issue title /);
+    my $i1 = bif(qw/ new issue todo --message m3 issue title /);
     $show = bif( qw/show /, $i1->{id} );
     isa_ok( $show, 'Bif::OK::ShowIssue' );
 
-    my $update = bif(qw/update todo -m junk/);
+    my $update = bif(qw/update todo -m m4/);
 
     isa_ok exception {
         bif( qw/ show /, "$update->{id}.$update->{update_id}" );

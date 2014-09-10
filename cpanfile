@@ -18,7 +18,7 @@ on 'runtime' => sub {
 
     # Bif::DB
     requires 'DBD::SQLite'   => '1.42';
-    requires 'DBIx::ThinSQL' => '0.0.22';
+    requires 'DBIx::ThinSQL' => '0.0.26';
 
     # Bif::DBW
     requires 'DBIx::ThinSQL::SQLite' => '0.0.10';
@@ -79,6 +79,7 @@ on 'develop' => sub {
     requires 'Module::Install::AuthorTests';
     requires 'Module::Install::CPANfile';
     requires 'Module::Install::ReadmeFromPod';
+    requires 'String::Diff';
     requires 'Test::Pod';
     requires 'Test::Pod::Coverage';
 };

@@ -2,11 +2,11 @@ package App::bif::list::projects;
 use strict;
 use warnings;
 use utf8;
-use App::bif::Context;
+use parent 'App::bif::Context';
 use DBIx::ThinSQL qw/ qv sq case concat /;
 use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub _invalid_status {
     my $self   = shift;
@@ -19,7 +19,7 @@ sub _invalid_status {
 
     return () unless keys %try;
 
-    map { delete $try{ $_->[0] } } $self->xarrays(
+    map { delete $try{ $_->[0] } } $self->xarrayrefs(
         select_distinct => ['status'],
         from            => $kind . '_status',
         where           => { status => $ref },
@@ -29,39 +29,39 @@ sub _invalid_status {
 }
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->db;
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->db;
 
-    my @invalid = _invalid_status( $db, 'project', $ctx->{status} );
+    my @invalid = _invalid_status( $db, 'project', $self->{status} );
 
     if (@invalid) {
-        my ($pcount) = $db->xarray(
+        my $pcount = $db->xval(
             select => 'count(id)',
             from   => 'projects',
         );
         if ($pcount) {
-            return $ctx->err( 'InvalidStatus', "invalid status: @invalid" )
+            return $self->err( 'InvalidStatus', "invalid status: @invalid" )
               if @invalid;
         }
         else {
-            return $ctx->ok('ListProjects');
+            return $self->ok('ListProjects');
         }
     }
 
     my $data;
 
-    if ( $ctx->{hub} ) {
+    if ( $self->{hub} ) {
         require Path::Tiny;
-        my $dir = Path::Tiny::path( $ctx->{hub} )->absolute if -d $ctx->{hub};
-        ( $ctx->{hub_id} ) = $db->xarray(
+        my $dir = Path::Tiny::path( $self->{hub} )->absolute if -d $self->{hub};
+        $self->{hub_id} = $db->xval(
             select       => 'h.id',
             from         => 'hubs h',
-            where        => { 'h.name' => $ctx->{hub} },
+            where        => { 'h.name' => $self->{hub} },
             union_select => 'h.id',
             from         => 'hub_repos hr',
             inner_join   => 'hubs h',
             on           => 'h.id = hr.hub_id',
-            where        => { 'hr.location' => $ctx->{hub} },
+            where        => { 'hr.location' => $self->{hub} },
             union_select => 'h.id',
             from         => 'hub_repos hr',
             inner_join   => 'hubs h',
@@ -70,17 +70,17 @@ sub run {
             limit        => 1,
         );
 
-        return $ctx->err( 'HubNotFound', 'hub not registered: ' . $ctx->{hub} )
-          unless $ctx->{hub_id};
+        return $self->err( 'HubNotFound', 'hub not found: ' . $self->{hub} )
+          unless $self->{hub_id};
 
-        $data = _get_data($ctx);
+        $data = _get_data($self);
 
     }
     else {
-        $data = _get_data2($ctx);
+        $data = _get_data2($self);
     }
 
-    return $ctx->ok('ListProjects') unless $data;
+    return $self->ok('ListProjects') unless $data;
 
     require Term::ANSIColor;
     my $dark  = Term::ANSIColor::color('dark');
@@ -90,8 +90,8 @@ sub run {
     foreach my $i ( 0 .. $#$data ) {
         my $row = $data->[$i];
         if ( !$row->[7] ) {
-            $row->[1] = $dark . $row->[1];
             $row->[4] = $row->[5] = $row->[6] = '*';
+            $row->[4] = $dark . $row->[4];
             $row->[6] = '*' . $reset;
         }
         else {
@@ -108,30 +108,32 @@ sub run {
         $row->[7] = '';
     }
 
-    $ctx->start_pager( scalar @$data );
+    $self->start_pager( scalar @$data );
 
-    print $ctx->render_table(
+    print $self->render_table(
         ' l l  l  l  r r rl',
         [ 'Type', 'Path', 'Title', 'Phase', 'Open', 'Stalled', 'Progress', '' ],
         $data
     );
 
-    $ctx->end_pager;
+    $self->end_pager;
 
-    return $ctx->ok('ListProjects');
+    return $self->ok('ListProjects');
 }
 
 sub _get_data {
-    my $ctx = shift;
+    my $self = shift;
 
-    return $ctx->db->xarrays(
+    my $dark  = Term::ANSIColor::color('dark');
+    my $reset = Term::ANSIColor::color('reset');
+    return $self->db->xarrayrefs(
         select => [
             qv( color('dark') . 'project' . color('reset') )->as('type'),
-            case (
-                when => 'h.local',
-                then => 'p.path',
-                else => 'h.name || ":" || p.path',
-              )->as('xpath'),
+            'p.path || COALESCE("'
+              . $dark
+              . '@" || h.name ||"'
+              . $reset
+              . '", "")',
             'p.title',
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
@@ -142,7 +144,7 @@ sub _get_data {
         from       => 'hub_related_projects hrp',
         inner_join => 'projects p',
         on         => do {
-            if ( $ctx->{local} ) {
+            if ( $self->{local} ) {
                 {
                     'p.id'    => \'hrp.project_id',
                     'p.local' => 1,
@@ -156,10 +158,10 @@ sub _get_data {
         on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
         on         => do {
-            if ( $ctx->{status} ) {
+            if ( $self->{status} ) {
                 {
                     'project_status.id'     => \'p.status_id',
-                    'project_status.status' => $ctx->{status},
+                    'project_status.status' => $self->{status},
                 };
             }
             else {
@@ -176,7 +178,7 @@ sub _get_data {
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
             on         => do {
-                if ( $ctx->{local} ) {
+                if ( $self->{local} ) {
                     {
                         'p.id'    => \'hrp.project_id',
                         'p.local' => 1,
@@ -187,11 +189,11 @@ sub _get_data {
                 }
             },
             do {
-                if ( $ctx->{status} ) {
+                if ( $self->{status} ) {
                     inner_join => 'project_status',
                       on       => {
                         'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $ctx->{status},
+                        'project_status.status' => $self->{status},
                       };
                 }
                 else {
@@ -202,7 +204,7 @@ sub _get_data {
             on               => 'task_status.project_id = p.id',
             inner_join       => 'tasks',
             on               => 'tasks.status_id = task_status.id',
-            where            => { 'hrp.hub_id' => $ctx->{hub_id} },
+            where            => { 'hrp.hub_id' => $self->{hub_id} },
             group_by         => 'p.id',
             union_all_select => [
                 'p.id',
@@ -213,7 +215,7 @@ sub _get_data {
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
             on         => do {
-                if ( $ctx->{local} ) {
+                if ( $self->{local} ) {
                     {
                         'p.id'    => \'hrp.project_id',
                         'p.local' => 1,
@@ -224,11 +226,11 @@ sub _get_data {
                 }
             },
             do {
-                if ( $ctx->{status} ) {
+                if ( $self->{status} ) {
                     inner_join => 'project_status',
                       on       => [
                         'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $ctx->{status},
+                        'project_status.status' => $self->{status},
                       ],
                       ;
                 }
@@ -240,27 +242,29 @@ sub _get_data {
             on         => 'issue_status.project_id = p.id',
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
-            where      => { 'hrp.hub_id' => $ctx->{hub_id} },
+            where      => { 'hrp.hub_id' => $self->{hub_id} },
             group_by   => 'p.id',
           )->as('total'),
         on       => 'p.id = total.id',
-        where    => { 'hrp.hub_id' => $ctx->{hub_id} },
+        where    => { 'hrp.hub_id' => $self->{hub_id} },
         group_by => [ 'p.path', 'p.title', 'project_status.status', ],
-        order_by => "REPLACE(xpath,':',' ')",
+        order_by => [qw/p.path h.name/],
     );
 }
 
 sub _get_data2 {
-    my $ctx = shift;
+    my $self = shift;
 
-    return $ctx->db->xarrays(
+    my $dark  = Term::ANSIColor::color('dark');
+    my $reset = Term::ANSIColor::color('reset');
+    return $self->db->xarrayrefs(
         select => [
             qv( color('dark') . 'project' . color('reset') )->as('type'),
-            case (
-                when => 'h.local',
-                then => 'p.path',
-                else => 'h.name || ":" || p.path',
-              )->as('xpath'),
+            'p.path || COALESCE("'
+              . $dark
+              . '@" || h.name ||"'
+              . $reset
+              . '", "")',
             'p.title',
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
@@ -273,10 +277,10 @@ sub _get_data2 {
         on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
         on         => do {
-            if ( $ctx->{status} ) {
+            if ( $self->{status} ) {
                 {
                     'project_status.id'     => \'p.status_id',
-                    'project_status.status' => $ctx->{status},
+                    'project_status.status' => $self->{status},
                 };
             }
             else {
@@ -292,11 +296,11 @@ sub _get_data2 {
             ],
             from => 'projects p',
             do {
-                if ( $ctx->{status} ) {
+                if ( $self->{status} ) {
                     inner_join => 'project_status',
                       on       => {
                         'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $ctx->{status},
+                        'project_status.status' => $self->{status},
                       };
                 }
                 else {
@@ -308,7 +312,7 @@ sub _get_data2 {
             inner_join => 'tasks',
             on         => 'tasks.status_id = task_status.id',
             do {
-                if ( $ctx->{local} ) {
+                if ( $self->{local} ) {
                     ( where => 'p.local = 1' );
                 }
                 else {
@@ -324,11 +328,11 @@ sub _get_data2 {
             ],
             from => 'projects p',
             do {
-                if ( $ctx->{status} ) {
+                if ( $self->{status} ) {
                     inner_join => 'project_status',
                       on       => {
                         'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $ctx->{status},
+                        'project_status.status' => $self->{status},
                       },
                       ;
                 }
@@ -341,7 +345,7 @@ sub _get_data2 {
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
             do {
-                if ( $ctx->{local} ) {
+                if ( $self->{local} ) {
                     ( where => 'p.local = 1' );
                 }
                 else {
@@ -352,15 +356,15 @@ sub _get_data2 {
           )->as('total'),
         on => 'total.id = p.id',
         do {
-            if ( $ctx->{local} ) {
+            if ( $self->{local} ) {
                 ( where => 'p.local = 1' );
             }
             else {
                 ();
             }
         },
-        group_by => [ 'path', 'p.title', 'project_status.status', ],
-        order_by => "REPLACE(xpath,':',' ')",
+        group_by => 'p.id',
+        order_by => [qw/p.path h.name/],
     );
 }
 
@@ -374,7 +378,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

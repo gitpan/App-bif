@@ -14,7 +14,7 @@ bifsync - synchronization server for bif hubs
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
@@ -37,8 +37,7 @@ An exit value of zero indicates success.
 
 =item DIRECTORY
 
-A directory containing a bare bif repository. Defaults to
-F<default.bif>.
+A directory containing a bif repository. Defaults to F<default.bif>.
 
 =item --debug, -d
 

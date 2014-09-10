@@ -6,56 +6,65 @@ use Test::Bif;
 use Test::Fatal;
 use Test::More;
 
-sub bif2 {
-    local $CWD = 'bif2';
-    bif(@_);
-}
-
 run_in_tempdir {
 
     isa_ok exception { bif(qw/sync/) }, 'Bif::Error::RepoNotFound';
-
     bif(qw/init/);
     isa_ok exception { bif(qw/sync/) }, 'Bif::Error::SyncNone';
 
-    bif(qw/init hub --bare/);
-    bif(qw/register hub/);
+    bif(qw/init hub hub/);
+    bif(qw/pull hub hub/);
+
+    bif2(qw/init/);
+    bif2(qw!pull hub ../hub!);
+
     isa_ok bif(qw/sync/), 'Bif::OK::Sync';
-    isa_ok exception { bif(qw/show project todo hub/) },
+    isa_ok exception { bif(qw/show project todo@hub/) },
       'Bif::Error::ProjectNotFound';
 
-    bif(qw/init bif2/);
-    bif2(qw!register ../hub!);
-    my $pinfo = bif2(qw/new project todo title -m m1/);
-    bif2(qw/push project todo hub/);
+    my $pinfo = bif(qw/new project todo title -m m1/);
+    bif(qw/push project todo hub/);
 
-    isa_ok bif(qw/sync -m m2/), 'Bif::OK::Sync';
-    isa_ok exception { bif(qw/show todo/) }, 'Bif::Error::TopicNotFound';
-    isa_ok bif(qw/show project todo hub/), 'Bif::OK::ShowProject';
+    isa_ok bif2(qw/sync -m m2/), 'Bif::OK::Sync';
 
-    bif2(qw/update todo -m m3/);
+    isa_ok bif2(qw/show project todo@hub/), 'Bif::OK::ShowProject';
 
-    bif(qw/pull project todo hub/);
-    isa_ok bif2(qw/sync -m m4/), 'Bif::OK::Sync';
-    isa_ok bif(qw/sync -m m5/),  'Bif::OK::Sync';
+    bif2(qw/pull project todo@hub/);
+
+    #    bif(qw/update todo -m m3a/);
+    #    bif2(qw/update todo -m m3b/);
+    #    isa_ok bif(qw/sync -m m5/),  'Bif::OK::Sync';
+    #    isa_ok bif2(qw/sync -m m4/), 'Bif::OK::Sync';
 
     subtest 'task sync' => sub {
-        my $tinfo = bif(qw/new task -m m6 -p todo tasktitle/);
-        my $x     = bif( qw/sql --noprint/,
+        my $tinfo = bif2(qw/new task -m m6 -p todo tasktitle/);
+        my $x     = bif2( qw/sql --noprint/,
             qq{select uuid from topics where id=$tinfo->{id}} );
         $tinfo->{uuid} = $x->[0][0];
-        bif( qw/update/, $tinfo->{id}, qw/-m m7/ );
-        isa_ok bif(qw/sync -m m11/),  'Bif::OK::Sync';
         isa_ok bif2(qw/sync -m m12/), 'Bif::OK::Sync';
-        my $ref2 = bif2( qw/sql --noprint/,
+
+        isa_ok bif(qw/sync -m m11/), 'Bif::OK::Sync';
+        my $ref2 = bif( qw/sql --noprint/,
             qq{select 1 from topics where uuid="$tinfo->{uuid}"} );
         ok $ref2->[0][0], 'task sync';
+
+        #        bif( qw/update/, $tinfo->{id}, qw/-m m7/ );
+        my $u = bif( qw/update --uuid/, $tinfo->{uuid}, qw/-m m12b/ );
+        $x = bif( qw/sql --noprint/,
+            qq{select uuid from updates where id=$u->{update_id}} );
+        $u->{uuid} = $x->[0][0];
+        bif(qw/sync/);
+
+        bif2(qw/sync/);
+        $ref2 = bif2( qw/sql --noprint/,
+            qq{select 1 from updates where uuid="$u->{uuid}"} );
+        ok $ref2->[0][0], 'task update sync';
     };
 
     subtest 'issue sync' => sub {
         my $iinfo = bif2(qw/new issue -m m8 -p todo issuetitle/);
         my $x     = bif2( qw/sql --noprint/,
-            qq{select uuid from topics where id=$iinfo->{id}} );
+            qq{select uuid from topics where id=$iinfo->{topic_id}} );
         $iinfo->{uuid} = $x->[0][0];
         bif2( qw/update/, $iinfo->{id}, qw/-m m10/ );
         isa_ok bif2(qw/sync -m m13/), 'Bif::OK::Sync';
@@ -77,6 +86,7 @@ run_in_tempdir {
     );
 
     ok $ref1->[0][0] eq $ref2->[0][0], "$ref1->[0][0] eq $ref2->[0][0]";
+
 };
 
 done_testing();

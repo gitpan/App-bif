@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -23,11 +23,20 @@ sub _connected {
     $dbh->do('PRAGMA synchronous = NORMAL;');
     $dbh->do('PRAGMA synchronous = OFF;') if $main::BIF_DB_NOSYNC;
 
-    # TODO remove this before the first production release.
-    $dbh->do('PRAGMA reverse_unordered_selects = ON;');
-
     create_functions( $dbh,
         qw/debug create_sequence nextval currval sha1_hex agg_sha1_hex/ );
+
+    # TODO remove the following two statements before the first
+    # production release.
+    $dbh->do('PRAGMA reverse_unordered_selects = ON;');
+    $dbh->sqlite_create_function(
+        'check_fks',
+        -1,
+        sub {
+            $dbh->check_fks;
+        }
+    );
+
     return;
 }
 
@@ -103,7 +112,7 @@ Bif::DBW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

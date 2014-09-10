@@ -11,14 +11,14 @@ run_in_tempdir {
     isa_ok $list, 'Bif::OK::ListTasks';
 
     # TODO return the id
-    bif(qw/ new project todo --message message title /);
-    bif(qw/ new task todo --message message task title /);
+    bif(qw/ new project todo --message m1 title /);
+    bif(qw/ new task todo --message m2 task title /);
 
     # all status
     $list = bif(qw/list tasks/);
     isa_ok $list, 'Bif::OK::ListTasks';
 
-    bif(qw/ new task todo --message message task title2 -s stalled/);
+    bif(qw/ new task todo --message m3 task title2 -s stalled/);
 
     $list = bif(qw/list tasks/);
     isa_ok $list, 'Bif::OK::ListTasks';

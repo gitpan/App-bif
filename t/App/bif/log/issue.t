@@ -14,12 +14,12 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/log issue 1311/) }, 'Bif::Error::TopicNotFound';
 
-    my $p1 = bif(qw/ new project todo --message message title /);
+    my $p1 = bif(qw/ new project todo --message m1 title /);
 
     isa_ok exception { bif( qw/ log issue /, $p1->{id} ) },
-      'Bif::Error::NotAnIssue';
+      'Bif::Error::WrongKind';
 
-    my $i1 = bif(qw/new issue title -m message /);
+    my $i1 = bif(qw/new issue title -m m2 /);
 
     isa_ok bif( qw/ log issue /, $i1->{id} ), 'Bif::OK::LogIssue';
 

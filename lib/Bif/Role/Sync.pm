@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/coalesce qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 with qw/
   Bif::Role::Sync::Identity
@@ -24,7 +24,7 @@ sub read {
         return 'EOF';
     }
 
-    $log->debugf( 'r: ' . $json );
+    $log->debug( 'r: ' . $json );
     my $msg = eval { $self->json->decode($json) };
 
     if ( $@ or !defined $msg ) {
@@ -66,15 +66,33 @@ sub send_updates {
 
     my $sent = 0;
 
-    while ( my $update = $update_list->hash ) {
+    while ( my $update = $update_list->hashref ) {
         my $id = delete $update->{id};
 
         $self->write( 'NEW', 'update', $update );
 
         my $parts = $db->xprepare(
 
-            # entities
+            # topics
             select => [
+                qv('topic'),         # 0
+                1,                   # 1  AS NEW
+                't.kind',            # 2
+                'u.uuid',            # 3
+                4,                   # 4
+                5,                   # 5
+                6,                   # 6
+                7,                   # 7
+                8,                   # 8
+                't.update_order',    # 9
+            ],
+            from       => 'updates u',
+            inner_join => 'topics t',
+            on         => 't.first_update_id = u.id',
+            where      => { 'u.id' => $id },
+
+            # entities
+            union_all_select => [
                 qv('entity')->as('kind'),                    # 0
                 'ed.new',                                    # 1
                 'ed.name',                                   # 2
@@ -83,7 +101,7 @@ sub send_updates {
                 't3.uuid AS default_contact_method_uuid',    # 5
                 't.uuid AS entity_uuid',                     # 6
                 7,                                           # 7
-                't.kind AS real_kind',                       # 8
+                8,                                           # 8
                 'ed.id AS update_order',                     # 9
             ],
             from       => 'entity_deltas ed',
@@ -147,7 +165,7 @@ sub send_updates {
                 'hub_deltas.new',
                 'hubs.uuid',    # for update
                 'null AS undef1',
-                'hub_deltas.related_update_uuid',
+                'null AS undef2',
                 'u.uuid AS update_uuid',
                 'p.uuid AS project_uuid',
                 'hub_deltas.name',
@@ -178,7 +196,7 @@ sub send_updates {
             on         => 'hr.id = hrd.hub_repo_id',
             inner_join => 'topics hr2',
             on         => 'hr2.id = hrd.hub_repo_id',
-            inner_join => 'topics h',
+            left_join  => 'topics h',
             on         => 'h.id = hr.hub_id',
             where      => { 'u.id' => $id },
 
@@ -347,6 +365,21 @@ sub send_updates {
             },
             where => { 'updates.id' => $id },
 
+            # update_deltas
+            union_all_select => [
+                qv('update')->as('kind'),
+                'ud.new', 't1.uuid', 't2.uuid', 'ud.action_format', 5, 6, 7, 8,
+                'ud.id AS update_order',
+            ],
+            from       => 'updates u',
+            inner_join => 'update_deltas ud',
+            on         => 'ud.update_id = u.id',
+            left_join  => 'topics t1',
+            on         => 't1.id = ud.action_topic_id_1',
+            left_join  => 'topics t2',
+            on         => 't2.id = ud.action_topic_id_2',
+            where      => { 'u.id' => $id },
+
             # Order everything correctly
             order_by => 'update_order',
         );
@@ -366,16 +399,30 @@ sub write_parts {
     my $self  = shift;
     my $parts = shift;
 
-    while ( my $part = $parts->array ) {
-        if ( $part->[0] eq 'entity' ) {
+    while ( my $part = $parts->arrayref ) {
+        if ( $part->[0] eq 'topic' ) {
             if ( $part->[1] ) {
                 $self->write(
                     'NEW',
                     $part->[0],
                     {
                         update_uuid => $part->[3],
+                        kind        => $part->[2],
+                    }
+                );
+            }
+            else {
+            }
+        }
+        elsif ( $part->[0] eq 'entity' ) {
+            if ( $part->[1] ) {
+                $self->write(
+                    'NEW',
+                    $part->[0],
+                    {
+                        update_uuid => $part->[3],
+                        topic_uuid  => $part->[6],
                         name        => $part->[2],
-                        kind        => $part->[8],
                     }
                 );
             }
@@ -403,6 +450,7 @@ sub write_parts {
                         method      => $part->[2],
                         mvalue      => $part->[3],
                         update_uuid => $part->[4],
+                        topic_uuid  => $part->[5],
                         entity_uuid => $part->[6],
                     }
                 );
@@ -448,6 +496,7 @@ sub write_parts {
                     'NEW', 'hub',
                     {
                         update_uuid => $part->[5],
+                        topic_uuid  => $part->[2],
                         name        => $part->[7],
                     }
                 );
@@ -456,11 +505,10 @@ sub write_parts {
                 $self->write(
                     'UPDATE', 'hub',
                     {
-                        hub_uuid            => $part->[2],
-                        related_update_uuid => $part->[4],
-                        update_uuid         => $part->[5],
-                        project_uuid        => $part->[6],
-                        name                => $part->[7],
+                        hub_uuid     => $part->[2],
+                        update_uuid  => $part->[5],
+                        project_uuid => $part->[6],
+                        name         => $part->[7],
                     }
 
                 );
@@ -473,6 +521,7 @@ sub write_parts {
                     'hub_repo',
                     {
                         hub_uuid    => $part->[2],
+                        topic_uuid  => $part->[3],
                         location    => $part->[4],
                         update_uuid => $part->[5],
                     }
@@ -483,6 +532,7 @@ sub write_parts {
                     'UPDATE',
                     'hub_repo',
                     {
+                        hub_uuid      => $part->[2],
                         hub_repo_uuid => $part->[3],
                         location      => $part->[4],
                         update_uuid   => $part->[5],
@@ -496,6 +546,7 @@ sub write_parts {
                     'NEW',
                     'project',
                     {
+                        topic_uuid  => $part->[2],
                         parent_uuid => $part->[3],
                         name        => $part->[4],
                         title       => $part->[5],
@@ -525,6 +576,7 @@ sub write_parts {
                     'NEW',
                     'project_status',
                     {
+                        topic_uuid   => $part->[3],
                         project_uuid => $part->[2],
                         status       => $part->[4],
                         rank         => $part->[7],
@@ -551,6 +603,7 @@ sub write_parts {
                     'NEW',
                     'task_status',
                     {
+                        topic_uuid   => $part->[3],
                         project_uuid => $part->[2],
                         status       => $part->[4],
                         def          => $part->[5],
@@ -579,6 +632,7 @@ sub write_parts {
                     'NEW',
                     'issue_status',
                     {
+                        topic_uuid   => $part->[3],
                         project_uuid => $part->[2],
                         status       => $part->[4],
                         def          => $part->[5],
@@ -606,6 +660,7 @@ sub write_parts {
                 $self->write(
                     'NEW', 'task',
                     {
+                        topic_uuid       => $part->[2],
                         task_status_uuid => $part->[3],
                         title            => $part->[4],
                         update_uuid      => $part->[5],
@@ -629,6 +684,7 @@ sub write_parts {
                 $self->write(
                     'NEW', 'issue',
                     {
+                        topic_uuid        => $part->[2],
                         issue_status_uuid => $part->[3],
                         title             => $part->[4],
                         update_uuid       => $part->[6],
@@ -646,6 +702,21 @@ sub write_parts {
                         update_uuid       => $part->[6],
                     }
                 );
+            }
+        }
+        elsif ( $part->[0] eq 'update' ) {
+            if ( $part->[1] ) {
+                $self->write(
+                    'UPDATE', 'update',
+                    {
+                        action_topic_uuid_1 => $part->[2],
+                        action_topic_uuid_2 => $part->[3],
+                        action_format       => $part->[4],
+                    }
+                );
+            }
+            else {
+                $self->on_error->( 'cannot export type: ' . $part->[0] );
             }
         }
         else {

@@ -6,10 +6,11 @@ use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 my %import_functions = (
     NEW => {
+        topic                 => 'func_import_topic',
         entity                => 'func_import_entity',
         entity_contact_method => 'func_import_entity_contact_method',
         identity              => 'func_import_identity',
@@ -31,6 +32,7 @@ my %import_functions = (
         project_status        => 'func_import_project_status_delta',
         task                  => 'func_import_task_delta',
         task_status           => 'func_import_task_status_delta',
+        update                => 'func_import_update_delta',
     },
     QUIT   => {},
     CANCEL => {},
@@ -71,7 +73,7 @@ sub recv_project_deltas {
         if ( $action eq 'NEW' and $type eq 'update' ) {
             $ucount = delete $ref->{ucount};
 
-            ($id) = $db->xarray(
+            $id = $db->xval(
                 select => 'u.id',
                 from   => 'updates u',
                 where  => { 'u.uuid' => $ref->{uuid} },
@@ -121,7 +123,7 @@ sub real_import_project {
     my $result = $self->recv_project_deltas;
 
     if ( $result =~ m/^\d+$/ ) {
-        my ($id) = $self->db->xarray(
+        my $id = $self->db->xval(
             select => 't.id',
             from   => 'topics t',
             where  => {
@@ -158,7 +160,7 @@ sub real_sync_project {
 
     $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
-    my @refs = $db->xarrays(
+    my @refs = $db->xarrayrefs(
         select => [qw/pm.prefix pm.hash/],
         from   => 'project_related_updates_merkle pm',
         where  => [
@@ -193,7 +195,7 @@ sub real_sync_project {
         my @where;
         foreach my $miss (@missing) {
             push( @where, ' OR ' ) if @where;
-            push( @where, "u.prefix LIKE ", qv( $miss . '%' ) ),;
+            push( @where, "u.uuid LIKE ", qv( $miss . '%' ) ),;
         }
 
         $self->db->xdo(
@@ -231,7 +233,7 @@ sub real_transfer_project_related_updates {
     my $tmp  = $self->temp_table;
 
     my $send = async {
-        my ($total) = $self->db->xarray(
+        my $total = $self->db->xval(
             select => 'COALESCE(sum(t.ucount), 0)',
             from   => "$tmp t",
         );
@@ -246,16 +248,19 @@ sub real_transfer_project_related_updates {
                 'u.mtime',               'u.mtimetz',
                 'u.author',              'u.email',
                 'u.lang',                'u.message',
-                'u.ucount',
+                'u.action',              'u.ucount',
             ],
             from       => "$tmp tmp",
             inner_join => 'updates u',
             on         => 'u.id = tmp.id',
-            inner_join => 'topics t',
-            on         => 't.id = u.identity_id',
-            left_join  => 'updates p',
-            on         => 'p.id = u.parent_id',
-            order_by   => 'u.id ASC',
+            left_join  => 'topics t',
+
+            # Don't fetch the identity_uuid for the first identity
+            # update
+            on        => 't.id = u.identity_id AND t.first_update_id != u.id',
+            left_join => 'updates p',
+            on        => 'p.id = u.parent_id',
+            order_by  => 'u.id ASC',
         );
 
         $update_list->execute;
@@ -284,7 +289,7 @@ sub real_export_project {
     my $self = shift;
     my $id   = shift;
 
-    my ($total) = $self->db->xarray(
+    my $total = $self->db->xval(
         select     => 'sum(u.ucount)',
         from       => 'project_related_updates pru',
         inner_join => 'updates u',
@@ -302,17 +307,20 @@ sub real_export_project {
             'updates.mtime',               'updates.mtimetz',
             'updates.author',              'updates.email',
             'updates.lang',                'updates.message',
-            'updates.ucount',
+            'updates.action',              'updates.ucount',
         ],
         from       => 'project_related_updates AS pru',
         inner_join => 'updates',
         on         => 'updates.id = pru.update_id',
-        inner_join => 'topics t',
-        on         => 't.id = u.identity_id',
-        left_join  => 'updates AS parents',
-        on         => 'parents.id = updates.parent_id',
-        where      => { 'pru.project_id' => $id },
-        order_by   => 'updates.id ASC',
+        left_join  => 'topics t',
+
+        # Don't fetch the identity_uuid for the first identity
+        # update
+        on        => 't.id = u.identity_id AND t.first_update_id != u.id',
+        left_join => 'updates AS parents',
+        on        => 'parents.id = updates.parent_id',
+        where     => { 'pru.project_id' => $id },
+        order_by  => 'updates.id ASC',
     );
 
     $sth->execute;

@@ -1,73 +1,95 @@
 package App::bif::new::issue;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->dbw;
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->dbw;
 
-    $ctx->{title} ||= prompt( 'Title:', '' )
-      || return $ctx->err( 'TitleRequired', 'title is required' );
+    $self->{title} ||= prompt( 'Title:', '' )
+      || return $self->err( 'TitleRequired', 'title is required' );
 
-    if ( !$ctx->{path} ) {
+    if ( !$self->{path} ) {
 
-        my ( $path, $count ) = $db->xarray(
-            select   => [ "coalesce(p.path,'')", 'count(p.id)' ],
-            from     => 'projects p',
-            where    => 'p.local = 1',
-            order_by => 'p.path',
+        my @paths = $db->xarrayrefs(
+            select    => [ "p.path || COALESCE('\@' || h.name,'') AS path", ],
+            from      => 'projects p',
+            left_join => 'hubs h',
+            on        => 'h.id = p.hub_id',
+            order_by  => 'path',
         );
 
-        if ( 0 == $count ) {
-            return $ctx->err( 'NoProjectInRepo', 'task needs a project' );
+        if ( 0 == @paths ) {
+            return $self->err( 'NoProjectInRepo', 'task needs a project' );
         }
-        elsif ( 1 == $count ) {
-            $ctx->{path} = $path;
+        elsif ( 1 == @paths ) {
+            $self->{path} = $paths[0]->[0];
         }
         else {
-            $ctx->{path} = prompt( 'Project:', $path )
-              || return $ctx->err( 'ProjectRequired', 'project is required' );
+            $self->{path} = prompt( 'Project:', $paths[0]->[0] )
+              || return $self->err( 'ProjectRequired', 'project is required' );
         }
     }
 
-    my $pinfo = $ctx->get_project( $ctx->{path} );
+    my $pinfo = $self->get_project( $self->{path} );
 
-    if ( $ctx->{status} ) {
+    if ( $self->{status} ) {
         my ( $status_ids, $invalid ) =
-          $db->status_ids( $pinfo->{id}, 'issue', $ctx->{status} );
+          $db->status_ids( $pinfo->{id}, 'issue', $self->{status} );
 
-        return $ctx->err( 'InvalidStatus',
+        return $self->err( 'InvalidStatus',
             'unknown status: ' . join( ', ', @$invalid ) )
           if @$invalid;
 
-        $ctx->{status_id} = $status_ids->[0];
+        $self->{status_id} = $status_ids->[0];
     }
     else {
-        ( $ctx->{status_id} ) = $db->xarray(
+        $self->{status_id} = $db->xval(
             select => 'id',
             from   => 'issue_status',
             where  => { project_id => $pinfo->{id}, def => 1 },
         );
     }
 
-    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    $self->{message} ||= $self->prompt_edit( opts => $self );
     $db->txn(
         sub {
-            my $ruid = $db->nextval('updates');
-            my $id   = $db->nextval('topics');
-            my $uid  = $ctx->new_update( message => $ctx->{message} );
+            my $id       = $db->nextval('topics');
+            my $topic_id = $db->nextval('topics');
+
+            my $uid = $self->new_update( message => $self->{message}, );
+
+            $db->xdo(
+                insert_into => 'func_new_topic',
+                values      => {
+                    update_id => $uid,
+                    id        => $topic_id,
+                    kind      => 'issue',
+                },
+            );
 
             $db->xdo(
                 insert_into => 'func_new_issue',
                 values      => {
                     id        => $id,
+                    topic_id  => $topic_id,
                     update_id => $uid,
-                    status_id => $ctx->{status_id},
-                    title     => $ctx->{title},
+                    status_id => $self->{status_id},
+                    title     => $self->{title},
+                },
+            );
+
+            $db->xdo(
+                insert_into => 'update_deltas',
+                values      => {
+                    update_id         => $uid,
+                    new               => 1,
+                    action_format     => "new issue %s",
+                    action_topic_id_1 => $topic_id,
                 },
             );
 
@@ -76,23 +98,16 @@ sub run {
                 values      => { merge => 1 },
             );
 
-            $ctx->update_localhub(
-                {
-                    id                => $ruid,
-                    message           => "new issue $id [$pinfo->{path}]",
-                    related_update_id => $uid,
-                }
-            );
-
             printf( "Issue created: %d\n", $id );
 
             # For test scripts
-            $ctx->{id}        = $id;
-            $ctx->{update_id} = $uid;
+            $self->{id}        = $id;
+            $self->{topic_id}  = $topic_id;
+            $self->{update_id} = $uid;
         }
     );
 
-    return $ctx->ok('NewIssue');
+    return $self->ok('NewIssue');
 }
 
 1;
@@ -104,7 +119,7 @@ bif-new-issue - add a new issue to a project
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

@@ -1,16 +1,21 @@
 package App::bif::upgrade;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->dbw( $ctx->{directory} );
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->dbw( $self->{directory} );
 
-    my ( $old, $new ) = $db->txn( sub { $db->deploy } );
+    my ( $old, $new ) = $db->txn(
+        sub {
+            $self->new_update( action => 'upgrade', );
+            $db->deploy;
+        }
+    );
 
     if ( $new > $old ) {
         printf( "Database upgraded (v%s-v%s)\n", $old, $new );
@@ -19,7 +24,7 @@ sub run {
         printf( "Database remains at v%s\n", $new );
     }
 
-    return $ctx->ok('Upgrade');
+    return $self->ok('Upgrade');
 }
 
 1;
@@ -31,7 +36,7 @@ bif-upgrade - upgrade a repository
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

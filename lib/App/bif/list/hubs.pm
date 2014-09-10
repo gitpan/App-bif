@@ -1,25 +1,30 @@
 package App::bif::list::hubs;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->db;
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->db;
 
-    DBIx::ThinSQL->import(qw/ count qv/);
+    DBIx::ThinSQL->import(qw/ qv concat/);
 
-    my $data = $db->xarrays(
+    my $data = $db->xarrayrefs(
         select => [
-            qv( color('dark') . 'hub' . color('reset') )->as('type'),
+            concat( qv( color('dark') ), 't.kind', qv( color('reset') ) )
+              ->as('type'),
+            'h.id',
             'COALESCE(h.name,"") AS hname',
-            'hr.location', 'COUNT(p.id)',
+            'COALESCE(hr.location,"") AS location',
+            'COUNT(p.id)',
         ],
         from       => 'hubs h',
-        inner_join => 'hub_repos hr',
+        inner_join => 'topics t',
+        on         => 't.id = h.id',
+        left_join  => 'hub_repos hr',
         on         => 'hr.id = h.default_repo_id',
         left_join  => 'projects p',
         on         => 'p.hub_id = h.id',
@@ -27,16 +32,16 @@ sub run {
         order_by   => 'hname',
     );
 
-    return $ctx->ok('ListHubs') unless @$data;
+    return $self->ok('ListHubs') unless $data;
 
-    $ctx->start_pager( scalar @$data );
+    $self->start_pager( scalar @$data );
 
-    print $ctx->render_table( ' l l  l  r ',
-        [ 'Type', 'Name', 'Location', 'Projects' ], $data );
+    print $self->render_table( ' l r l  l  r ',
+        [ 'Type', 'ID', 'Name', 'Location', 'Projects' ], $data );
 
-    $ctx->end_pager;
+    $self->end_pager;
 
-    return $ctx->ok('ListHubs');
+    return $self->ok('ListHubs');
 }
 
 1;
@@ -48,7 +53,7 @@ bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

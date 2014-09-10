@@ -2,17 +2,17 @@ package App::bif::list::issues;
 use strict;
 use warnings;
 use utf8;
-use App::bif::Context;
+use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx = App::bif::Context->new(shift);
-    my $db  = $ctx->db;
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->db;
 
     DBIx::ThinSQL->import(qw/ qv concat coalesce/);
 
-    my @projects = $db->xarrays(
+    my @projects = $db->xarrayrefs(
         select => [ 'projects.id', 'projects.path', 0 ],
         from   => 'projects',
 
@@ -31,7 +31,7 @@ sub run {
     my $i = 0;
     foreach my $project (@projects) {
 
-        my $data = $db->xarrays(
+        my $data = $db->xarrayrefs(
             select => [
                 'project_issues.id AS id',
                 'issues.title AS title',
@@ -45,8 +45,8 @@ sub run {
             where      => {
                 'issue_status.project_id' => $project->[0],
                 do {
-                    if ( $ctx->{status} ) {
-                        ( 'issue_status.status' => $ctx->{status} );
+                    if ( $self->{status} ) {
+                        ( 'issue_status.status' => $self->{status} );
                     }
                     else {
                         ();
@@ -82,13 +82,13 @@ sub run {
         }
     }
 
-    $ctx->start_pager;
+    $self->start_pager;
 
     print $table->render($App::bif::Context::term_width);
 
-    $ctx->end_pager;
+    $self->end_pager;
 
-    $ctx->ok( 'ListIssues', \@projects );
+    $self->ok( 'ListIssues', \@projects );
 }
 
 1;
@@ -100,7 +100,7 @@ bif-list-issues - list projects' issues
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

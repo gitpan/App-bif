@@ -1,45 +1,29 @@
 package App::bif::sync;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_26';
-
-my $stderr;
-my $stderr_watcher;
-
-sub cleanup_errors {
-    my $hub = shift;
-
-    undef $stderr_watcher;
-    $stderr->blocking(0);
-
-    while ( my $line = $stderr->getline ) {
-        print STDERR "$hub: $line";
-    }
-
-    return;
-}
+our $VERSION = '0.1.0_27';
 
 sub run {
     my $opts = shift;
     $opts->{no_pager}++;    # causes problems with something in Coro?
-    my $ctx = App::bif::Context->new($opts);
-    my $dbw = $ctx->dbw;
+    my $self = __PACKAGE__->new($opts);
+    my $dbw  = $self->dbw;
 
     if ( $opts->{hub} ) {
         foreach my $name ( @{ $opts->{hub} } ) {
             my @rl = $dbw->get_hub_repos($name);
-            $ctx->err( 'HubNotFound', 'hub not found: ' . $name )
+            $self->err( 'HubNotFound', 'hub not found: ' . $name )
               unless @rl;
         }
     }
 
     # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
-    my @hubs = $dbw->xhashes(
+    my @hubs = $dbw->xhashrefs(
         select     => [ 'h.id', 'h.name', 'hr.location', 't.uuid' ],
         from       => 'hubs h',
         inner_join => 'topics t',
@@ -53,7 +37,7 @@ sub run {
         order_by => 'h.name',
     );
 
-    return $ctx->err( 'SyncNone', 'no (matching) hubs registered' )
+    return $self->err( 'SyncNone', 'no (matching) hubs found' )
       unless @hubs;
 
     $|++;    # no buffering
@@ -61,44 +45,42 @@ sub run {
     foreach my $hub (@hubs) {
         my $error;
         my $cv = AE::cv;
-        $ctx->lprint("$hub->{name}: connecting...");
+        $self->lprint("$hub->{name}: connecting...");
 
         my $client = Bif::Client->new(
+            name          => $hub->{name},
             db            => $dbw,
             location      => $hub->{location},
-            debug         => $ctx->{debug},
-            debug_bifsync => $ctx->{debug_bifsync},
+            debug         => $self->{debug},
+            debug_bifsync => $self->{debug_bifsync},
             on_error      => sub {
                 $error = shift;
                 $cv->send;
             },
         );
 
-        $stderr = $client->child->stderr;
-
-        $stderr_watcher = AE::io $stderr, 0, sub {
-            my $line = $stderr->getline;
-            if ( !defined $line ) {
-                undef $stderr_watcher;
-                return;
-            }
-            print STDERR "$hub->{name}: $line";
-        };
-
         my $coro = async {
             eval {
                 $dbw->txn(
                     sub {
-                        $ctx->update_localhub(
-                            {
-                                message => "sync $hub->{location} "
-                                  . $ctx->{message},
-                            }
+                        my $uid = $self->new_update(
+                            message =>
+                              "sync hub $hub->{name} via $hub->{location}"
+                              . $self->{message},
+                            action => "sync hub $hub->{name}",
+                        );
+
+                        $dbw->xdo(
+                            insert_or_replace_into => 'bifkv',
+                            values                 => {
+                                key       => 'last_sync',
+                                update_id => $uid,
+                            },
                         );
 
                         $client->on_update(
                             sub {
-                                $ctx->lprint("$hub->{name}: $_[0]");
+                                $self->lprint("$hub->{name}: $_[0]");
                             }
                         );
 
@@ -110,7 +92,7 @@ sub run {
                         {
                             $dbw->rollback;
                             $error = "unexpected status received: $status";
-                            return cleanup_errors( $hub->{name} );
+                            return;
 
                         }
 
@@ -119,7 +101,7 @@ sub run {
                             if ( $status ne 'TransferHubUpdates' ) {
                                 $dbw->rollback;
                                 $error = "unexpected status received: $status";
-                                return cleanup_errors( $hub->{name} );
+                                return;
                             }
                         }
 
@@ -128,7 +110,7 @@ sub run {
                         unless ( $status eq 'ProjectSync' ) {
                             $dbw->rollback;
                             $error = "unexpected status received: $status";
-                            return cleanup_errors( $hub->{name} );
+                            return;
                         }
 
                         $status = $client->transfer_project_related_updates;
@@ -136,14 +118,14 @@ sub run {
                         if ( $status ne 'TransferProjectRelatedUpdates' ) {
                             $dbw->rollback;
                             $error = "unexpected status received: $status";
-                            return cleanup_errors( $hub->{name} );
+                            return;
                         }
                         print "\n";
 
                         my $current = $dbw->get_max_update_id;
                         my $delta   = $current - $previous;
 
-                        return cleanup_errors;
+                        return;
                     }
                 );
             };
@@ -161,7 +143,7 @@ sub run {
             next;
         }
 
-        return $ctx->err( 'Unknown', $error );
+        return $self->err( 'Unknown', $error );
 
     }
 
@@ -169,7 +151,7 @@ sub run {
     # analyze
     $dbw->do('ANALYZE');
 
-    return $ctx->ok('Sync');
+    return $self->ok('Sync');
 }
 
 1;
@@ -182,7 +164,7 @@ bif-sync -  exchange updates with hubs
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

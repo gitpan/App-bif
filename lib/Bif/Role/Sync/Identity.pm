@@ -6,10 +6,11 @@ use DBIx::ThinSQL qw/qv sq/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 my %import_functions = (
     NEW => {
+        topic                 => 'func_import_topic',
         entity                => 'func_import_entity',
         entity_contact_method => 'func_import_entity_contact_method',
         identity              => 'func_import_identity',
@@ -19,6 +20,7 @@ my %import_functions = (
         entity                => 'func_import_entity_delta',
         entity_contact_method => 'func_import_entity_contact_method_delta',
         identity              => 'func_import_identity_delta',
+        update                => 'func_import_update_delta',
     },
     QUIT   => {},
     CANCEL => {},
@@ -106,7 +108,7 @@ sub real_sync_identity {
 
     $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
-    my @refs = $db->xarrays(
+    my @refs = $db->xarrayrefs(
         select => [qw/rm.prefix rm.hash/],
         from   => 'self_related_updates_merkle rm',
         where =>
@@ -138,7 +140,7 @@ sub real_sync_identity {
         my @where;
         foreach my $miss (@missing) {
             push( @where, ' OR ' ) if @where;
-            push( @where, "u.prefix LIKE ", qv( $miss . '%' ) ),;
+            push( @where, "u.uuid LIKE ", qv( $miss . '%' ) ),;
         }
 
         $self->db->xdo(
@@ -169,7 +171,7 @@ sub real_transfer_identity_updates {
     my $tmp  = $self->temp_table;
 
     my $send = async {
-        my ($total) = $self->db->xarray(
+        my $total = $self->db->xval(
             select => 'COALESCE(sum(t.ucount), 0)',
             from   => "$tmp t",
         );
@@ -180,17 +182,23 @@ sub real_transfer_identity_updates {
         my $update_list = $self->db->xprepare(
             select => [
                 'u.id',                  'u.uuid',
-                'p.uuid AS parent_uuid', 'u.mtime',
-                'u.mtimetz',             'u.author',
-                'u.email',               'u.lang',
-                'u.message',             'u.ucount',
+                'p.uuid AS parent_uuid', 't.uuid AS identity_uuid',
+                'u.mtime',               'u.mtimetz',
+                'u.author',              'u.email',
+                'u.lang',                'u.message',
+                'u.action',              'u.ucount',
             ],
             from       => "$tmp tmp",
             inner_join => 'updates u',
             on         => 'u.id = tmp.id',
-            left_join  => 'updates p',
-            on         => 'p.id = u.parent_id',
-            order_by   => 'u.id ASC',
+            left_join  => 'topics t',
+
+            # Don't fetch the identity_uuid for the first identity
+            # update
+            on        => 't.id = u.identity_id AND t.first_update_id != u.id',
+            left_join => 'updates p',
+            on        => 'p.id = u.parent_id',
+            order_by  => 'u.id ASC',
         );
 
         $update_list->execute;
@@ -218,7 +226,7 @@ sub real_export_identity {
     my $self = shift;
     my $id   = shift;
 
-    my ($total) = $self->db->xarray(
+    my $total = $self->db->xval(
         select     => 'sum(u.ucount)',
         from       => 'entity_related_updates eru',
         inner_join => 'updates u',
@@ -232,18 +240,24 @@ sub real_export_identity {
     my $sth = $self->db->xprepare(
         select => [
             'u.id',                  'u.uuid',
-            'p.uuid AS parent_uuid', 'u.mtime',
-            'u.mtimetz',             'u.author',
-            'u.email',               'u.lang',
-            'u.message',             'u.ucount',
+            'p.uuid AS parent_uuid', 't.uuid AS identity_uuid',
+            'u.mtime',               'u.mtimetz',
+            'u.author',              'u.email',
+            'u.lang',                'u.message',
+            'u.action',              'u.ucount',
         ],
         from       => 'entity_related_updates eru',
         inner_join => 'updates u',
         on         => 'u.id = eru.update_id',
-        left_join  => 'updates AS p',
-        on         => 'p.id = u.parent_id',
-        where      => { 'eru.entity_id' => $id },
-        order_by   => 'u.id ASC',
+        left_join  => 'topics t',
+
+        # Don't fetch the identity_uuid for the first identity
+        # update
+        on        => 't.id = u.identity_id AND t.first_update_id != u.id',
+        left_join => 'updates AS p',
+        on        => 'p.id = u.parent_id',
+        where     => { 'eru.entity_id' => $id },
+        order_by  => 'u.id ASC',
     );
 
     $sth->execute;
@@ -262,15 +276,32 @@ sub send_identity_updates {
 
     my $sent = 0;
 
-    while ( my $update = $update_list->hash ) {
+    while ( my $update = $update_list->hashref ) {
         my $id = delete $update->{id};
 
         $self->write( 'NEW', 'update', $update );
 
         my $parts = $db->xprepare(
 
-            # entities
+            # topics
             select => [
+                qv('topic'),         # 0
+                1,                   # 1  AS NEW
+                't.kind',            # 2
+                'u.uuid',            # 3
+                4,                   # 4
+                5,                   # 5
+                6,                   # 6
+                't.update_order',    # 7
+                8,                   # 8
+            ],
+            from       => 'updates u',
+            inner_join => 'topics t',
+            on         => 't.first_update_id = u.id',
+            where      => { 'u.id' => $id },
+
+            # entities
+            union_all_select => [
                 qv('entity')->as('kind'),                    # 0
                 'ed.new',                                    # 1
                 'ed.name',                                   # 2
@@ -279,7 +310,7 @@ sub send_identity_updates {
                 't3.uuid AS default_contact_method_uuid',    # 5
                 't.uuid AS entity_uuid',                     # 6
                 'ed.id AS update_order',                     # 7
-                't.kind AS real_kind',                       # 8
+                8,                                           # 8
             ],
             from       => 'entity_deltas ed',
             inner_join => 'updates u',
@@ -334,6 +365,21 @@ sub send_identity_updates {
             on         => 't.id = id.identity_id',
             where      => { 'id.update_id' => $id },
 
+            # update_deltas
+            union_all_select => [
+                qv('update')->as('kind'),
+                'ud.new', 't1.uuid', 't2.uuid', 'ud.action_format', 5, 6,
+                'ud.id AS update_order', 8,
+            ],
+            from       => 'updates u',
+            inner_join => 'update_deltas ud',
+            on         => 'ud.update_id = u.id',
+            left_join  => 'topics t1',
+            on         => 't1.id = ud.action_topic_id_1',
+            left_join  => 'topics t2',
+            on         => 't2.id = ud.action_topic_id_2',
+            where      => { 'u.id' => $id },
+
             # Order everything correctly
             order_by => 'update_order',
         );
@@ -353,16 +399,30 @@ sub write_identity_parts {
     my $self  = shift;
     my $parts = shift;
 
-    while ( my $part = $parts->array ) {
-        if ( $part->[0] eq 'entity' ) {
+    while ( my $part = $parts->arrayref ) {
+        if ( $part->[0] eq 'topic' ) {
             if ( $part->[1] ) {
                 $self->write(
                     'NEW',
                     $part->[0],
                     {
                         update_uuid => $part->[3],
+                        kind        => $part->[2],
+                    }
+                );
+            }
+            else {
+            }
+        }
+        elsif ( $part->[0] eq 'entity' ) {
+            if ( $part->[1] ) {
+                $self->write(
+                    'NEW',
+                    $part->[0],
+                    {
+                        update_uuid => $part->[3],
+                        topic_uuid  => $part->[6],
                         name        => $part->[2],
-                        kind        => $part->[8],
                     }
                 );
             }
@@ -390,6 +450,7 @@ sub write_identity_parts {
                         method      => $part->[2],
                         mvalue      => $part->[3],
                         update_uuid => $part->[4],
+                        topic_uuid  => $part->[5],
                         entity_uuid => $part->[6],
                     }
                 );
@@ -427,6 +488,22 @@ sub write_identity_parts {
                         identity_uuid => $part->[3],
                     }
                 );
+            }
+        }
+        elsif ( $part->[0] eq 'update' ) {
+            if ( $part->[1] ) {
+                $self->write(
+                    'UPDATE', 'update',
+                    {
+                        action_topic_uuid_1 => $part->[2],
+                        action_topic_uuid_2 => $part->[3],
+                        action_format       => $part->[4],
+                    }
+                );
+            }
+            else {
+                $self->on_error->( 'cannot export type: ' . $part->[0] );
+                return;
             }
         }
         else {

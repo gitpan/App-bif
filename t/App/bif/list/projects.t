@@ -13,13 +13,13 @@ run_in_tempdir {
     isa_ok $list, 'Bif::OK::ListProjects';
 
     # TODO return the id
-    isa_ok bif(qw/ new project todo --message message title /),
+    isa_ok bif(qw/ new project todo --message m1 title /),
       'Bif::OK::NewProject';
 
     isa_ok exception { bif(qw/ list projects junkstatus /) },
       'Bif::Error::InvalidStatus';
 
-    isa_ok bif(qw/ new project todo2 --message message title2 --status eval/),
+    isa_ok bif(qw/ new project todo2 --message m2 title2 --status eval/),
       'Bif::OK::NewProject';
 
     $list = bif(qw/list projects /);

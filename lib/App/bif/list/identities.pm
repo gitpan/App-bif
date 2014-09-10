@@ -1,26 +1,26 @@
 package App::bif::list::identities;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 use Term::ANSIColor 'color';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx   = App::bif::Context->new(shift);
-    my $db    = $ctx->db;
+    my $self  = __PACKAGE__->new(shift);
+    my $db    = $self->db;
     my $dark  = color('dark');
     my $reset = color('reset');
 
     DBIx::ThinSQL->import(qw/ case qv /);
 
-    my $data = $db->xarrays(
+    my $data = $db->xarrayrefs(
         select => [
             qv( $dark . 'identity' . $reset )->as('type'),
             'i.id', 'e.name',
             "ecm.mvalue || ' (' || ecm.method || ')' AS contact",
             case (
-                when => 'ids.id = i.id',
+                when => 'bif.identity_id = i.id',
                 then => qv('*'),
                 else => qv(''),
             )->as('self'),
@@ -32,21 +32,21 @@ sub run {
         on         => 'c.id = e.contact_id',
         inner_join => 'entity_contact_methods ecm',
         on         => 'ecm.id = e.default_contact_method_id',
-        left_join  => 'identity_self ids',
-        on         => 'ids.id = i.id',
+        left_join  => 'bifkv bif',
+        on         => { 'bif.key' => 'self', 'bif.identity_id' => \'i.id' },
         order_by   => [qw/e.name contact ecm.mvalue/],
     );
 
-    return $ctx->ok('ListIdentities') unless @$data;
+    return $self->ok('ListIdentities') unless $data;
 
-    $ctx->start_pager( scalar @$data );
+    $self->start_pager( scalar @$data );
 
-    print $ctx->render_table( ' l r  l  l l ',
+    print $self->render_table( ' l r  l  l l ',
         [ 'Type', 'ID', 'Name', 'Contact (Method)', '' ], $data );
 
-    $ctx->end_pager;
+    $self->end_pager;
 
-    return $ctx->ok('ListIdentities');
+    return $self->ok('ListIdentities');
 }
 
 1;
@@ -58,7 +58,7 @@ bif-list-identities - list identities present in repository
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

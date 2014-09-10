@@ -1,9 +1,10 @@
 package App::bif;
 use strict;
 use warnings;
+use File::Basename;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -47,51 +48,70 @@ opt no_color => (
     hidden  => 1,
 );
 
+opt user_repo => (
+    isa     => 'Bool',
+    alias   => 'u',
+    comment => 'use the user repository',
+    hidden  => 1,
+);
+
 # ------------------------------------------------------------------------
 # bif init
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => 'init',
-    comment => 'initialize a new repository in .bif',
+    comment => 'initialize a new repository',
+);
+
+arg item => (
+    isa     => 'SubCmd',
+    comment => '',
+);
+
+opt debug_bifsync => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif init hub
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/init hub/],
+    comment => 'initialize a new local hub repository',
 );
 
 arg directory => (
-    isa     => 'Str',
-    comment => 'parent location of .bif directory',
-);
-
-opt bare => (
-    isa     => 'Bool',
-    comment => 'use DIRECTORY directly (no .bif)',
-);
-
-opt debug_bifsync => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif register
-# ------------------------------------------------------------------------
-
-subcmd(
-    cmd     => [qw/register/],
-    comment => 'register with a bif hub repository',
-);
-
-arg location => (
     isa      => 'Str',
     required => 1,
-    comment  => 'location of a remote repository',
+    comment  => 'location of hub repository',
 );
 
-opt debug_bifsync => (
+opt message => (
+    isa     => 'Str',
+    alias   => 'm',
+    comment => 'Comment',
+);
+
+# ------------------------------------------------------------------------
+# bif init repo
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/init repo/],
+    comment => 'initialize a new repository',
+);
+
+arg directory => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'location of repository',
+);
+
+opt config => (
     isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
+    comment => 'Create a default repo config file',
 );
 
 # ------------------------------------------------------------------------
@@ -99,7 +119,7 @@ opt debug_bifsync => (
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/new/],
-    comment => 'create a new project, task or issue',
+    comment => 'create a new topic',
 );
 
 arg item => (
@@ -145,29 +165,6 @@ opt message => (
 );
 
 # ------------------------------------------------------------------------
-# bif new identity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new identity/],
-    comment => 'create a new identity',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'The name of the identity',
-);
-
-arg method => (
-    isa     => 'Str',
-    comment => 'The contact type (email, phone, etc)',
-);
-
-arg value => (
-    isa     => 'Str',
-    comment => 'The contact value',
-);
-
-# ------------------------------------------------------------------------
 # bif new entity
 # ------------------------------------------------------------------------
 subcmd(
@@ -191,54 +188,69 @@ arg value => (
 );
 
 # ------------------------------------------------------------------------
-# bif new project
+# new host
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/new project/],
-    comment => 'create a new project',
+    cmd     => [qw/new host/],
+    comment => 'create a new provider host',
 );
 
-arg path => (
+arg name => (
     isa     => 'Str',
-    comment => 'The path of the project',
-);
-
-arg title => (
-    isa     => 'Str',
-    comment => 'A short description of the project',
-    greedy  => 1,
-);
-
-opt phase => (
-    isa     => 'Str',
-    alias   => 'p',
-    comment => 'Initial project phase (use instead of --status)',
+    comment => 'name of the host in format [PROVIDER:]NAME',
 );
 
 # ------------------------------------------------------------------------
-# bif new task
+# new hub
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/new task/],
-    comment => 'define an item of work',
+    cmd     => [qw/new hub/],
+    comment => 'create a new hub',
 );
 
-arg title => (
+arg name => (
     isa     => 'Str',
-    comment => 'summary of the task description',
+    comment => 'name of your organisation\'s hub',
+);
+
+arg locations => (
+    isa     => 'ArrayRef',
+    default => [],
     greedy  => 1,
+    comment => 'hub locations',
 );
 
-opt path => (
-    isa     => 'Str',
-    alias   => 'p',
-    comment => 'path of the containing project',
+opt default => (
+    isa     => 'Bool',
+    comment => 'mark hub as local/default',
 );
 
-opt status => (
+# ------------------------------------------------------------------------
+# bif new identity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/new identity/],
+    comment => 'create a new identity',
+);
+
+arg name => (
     isa     => 'Str',
-    alias   => 's',
-    comment => 'Initial status for the task',
+    comment => 'The name of the identity',
+);
+
+arg method => (
+    isa     => 'Str',
+    comment => 'The contact type (email, phone, etc)',
+);
+
+arg value => (
+    isa     => 'Str',
+    comment => 'The contact value',
+);
+
+opt self => (
+    isa     => 'Bool',
+    comment => 'Create a "self" identity',
 );
 
 # ------------------------------------------------------------------------
@@ -268,25 +280,132 @@ opt status => (
 );
 
 # ------------------------------------------------------------------------
+# bif new project
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/new project/],
+    comment => 'create a new project',
+);
+
+arg path => (
+    isa     => 'Str',
+    comment => 'The path of the project',
+);
+
+arg title => (
+    isa     => 'Str',
+    comment => 'A short description of the project',
+    greedy  => 1,
+);
+
+opt phase => (
+    isa     => 'Str',
+    alias   => 'p',
+    comment => 'Initial project phase (use instead of --status)',
+);
+
+opt dup => (
+    isa     => 'Str',
+    alias   => 'd',
+    comment => 'project path to duplicate',
+);
+
+opt issues => (
+    isa     => 'Str',
+    alias   => 'i',
+    default => '',
+    comment => 'fork, copy or move issues on --dup',
+);
+
+opt tasks => (
+    isa     => 'Str',
+    alias   => 't',
+    default => '',
+    comment => 'copy or move tasks on --dup',
+);
+
+# ------------------------------------------------------------------------
+# new plan
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/new plan/],
+    hidden  => 1,
+    comment => 'create a new plan',
+);
+
+arg name => (
+    isa     => 'Str',
+    comment => 'name of the plan in format [PROVIDER:]NAME',
+);
+
+arg title => (
+    isa     => 'Str',
+    greedy  => 1,
+    comment => 'title of the plan',
+);
+
+# ------------------------------------------------------------------------
+# new provider
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/new provider/],
+    hidden  => 1,
+    comment => 'create a new provider',
+);
+
+arg name => (
+    isa     => 'Str',
+    comment => 'name of the provider',
+);
+
+arg method => (
+    isa     => 'Str',
+    comment => 'The contact type (email, phone, etc)',
+);
+
+arg value => (
+    isa     => 'Str',
+    comment => 'The contact value',
+);
+
+# ------------------------------------------------------------------------
+# bif new task
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/new task/],
+    comment => 'define an item of work',
+);
+
+arg title => (
+    isa     => 'Str',
+    comment => 'summary of the task description',
+    greedy  => 1,
+);
+
+opt path => (
+    isa     => 'Str',
+    alias   => 'p',
+    comment => 'path of the containing project',
+);
+
+opt status => (
+    isa     => 'Str',
+    alias   => 's',
+    comment => 'Initial status for the task',
+);
+
+# ------------------------------------------------------------------------
 # bif list
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/list/],
-    comment => 'list various things in the database',
+    comment => 'list topics in the repository',
 );
 
 arg items => (
     isa      => 'SubCmd',
     comment  => '',
     required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif list identities
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list identities/],
-    comment => 'list identities (contacts)',
 );
 
 # ------------------------------------------------------------------------
@@ -298,23 +417,41 @@ subcmd(
 );
 
 # ------------------------------------------------------------------------
-# bif list tasks
+# list hosts
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/list tasks/],
-    comment => 'list tasks grouped by project',
+    cmd     => [qw/list hosts/],
+    comment => 'list provider host locations',
 );
 
-opt status => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'limit tasks to a specific status',
+# ------------------------------------------------------------------------
+# list hubs
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list hubs/],
+    comment => 'list hubs and their locations',
 );
 
-opt project_status => (
-    isa     => 'Str',
-    alias   => 'P',
-    comment => 'limit projects by a particular project status',
+# ------------------------------------------------------------------------
+# bif list identities
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list identities/],
+    comment => 'list identities (contacts)',
+);
+
+# ------------------------------------------------------------------------
+# bif list issue-status
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list task-status/],
+    comment => 'list valid status for tasks',
+);
+
+arg path => (
+    isa      => 'Str',
+    comment  => 'the path of a project',
+    required => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -338,6 +475,14 @@ opt project_status => (
 );
 
 # ------------------------------------------------------------------------
+# list plans
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list plans/],
+    comment => 'list provider commercial offerings',
+);
+
+# ------------------------------------------------------------------------
 # bif list project-topic
 # ------------------------------------------------------------------------
 subcmd(
@@ -355,6 +500,20 @@ opt project_status => (
     isa     => 'Str',
     alias   => 'P',
     comment => 'limit projects by a particular project status',
+);
+
+# ------------------------------------------------------------------------
+# bif list project-status
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list project-status/],
+    comment => 'list valid status for projects',
+);
+
+arg path => (
+    isa      => 'Str',
+    comment  => 'the path of a project',
+    required => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -384,31 +543,31 @@ opt local => (
 );
 
 # ------------------------------------------------------------------------
-# bif list project-status
+# list providers
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/list project-status/],
-    comment => 'list valid status for projects',
-);
-
-arg path => (
-    isa      => 'Str',
-    comment  => 'the path of a project',
-    required => 1,
+    cmd     => [qw/list providers/],
+    comment => 'list registered providers',
 );
 
 # ------------------------------------------------------------------------
-# bif list issue-status
+# bif list tasks
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/list task-status/],
-    comment => 'list valid status for tasks',
+    cmd     => [qw/list tasks/],
+    comment => 'list tasks grouped by project',
 );
 
-arg path => (
-    isa      => 'Str',
-    comment  => 'the path of a project',
-    required => 1,
+opt status => (
+    isa     => 'Str',
+    alias   => 's',
+    comment => 'limit tasks to a specific status',
+);
+
+opt project_status => (
+    isa     => 'Str',
+    alias   => 'P',
+    comment => 'limit projects by a particular project status',
 );
 
 # ------------------------------------------------------------------------
@@ -426,19 +585,11 @@ arg path => (
 );
 
 # ------------------------------------------------------------------------
-# bif list hubs
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list hubs/],
-    comment => 'list hubs and their locations',
-);
-
-# ------------------------------------------------------------------------
 # bif show
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/show/],
-    comment => 'summarize the current status of a topic',
+    comment => "display a topic's current status",
 );
 
 arg item => (
@@ -454,7 +605,7 @@ arg item => (
 
 opt uuid => (
     isa     => 'Bool',
-    alias   => 'u',
+    alias   => 'U',
     comment => 'treat ID as a UUID',
 );
 
@@ -462,20 +613,6 @@ opt full => (
     isa     => 'Bool',
     comment => 'display a more verbose current status',
     alias   => 'f',
-);
-
-# ------------------------------------------------------------------------
-# bif show identity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show identity/],
-    comment => 'display full identity characteristics',
-);
-
-arg id => (
-    isa      => 'Int',
-    comment  => 'identity ID',
-    required => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -489,6 +626,20 @@ subcmd(
 arg id => (
     isa      => 'Int',
     comment  => 'entity ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif show identity
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show identity/],
+    comment => 'display full identity characteristics',
+);
+
+arg id => (
+    isa      => 'Int',
+    comment  => 'identity ID',
     required => 1,
 );
 
@@ -507,6 +658,34 @@ arg name => (
 );
 
 # ------------------------------------------------------------------------
+# bif show issue
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show issue/],
+    comment => 'summarize the current status of a issue',
+);
+
+arg id => (
+    isa      => 'Int',
+    comment  => 'issue ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# show plan
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show plan/],
+    comment => 'show a provider plan',
+);
+
+arg id => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'ID of provider plan',
+);
+
+# ------------------------------------------------------------------------
 # bif show project
 # ------------------------------------------------------------------------
 subcmd(
@@ -514,15 +693,38 @@ subcmd(
     comment => 'display current project status',
 );
 
-arg id => (
+arg path => (
     isa      => 'Str',
-    comment  => 'topic ID or project PATH',
+    comment  => 'a project PATH',
     required => 1,
 );
 
-arg hub => (
-    isa     => 'Str',
-    comment => 'hub ALIAS or LOCATION',
+# ------------------------------------------------------------------------
+# bif show task
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show task/],
+    comment => 'summarize the current status of a task',
+);
+
+arg id => (
+    isa      => 'Int',
+    comment  => 'task ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif show update
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show update/],
+    comment => 'show an update as YAML',
+);
+
+arg uid => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'the update uID',
 );
 
 # ------------------------------------------------------------------------
@@ -530,7 +732,7 @@ arg hub => (
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/log/],
-    comment => 'review change history and comments',
+    comment => 'view comments and status history',
 );
 
 arg item => (
@@ -540,21 +742,13 @@ arg item => (
         name    => 'id',
         isa     => 'Str',
         comment => 'topic ID or project PATH',
-        greedy  => 1,
     },
 );
 
 opt uuid => (
     isa     => 'Bool',
-    alias   => 'u',
+    alias   => 'U',
     comment => 'treat arguments as if they are a UUIDs',
-);
-
-opt filter => (
-    isa     => 'ArrayRef',
-    comment => 'only show entries of a particular type',
-    alias   => 'f',
-    default => [],
 );
 
 # ------------------------------------------------------------------------
@@ -614,11 +808,54 @@ arg id => (
 );
 
 # ------------------------------------------------------------------------
+# bif log project
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/log project/],
+    comment => 'review history of a project',
+);
+
+arg path => (
+    isa      => 'Str',
+    comment  => 'project PATH or ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif log task
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/log task/],
+    comment => 'review history of a task',
+);
+
+arg id => (
+    isa      => 'Str',
+    comment  => 'task ID',
+    required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif log repo
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/log repo/],
+    comment => 'review history of current repository',
+);
+
+opt order => (
+    isa     => 'Str',
+    alias   => 'o',
+    default => 'time',
+    comment => 'the field to order updates by [time|uid]'
+);
+
+# ------------------------------------------------------------------------
 # bif update
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/update/],
-    comment => 'update or comment a topic',
+    comment => 'comment on or modify a topic',
 );
 
 arg id => (
@@ -629,13 +866,13 @@ arg id => (
         name    => 'id',
         isa     => 'Str',
         comment => 'topic ID or project PATH',
-        greedy  => 1,
     },
 );
 
-arg status => (
-    isa     => 'Str',
-    comment => 'topic status (or project phase)',
+opt uuid => (
+    isa     => 'Bool',
+    alias   => 'U',
+    comment => 'treat ID as a UUID',
 );
 
 opt author => (
@@ -656,16 +893,16 @@ opt locale => (
     hidden  => 1,
 );
 
-opt title => (
-    isa     => 'Str',
-    alias   => 't',
-    comment => 'Title',
-);
-
 opt message => (
     isa     => 'Str',
     comment => 'Comment',
     alias   => 'm',
+);
+
+opt reply => (
+    isa     => 'Str',
+    comment => 'reply to an update uID',
+    alias   => 'r',
 );
 
 # ------------------------------------------------------------------------
@@ -697,41 +934,104 @@ arg id => (
 );
 
 # ------------------------------------------------------------------------
-# bif reply
+# bif update issue
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/reply/],
-    comment => 'reply to a previous update or comment',
+    cmd     => [qw/update issue/],
+    comment => 'update an issue',
 );
 
-arg 'id.uid' => (
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'issue ID',
+);
+
+arg status => (
+    isa     => 'Str',
+    comment => 'topic status',
+);
+
+opt title => (
+    isa     => 'Str',
+    alias   => 't',
+    comment => 'Title',
+);
+
+# ------------------------------------------------------------------------
+# update plan
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/update plan/],
+    comment => 'update a provider plan',
+);
+
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'plan ID',
+);
+
+opt add => (
+    isa     => 'ArrayRef',
+    alias   => 'a',
+    comment => 'hosts to add to plan',
+);
+
+opt remove => (
+    isa     => 'ArrayRef',
+    alias   => 'r',
+    comment => 'hosts to remove from plan',
+);
+
+# ------------------------------------------------------------------------
+# bif update project
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/update project/],
+    comment => 'update an project',
+);
+
+arg path => (
     isa      => 'Str',
     required => 1,
-    comment  => 'topic and update ID of previous comment',
+    comment  => 'project path',
 );
 
-opt author => (
+arg status => (
     isa     => 'Str',
-    comment => 'Author',
-    hidden  => 1,
+    comment => 'topic status',
 );
 
-opt lang => (
+opt title => (
     isa     => 'Str',
-    comment => 'Lang',
-    hidden  => 1,
+    alias   => 't',
+    comment => 'Title',
 );
 
-opt locale => (
-    isa     => 'Str',
-    comment => 'Locale',
-    hidden  => 1,
+# ------------------------------------------------------------------------
+# bif update task
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/update task/],
+    comment => 'update an task',
 );
 
-opt message => (
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'task ID',
+);
+
+arg status => (
     isa     => 'Str',
-    comment => 'Comment',
-    alias   => 'm',
+    comment => 'topic status',
+);
+
+opt title => (
+    isa     => 'Str',
+    alias   => 't',
+    comment => 'Title',
 );
 
 # ------------------------------------------------------------------------
@@ -739,14 +1039,14 @@ opt message => (
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/drop/],
-    comment => 'remove a topic from the database',
+    comment => 'remove an item from the database',
     hidden  => 1,
 );
 
-arg id => (
-    isa      => 'Str',
-    comment  => 'topic ID or project PATH',
+arg item => (
+    isa      => 'SubCmd',
     required => 1,
+    comment  => 'topic ID or project PATH',
 );
 
 opt force => (
@@ -756,17 +1056,121 @@ opt force => (
 );
 
 # ------------------------------------------------------------------------
+# bif drop issue
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/drop issue/],
+    comment => 'remove an issue',
+);
+
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'issue ID',
+);
+
+# ------------------------------------------------------------------------
+# bif drop project
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/drop project/],
+    comment => 'remove a project',
+);
+
+arg path => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'project PATH or ID',
+);
+
+# ------------------------------------------------------------------------
+# bif drop task
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/drop task/],
+    comment => 'remove a task',
+);
+
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'task ID',
+);
+
+# ------------------------------------------------------------------------
+# bif drop update
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/drop update/],
+    comment => 'remove an update',
+);
+
+arg uid => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'update uID',
+);
+
+# ------------------------------------------------------------------------
 # bif pull
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/pull/],
-    comment => 'import a topic from elsewhere',
+    comment => 'import topics from elsewhere',
 );
 
 arg item => (
     isa      => 'SubCmd',
     comment  => '',
     required => 1,
+);
+
+opt debug_bifsync => (
+    isa     => 'Bool',
+    alias   => 'E',
+    hidden  => 1,
+    comment => 'turn on bifsync debugging',
+);
+
+# ------------------------------------------------------------------------
+# bif pull identity
+# ------------------------------------------------------------------------
+
+subcmd(
+    cmd     => [qw/pull identity/],
+    comment => 'import an identity from a repository',
+);
+
+arg location => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'location of identity repository',
+);
+
+# For the moment just handle self identities.
+#arg identity => (
+#    isa      => 'Str',
+#    comment  => 'location of identity repository',
+#);
+
+opt self => (
+    isa     => 'Bool',
+    comment => 'register identity as "myself" after import',
+);
+
+# ------------------------------------------------------------------------
+# pull hub
+# ------------------------------------------------------------------------
+
+subcmd(
+    cmd     => [qw/pull hub/],
+    comment => 'import project list from a hub repository',
+);
+
+arg location => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'location of a remote repository',
 );
 
 # ------------------------------------------------------------------------
@@ -785,12 +1189,6 @@ arg path => (
     comment  => 'path(s) of the project(s) to be imported',
 );
 
-arg hub => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'source hub address or alias',
-);
-
 opt debug_bifsync => (
     isa     => 'Bool',
     alias   => 'E',
@@ -799,40 +1197,85 @@ opt debug_bifsync => (
 );
 
 # ------------------------------------------------------------------------
+# pull provider
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/pull provider/],
+    comment => 'import plans from a provider',
+);
+
+arg location => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'management location of provider',
+);
+
+# ------------------------------------------------------------------------
 # bif push
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/push/],
-    comment => 'push a topic to another project',
+    comment => 'export topics to somewhere else',
 );
 
 arg item => (
     isa      => 'SubCmd',
     comment  => '',
     required => 1,
-    fallback => {
-        name    => 'id',
-        isa     => 'Str',
-        comment => 'topic ID to be pushed',
-    },
-);
-
-# TODO Fix OptArgs so usage is correct with arg after subcmd
-arg path => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'destination project path',
-);
-
-arg hub => (
-    isa     => 'Str',
-    comment => 'hub that hosts the destination project',
 );
 
 opt message => (
     isa     => 'Str',
-    comment => 'reason for this push to the project',
+    comment => 'optional comment for the associated update',
     alias   => 'm',
+);
+
+# ------------------------------------------------------------------------
+# push hub
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/push hub/],
+    comment => 'export a hub to a provider host',
+);
+
+arg name => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'name of your organisation\'s hub',
+);
+
+arg hosts => (
+    isa      => 'ArrayRef',
+    required => 1,
+    greedy   => 1,
+    comment  => 'provider host address(es)',
+);
+
+# ------------------------------------------------------------------------
+# bif push issue
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/push issue/],
+    comment => 'push an issue to another project',
+);
+
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'issue ID',
+);
+
+arg path => (
+    isa      => 'ArrayRef',
+    required => 1,
+    greedy   => 1,
+    comment  => 'path(s) of the destination project(s)',
+);
+
+opt err_on_exists => (
+    isa     => 'Bool',
+    comment => 'raise an error when issue exists at destination',
+    hidden  => 1,
 );
 
 # ------------------------------------------------------------------------
@@ -856,14 +1299,34 @@ arg hub => (
     comment  => 'destination hub address or alias',
 );
 
-opt message => (
-    isa     => 'Str',
-    alias   => 'm',
-    default => '',
-    comment => 'optional comment for the associated update',
+opt debug_bifsync => (
+    isa     => 'Bool',
+    alias   => 'E',
+    comment => 'turn on bifsync debugging',
+    hidden  => 1,
 );
 
-opt debug_bifsync => (
+# ------------------------------------------------------------------------
+# signup
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/signup/],
+    comment => 'sign up with a hub provider',
+);
+
+arg name => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'hub name',
+);
+
+arg plan => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'provider plan name',
+);
+
+opt debug_bs => (
     isa     => 'Bool',
     alias   => 'E',
     comment => 'turn on bifsync debugging',
@@ -940,12 +1403,6 @@ opt noprint => (
     alias   => 'n',
 );
 
-opt user => (
-    isa     => 'Bool',
-    comment => 'run query against the user identity database',
-    alias   => 'u',
-);
-
 opt write => (
     isa     => 'Bool',
     comment => 'run with a writeable database (default is read-only)',
@@ -954,21 +1411,21 @@ opt write => (
 
 # Run user defined aliases
 sub run {
-    my $opts = shift;
-    my @cmd  = @{ delete $opts->{alias} };
+    my $opts  = shift;
+    my @cmd   = @{ delete $opts->{alias} };
+    my $alias = shift @cmd;
 
     require App::bif::Context;
     my $ctx = App::bif::Context->new($opts);
-
-    my $alias = shift @cmd;
-
+    $ctx->user_repo if -e $ctx->find_user_repo;
     my $str = $ctx->{'user.alias'}->{$alias}
       or die usage(qq{unknown COMMAND or ALIAS "$alias"});
 
     # Make sure these options are correctly passed through (or not)
-    $opts->{debug}    = undef if exists $opts->{debug};
-    $opts->{no_pager} = undef if exists $opts->{no_pager};
-    $opts->{no_color} = undef if exists $opts->{no_color};
+    $opts->{debug}     = undef if exists $opts->{debug};
+    $opts->{no_pager}  = undef if exists $opts->{no_pager};
+    $opts->{no_color}  = undef if exists $opts->{no_color};
+    $opts->{user_repo} = undef if exists $opts->{user_repo};
 
     unshift( @cmd, split( ' ', $str ) );
 
@@ -988,7 +1445,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

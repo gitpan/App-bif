@@ -304,7 +304,7 @@ run_in_tempdir {
 
             $child_update_id = $db->nextval('updates');
 
-            my ($status_id) = $db->xarray(
+            my $status_id = $db->xval(
                 select => 'id',
                 from   => 'project_status',
                 where  => {

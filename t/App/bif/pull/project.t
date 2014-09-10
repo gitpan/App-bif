@@ -6,30 +6,23 @@ use Test::Bif;
 use Test::Fatal;
 use Test::More;
 
-sub hub {
-    local $CWD = 'hub';
-    bif(@_);
-}
-
-sub bif2 {
-    local $CWD = 'bif2';
-    bif(@_);
-}
-
 run_in_tempdir {
 
-    isa_ok exception { bif(qw/pull project/) },      'OptArgs::Usage';
-    isa_ok exception { bif(qw/pull project todo/) }, 'OptArgs::Usage';
-    isa_ok exception { bif(qw/pull project todo hub/) },
+    isa_ok exception { bif(qw/pull project/) }, 'OptArgs::Usage';
+    isa_ok exception { bif(qw/pull project todo /) },
       'Bif::Error::RepoNotFound';
 
     bif(qw/init/);
-    isa_ok exception { bif(qw/pull project todo hub/) },
+    isa_ok exception { bif(qw/pull project todo@hub/) },
       'Bif::Error::HubNotFound';
 
-    bif(qw/init hub --bare/);
-    bif(qw/register hub/);
-    isa_ok exception { bif(qw/pull project todo hub/) },
+    bif(qw/init hub hub/);
+    bif(qw/pull hub hub/);
+
+    isa_ok exception { bif(qw/pull project todo@hub/) },
+      'Bif::Error::ProjectNotFound';
+
+    isa_ok exception { bif(qw/pull project todo/) },
       'Bif::Error::ProjectNotFound';
 
     bif(qw/new project todo title -m message/);
@@ -41,11 +34,10 @@ run_in_tempdir {
     bif( qw/update/, $tinfo->{id}, qw/-m m2/ );
     bif(qw/push project todo hub -m m3/);
 
-    bif(qw/init bif2/);
-    bif2( 'register', '../hub' );
-    isa_ok exception { bif2(qw/show project todo/) },
-      'Bif::Error::ProjectNotFound';
-    isa_ok bif2(qw/show project todo hub/), 'Bif::OK::ShowProject';
+    bif2(qw/init/);
+    bif2(qw{pull hub ../hub});
+
+    isa_ok bif2(qw/show project todo@hub/), 'Bif::OK::ShowProject';
 
     isa_ok exception { bif2( qw/show --uuid/, $tinfo->{uuid} ) },
       'Bif::Error::UuidNotFound';
@@ -56,12 +48,12 @@ run_in_tempdir {
     #    isa_ok exception { bif( qw/pull project/, $tinfo->{id}, qw/hub/ ) },
     #      'Bif::Error::ProjectNotFound';;
 
-    isa_ok bif2(qw/pull project todo hub/), 'Bif::OK::PullProject';
+    isa_ok bif2(qw/pull project todo@hub/), 'Bif::OK::PullProject';
 
     isa_ok bif2(qw/show todo/), 'Bif::OK::ShowProject';
     isa_ok bif2( qw/show --uuid/, $tinfo->{uuid} ), 'Bif::OK::ShowTask';
 
-    isa_ok bif2(qw/pull project todo hub/), 'Bif::OK::PullProject';
+    isa_ok bif2(qw/pull project todo@hub/), 'Bif::OK::PullProject';
 
     return;
 };

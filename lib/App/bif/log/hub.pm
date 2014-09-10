@@ -1,32 +1,27 @@
 package App::bif::log::hub;
 use strict;
 use warnings;
-use App::bif::Context;
-use App::bif::log;
+use feature 'state';
+use parent 'App::bif::log';
 use locale;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx  = App::bif::Context->new(shift);
-    my $db   = $ctx->db;
-    my @locs = $db->get_hub_repos( $ctx->uuid2id( $ctx->{name} ) );
+    my $self  = __PACKAGE__->new(shift);
+    my $db    = $self->db;
+    my ($hub) = $self->get_hub( $self->{name} );
+    my @locs  = $db->get_hub_repos( $hub->{id} );
 
-    return $ctx->err( 'HubNotFound', "hub not found: $ctx->{name}" )
-      unless @locs;
-
-    my $hub = shift @locs;
-
-    App::bif::log::init;
-    my $dark  = $App::bif::log::dark;
-    my $reset = $App::bif::log::reset;
+    $self->init;
+    my ( $dark, $reset ) = $self->colours(qw/dark reset/);
 
     my $sth = $db->xprepare(
         select => [
             q{strftime('%w',u.mtime,'unixepoch','localtime') AS weekday},
             q{strftime('%Y-%m-%d',u.mtime,'unixepoch','localtime') AS mdate},
             q{strftime('%H:%M:%S',u.mtime,'unixepoch','localtime') AS mtime},
-            'u.message',
+            'u.action',
         ],
         from       => 'hub_deltas hd',
         inner_join => 'updates u',
@@ -39,21 +34,21 @@ sub run {
 
     $sth->execute;
 
-    $ctx->start_pager;
+    $self->start_pager;
 
     my @days = (
         qw/Sunday Monday Tuesday Wednesday Thursday Friday
           Saturday/
     );
 
-    my $first   = $sth->array;
+    my $first   = $sth->arrayref;
     my $weekday = $first->[0];
 
     print " $dark$first->[1] ($days[$weekday]) $reset \n";
     print '-' x 80, "\n";
     print " $first->[2]  $first->[3]\n";
 
-    while ( my $n = $sth->array ) {
+    while ( my $n = $sth->arrayref ) {
         if ( $n->[0] != $weekday ) {
             print "\n $dark$n->[1] ($days[ $n->[0] ])$reset\n";
             print '-' x 80, "\n";
@@ -63,8 +58,8 @@ sub run {
         $weekday = $n->[0];
     }
 
-    $ctx->end_pager;
-    return $ctx->ok('LogHub');
+    $self->end_pager;
+    return $self->ok('LogHub');
 }
 
 1;
@@ -76,7 +71,7 @@ bif-log-hub - review the history of a hub
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

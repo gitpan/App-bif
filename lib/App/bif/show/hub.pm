@@ -1,47 +1,41 @@
 package App::bif::show::hub;
 use strict;
 use warnings;
-use App::bif::Context;
-use App::bif::show;
+use parent 'App::bif::show';
 
-our $VERSION = '0.1.0_26';
-
-my $yellow = '';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx  = App::bif::Context->new(shift);
-    my $db   = $ctx->db;
-    my @locs = $db->get_hub_repos( $ctx->uuid2id( $ctx->{name} ) );
+    my $self  = __PACKAGE__->new(shift);
+    my $db    = $self->db;
+    my $hub   = $self->get_hub( $self->{name} );
+    my @repos = $db->get_hub_repos( $hub->{id} );
 
-    return $ctx->err( 'HubNotFound', "hub not found: $ctx->{name}" )
-      unless @locs;
-
-    my $hub = shift @locs;
-
-    App::bif::show::_init;
+    $self->init;
+    my ($bold) = $self->colours('bold');
 
     my @data;
 
     push(
         @data,
-        App::bif::show::_header(
-            $yellow . 'Hub',
-            $yellow . $hub->{name}
-        ),
-
-        App::bif::show::_header(
+        $self->header(
             '  ID', $hub->{id},
-            $ctx->{full} ? $hub->{uuid} : substr( $hub->{uuid}, 1, 8 )
+            $self->{full} ? $hub->{uuid} : substr( $hub->{uuid}, 1, 8 )
         ),
-        App::bif::show::_header( '  Location', $hub->{location}, 'default' ),
     );
 
-    foreach my $next (@locs) {
-        push( @data,
-            App::bif::show::_header( '  Location', $next->{location} ) );
+    foreach my $repo (@repos) {
+        push(
+            @data,
+            $self->header(
+                '  Location',
+                $repo->{location},
+                $repo->{isdefault} ? 'default' : ()
+            )
+        );
     }
 
-    my $info = $db->xhash(
+    my $info = $db->xhashref(
         select     => [qw/t.ctime t.ctimetz t.mtime t.mtimetz/],
         from       => 'topics t',
         inner_join => 'updates u',
@@ -49,11 +43,12 @@ sub run {
         where      => { 't.id' => $hub->{id} },
     );
 
-    $ctx->start_pager;
-    print $ctx->render_table( 'l  l', undef, \@data );
-    $ctx->end_pager;
+    $self->start_pager;
+    print $self->render_table( 'l  l',
+        $self->header( $bold . 'Hub', $bold . $hub->{name} ), \@data );
+    $self->end_pager;
 
-    return $ctx->ok( 'ShowHub', \@data );
+    return $self->ok( 'ShowHub', \@data );
 }
 
 1;
@@ -65,7 +60,7 @@ bif-show-hub - display a hub's current status
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
@@ -94,7 +89,7 @@ the current repository.
 
 Display a more verbose version of the current status.
 
-=item --uuid, -u
+=item --uuid, -U
 
 Lookup the topic using ID as a UUID string instead of a topic integer.
 

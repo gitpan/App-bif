@@ -1,23 +1,35 @@
 package App::bif::update::identity;
 use strict;
 use warnings;
-use App::bif::Context;
+use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 sub run {
-    my $ctx  = App::bif::Context->new(shift);
-    my $db   = $ctx->dbw;
-    my $info = $ctx->get_topic( $ctx->{id} );
+    my $self = __PACKAGE__->new(shift);
+    my $db   = $self->dbw;
+    my $info = $self->get_topic( $self->{id} );
 
-    return $ctx->err( 'IdentityNotFound', "identity not found: $ctx->{id}" )
+    return $self->err( 'IdentityNotFound', "identity not found: $self->{id}" )
       unless $info;
 
-    $ctx->{message} ||= $ctx->prompt_edit( opts => $ctx );
+    if ( $self->{reply} ) {
+        my $uinfo =
+          $self->get_update( $self->{reply}, $info->{first_update_id} );
+        $self->{parent_uid} = $uinfo->{id};
+    }
+    else {
+        $self->{parent_uid} = $info->{first_update_id};
+    }
+
+    $self->{message} ||= $self->prompt_edit( opts => $self );
 
     $db->txn(
         sub {
-            my $uid = $ctx->new_update( message => $ctx->{message}, );
+            my $uid = $self->new_update(
+                message   => $self->{message},
+                parent_id => $self->{parent_uid},
+            );
 
             $db->xdo(
 
@@ -26,7 +38,17 @@ sub run {
                 values      => {
                     update_id => $uid,
                     id        => $info->{id},
-                    name      => $ctx->{name},
+                    name      => $self->{name},
+                },
+            );
+
+            $db->xdo(
+                insert_into => 'update_deltas',
+                values      => {
+                    update_id         => $uid,
+                    new               => 1,
+                    action_format     => "update identity %s",
+                    action_topic_id_1 => $info->{id},
                 },
             );
 
@@ -35,18 +57,11 @@ sub run {
                 values      => { merge => 1 },
             );
 
-            $ctx->update_localhub(
-                {
-                    related_update_id => $uid,
-                    message           => 'update identity ' . "$info->{id}",
-                }
-            );
-
-            print "Identity updated: $ctx->{id}.$uid\n";
+            print "Identity updated: $self->{id}.$uid\n";
         }
     );
 
-    return $ctx->ok('UpdateIdentity');
+    return $self->ok('UpdateIdentity');
 }
 
 1;
@@ -58,7 +73,7 @@ bif-update-identity - update or comment an identity
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 

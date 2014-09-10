@@ -9,15 +9,15 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/ log hub/) }, 'OptArgs::Usage';
 
-    isa_ok exception { bif(qw/ log hub -/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ log hub junk/) }, 'Bif::Error::RepoNotFound';
 
     bif(qw/init/);
 
-    my $x = bif( qw/sql --noprint/, 'select name from hubs' );
+    isa_ok exception { bif(qw/ log hub junk/) }, 'Bif::Error::HubNotFound';
 
-    isa_ok bif( qw/log hub /, $x->[0][0] ), 'Bif::OK::LogHub';
+    bifhub(qw/new hub localhub/);
 
-    isa_ok exception { bif(qw/ log hub unknown /) }, 'Bif::Error::HubNotFound';
+    isa_ok bif(qw/log hub localhub/), 'Bif::OK::LogHub';
 
 };
 

@@ -1,6 +1,7 @@
 package App::bif::Context;
 use strict;
 use warnings;
+use feature 'state';
 use utf8;    # for render_table
 use Carp ();
 use Config::Tiny;
@@ -8,9 +9,8 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 use Term::Size ();
-use feature 'state';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 our ( $term_width, $term_height ) = Term::Size::chars(*STDOUT);
 $term_width  ||= 80;
@@ -26,8 +26,9 @@ sub new {
     binmode STDIN,  ':encoding(utf8)';
     binmode STDOUT, ':encoding(utf8)';
 
-    $self->{_bif_terminal} = -t STDOUT;
-    $self->{_bif_no_pager} = !$self->{_bif_terminal} || $opts->{no_pager};
+    $self->{_bif_terminal}  = -t STDOUT;
+    $self->{_bif_no_pager}  = !$self->{_bif_terminal} || $opts->{no_pager};
+    $self->{_bif_repo_name} = delete $opts->{repo_name} || '.bif';
 
     # For Term::ANSIColor
     $ENV{ANSI_COLORS_DISABLED} = !$self->{_bif_terminal} || $opts->{no_color};
@@ -41,8 +42,8 @@ sub new {
     $log->debugf( 'ctx: %s %s', (caller)[0], $opts );
     $log->debugf( 'ctx: terminal %dx%d', $term_width, $term_height );
 
-    $self->find_user_repo;
-    $self->find_repo;
+    #    $self->find_user_repo;
+    #    $self->find_repo($opts->{user_repo});
 
     # Merge in the command line options with the (user/repo) config
     $self->{$_} = $opts->{$_} for keys %$opts;
@@ -51,7 +52,7 @@ sub new {
 
 sub find_user_repo {
     my $self = shift;
-    return if $self->{_bif_user_repo};
+    return $self->{_bif_user_repo} if $self->{_bif_user_repo};
 
     my $home_dir = File::HomeDir->my_home;
     my $data_dir = File::HomeDir->my_data;
@@ -61,82 +62,74 @@ sub find_user_repo {
       ? path( $home_dir, '.bif-user' )->absolute
       : path( $data_dir, 'bif-user' )->absolute;
 
-    return unless -e $user_repo;
-    $self->{_bif_user_repo} = $user_repo;
-    $log->debug( 'ctx: user_repo: ' . $user_repo );
-
-    my $file = $user_repo->child('config');
-
-    my $conf = Config::Tiny->read($file)
-      || Carp::confess $Config::Tiny::errstr;
-
-    while ( my ( $k1, $v1 ) = each %$conf ) {
-        if ( ref $v1 eq 'HASH' ) {
-            while ( my ( $k2, $v2 ) = each %$v1 ) {
-                if ( $k1 eq '_' ) {
-                    $self->{$k2} = $v2;
-                }
-                else {
-                    $self->{$k1}->{$k2} = $v2;
-                }
-            }
-        }
-        else {
-            $self->{$k1} = $v1;
-        }
-    }
-
-    # Used by t/App/bif/Context.t
-    $self->{_bif_user_conf} = $file;
-    return;
+    return $user_repo;
 }
 
 sub find_repo {
     my $self = shift;
-    return if $self->{_bif_repo};
+
+    if ( $self->{user_repo} ) {
+        my $repo = $self->find_user_repo || return;
+        $log->debug( 'ctx: repo: ' . $repo );
+        return $repo;
+    }
 
     my $root = rootdir;
     my $try  = cwd;
 
     until ( $try eq $root ) {
-        if ( -d ( my $repo = $try->child('.bif') ) ) {
+        if ( -d ( my $repo = $try->child( $self->{_bif_repo_name} ) ) ) {
             $log->debug( 'ctx: repo: ' . $repo );
-            $self->{_bif_repo} = $repo;
-            last;
+
+            return $repo;
         }
         $try = $try->parent;
     }
 
-    return unless $self->{_bif_repo};
-
-    my $file = $self->repo->child('config');
-    return unless $file->exists;
-
-    $log->debug( 'ctx: repo_conf: ' . $file );
-    $self->{_bif_repo_config} = $file;
-
-    my $conf = Config::Tiny->read( $file, 'utf8' )
-      || return $self->err( 'ConfigNotFound',
-        $file . ' ' . Config::Tiny->errstr );
-
-    # Merge in the repo config with the current context (user) config
-    while ( my ( $k1, $v1 ) = each %$conf ) {
-        if ( ref $v1 eq 'HASH' ) {
-            while ( my ( $k2, $v2 ) = each %$v1 ) {
-                if ( $k1 eq '_' ) {
-                    $self->{$k2} = $v2;
-                }
-                else {
-                    $self->{$k1}->{$k2} = $v2;
-                }
-            }
-        }
-        else {
-            $self->{$k1} = $v1;
-        }
-    }
-
     return;
+}
+
+sub colours {
+    my $self = shift;
+    state $have_term_ansicolor = require Term::ANSIColor;
+
+    map { $self->{_colours}->{$_} //= Term::ANSIColor::color($_) } @_;
+    return map { $self->{_colours}->{$_} } @_;
+}
+
+sub header {
+    my $self = shift;
+
+    my ( $key, $val, $val2 ) = @_;
+    return [
+        ( $key ? $key . ':' : '' ) . $self->{_colours}->{reset},
+        $val
+          . (
+            defined $val2 ? $self->{_colours}->{dark} . ' <' . $val2 . '>' : ''
+          )
+          . $self->{_colours}->{reset}
+    ];
+}
+
+sub ago {
+    my $self   = shift;
+    my $time   = shift;
+    my $offset = shift;
+
+    state $have_posix         = require POSIX;
+    state $have_time_piece    = require Time::Piece;
+    state $have_time_duration = require Time::Duration;
+
+    use locale;
+
+    my $hours   = POSIX::floor( $offset / 60 / 60 );
+    my $minutes = ( abs($offset) - ( abs($hours) * 60 * 60 ) ) / 60;
+    my $dt      = Time::Piece->strptime( $time + $offset, '%s' );
+
+    my $local =
+      sprintf( '%s %+.2d%.2d', $dt->strftime('%a %F %R'), $hours, $minutes );
+
+    return ( Time::Duration::ago( $self->{_now} - $time, 1 ), $local );
 }
 
 sub err {
@@ -144,13 +137,9 @@ sub err {
     Carp::croak('err($type, $msg, [$arg])') unless @_ >= 2;
     my $err = shift;
     my $msg = shift;
+    my ( $red, $reset ) = $self->colours(qw/red reset/);
 
-    require Term::ANSIColor;
-    $msg =
-        Term::ANSIColor::color('red')
-      . 'fatal:'
-      . Term::ANSIColor::color('reset') . ' '
-      . $msg . "\n";
+    $msg = $red . 'fatal:' . $reset . ' ' . $msg . "\n";
 
     die Bif::Error->new( {%$self}, $err, $msg, @_ );
 }
@@ -207,8 +196,44 @@ sub end_pager {
 sub user_repo {
     my $self = shift;
 
-    return $self->{_bif_user_repo}
-      || $self->err( 'UserRepoNotFound', 'directory not found: .bif-user' );
+    return $self->{_bif_user_repo} if $self->{_bif_user_repo};
+
+    my $repo = $self->find_user_repo;
+
+    return $self->err( 'UserRepoNotFound',
+        'user repository not found (try "bif init -u -i")' )
+      unless -e $repo;
+
+    $self->{_bif_user_repo} = $repo;
+    $log->debug( 'ctx: user_repo: ' . $repo );
+
+    my $file = $repo->child('config');
+    return $repo unless $file->exists;
+
+    $self->{_bif_repo_config} = $file;
+
+    my $conf = Config::Tiny->read( $file, 'utf8' )
+      || return $self->err( 'ConfigNotFound',
+        $file . ' ' . Config::Tiny->errstr );
+
+    # Merge in the repo config with the current context (user) config
+    while ( my ( $k1, $v1 ) = each %$conf ) {
+        if ( ref $v1 eq 'HASH' ) {
+            while ( my ( $k2, $v2 ) = each %$v1 ) {
+                if ( $k1 eq '_' ) {
+                    $self->{$k2} = $v2;
+                }
+                else {
+                    $self->{$k1}->{$k2} = $v2;
+                }
+            }
+        }
+        else {
+            $self->{$k1} = $v1;
+        }
+    }
+
+    return $repo;
 }
 
 sub user_db {
@@ -246,8 +271,43 @@ sub user_dbw {
 sub repo {
     my $self = shift;
 
-    return $self->{_bif_repo}
-      || $self->err( 'RepoNotFound', 'directory not found: .bif' );
+    return $self->{_bif_repo} if $self->{_bif_repo};
+
+    my $repo = $self->find_repo
+      || $self->err( 'RepoNotFound',
+        'directory not found: ' . $self->{_bif_repo_name} );
+
+    $self->{_bif_repo} = $repo;
+    $log->debug( 'ctx: repo: ' . $repo );
+
+    my $file = $repo->child('config');
+    return $repo unless $file->exists;
+
+    $log->debug( 'ctx: repo_conf: ' . $file );
+    $self->{_bif_repo_config} = $file;
+
+    my $conf = Config::Tiny->read( $file, 'utf8' )
+      || return $self->err( 'ConfigNotFound',
+        $file . ' ' . Config::Tiny->errstr );
+
+    # Merge in the repo config with the current context (user) config
+    while ( my ( $k1, $v1 ) = each %$conf ) {
+        if ( ref $v1 eq 'HASH' ) {
+            while ( my ( $k2, $v2 ) = each %$v1 ) {
+                if ( $k1 eq '_' ) {
+                    $self->{$k2} = $v2;
+                }
+                else {
+                    $self->{$k1}->{$k2} = $v2;
+                }
+            }
+        }
+        else {
+            $self->{$k1} = $v1;
+        }
+    }
+
+    return $repo;
 }
 
 sub db {
@@ -286,9 +346,10 @@ sub dbw {
 
 sub user_id {
     my $self = shift;
-    my ($id) = $self->db->xarray(
-        select => 'ids.id',
-        from   => 'identity_self ids',
+    my $id   = $self->db->xval(
+        select => 'bif.identity_id',
+        from   => 'bifkv bif',
+        where  => { 'bif.key' => 'self' },
     );
     return $id;
 }
@@ -296,6 +357,7 @@ sub user_id {
 sub uuid2id {
     my $self = shift;
     my $try  = shift;
+    Carp::croak 'usage' if @_;
 
     return $try unless exists $self->{uuid} && $self->{uuid};
     my @list = $self->db->uuid2id($try);
@@ -312,26 +374,64 @@ sub uuid2id {
 sub get_project {
     my $self = shift;
     my $path = shift;
-    my $hub  = shift;
 
     my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
+
+    my $hub;
+    if ( $path =~ m/(.*)@(.*)/ ) {
+        $path = $1;
+        $hub  = $2;
+    }
+
     my @matches = $db->get_projects( $path, $hub );
 
-    if ( !@matches ) {
-        if ($hub) {
-            return $self->err( 'HubNotFound', "hub not found: $hub" )
-              unless scalar $db->get_hub_repos($hub);
+    if ( 0 == @matches ) {
+        return $self->err( 'ProjectNotFound', "project not found: $path" )
+          unless $hub;
 
-            return $self->err( 'ProjectNotFound',
-                "project not found: $path ($hub)" );
-        }
-        return $self->err( 'ProjectNotFound', "project not found: $path" );
+        return $self->err( 'ProjectNotFound', "project not found: $path\@$hub" )
+          if eval { $self->get_hub($hub) };
+
+        return $self->err( 'HubNotFound',
+            "hub not found: $hub (for $path\@$hub)" );
     }
-    elsif ( @matches > 1 ) {
-        return $self->err( 'AmbiguousPath', "ambiguous path: $path" );
+    elsif ( 1 == @matches ) {
+        return $matches[0];
+    }
+    elsif ( not defined $matches[0]->{hub_name} ) {
+        return $matches[0];
     }
 
-    return $matches[0];
+    return $self->err( 'AmbiguousPath',
+        "ambiguous path \"$path\" matches the following:\n" . '    '
+          . join( "\n    ", map { "$path\@$_->{hub_name}" } @matches ) );
+}
+
+sub get_hub {
+    my $self = shift;
+    my $name = shift;
+
+    my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
+
+    my ($hub) = $db->xhashref(
+        select           => [qw/h.id h.name t.kind t.uuid t.first_update_id/],
+        from             => 'hubs h',
+        inner_join       => 'topics t',
+        on               => 't.id = h.id',
+        where            => { 'h.name' => $self->uuid2id($name) },
+        union_all_select => [qw/h.id h.name t.kind t.uuid t.first_update_id/],
+        from             => 'hub_repos hr',
+        inner_join       => 'hubs h',
+        on               => 'h.id = hr.hub_id',
+        inner_join       => 'topics t',
+        on               => 't.id = h.id',
+        where            => { 'hr.location' => $name },
+    );
+
+    return $self->err( 'HubNotFound', "hub not found: $name" )
+      unless $hub;
+
+    return $hub;
 }
 
 sub render_table {
@@ -341,18 +441,17 @@ sub render_table {
     my $data   = shift;
     my $indent = shift || 0;
 
+    my ( $white, $dark, $reset ) = $self->colours(qw/white dark reset/);
     require Text::FormatTable;
-    require Term::ANSIColor;
 
     my $table = Text::FormatTable->new($format);
 
     if ($header) {
-        $header->[0] = Term::ANSIColor::color('white') . $header->[0];
-        push( @$header, ( pop @$header ) . Term::ANSIColor::color('reset') );
+        $header->[0] = $white . $header->[0];
+        push( @$header, ( pop @$header ) . $reset );
         $table->head(@$header);
-        $table->rule( Term::ANSIColor::color('dark')
-              . ( $self->{_bif_terminal} ? '–' : '-' )
-              . Term::ANSIColor::color('reset') );
+        $table->rule(
+            $dark . ( $self->{_bif_terminal} ? '–' : '-' ) . $reset );
     }
 
     foreach my $row (@$data) {
@@ -374,16 +473,18 @@ sub prompt_edit {
         opts           => {},
         abort_on_empty => 1,
         val            => '',
-        txt            => "
-
-# Please enter your message. Lines starting with '#'
-# are ignored. Empty content aborts.
-#
-",
         @_,
     );
 
+    $args{txt} //= "\n";
+    $args{txt} .= " 
+# Please enter your message. Lines starting with '#'
+# are ignored. Empty content aborts.
+#
+";
+
     foreach my $key ( sort keys %{ $args{opts} } ) {
+        next if $key =~ m/^_/;
         next unless defined $args{opts}->{$key};
         $args{txt} .= "#     $key: $args{opts}->{$key}\n";
     }
@@ -423,122 +524,132 @@ sub lprint {
     return $chars;
 }
 
+sub get_update {
+    my $self            = shift;
+    my $token           = shift // return;
+    my $first_update_id = shift;
+
+    return $self->err( 'UpdateNotFound', "update not found: $token" )
+      unless $token =~ m/^u(\d+)$/;
+
+    my $id = $1;
+    my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
+
+    my $data = $db->xhashref(
+        select => [ 'u.id AS id', 'u.uuid AS uuid', ],
+        from   => 'updates u',
+        where => { 'u.id' => $id },
+    );
+
+    return $self->err( 'UpdateNotFound', "update not found: $token" )
+      unless $data;
+
+    if ($first_update_id) {
+        my $t = $db->xhashref(
+            select => 1,
+            from   => 'updates_tree ut',
+            where  => {
+                'ut.child'  => $id,
+                'ut.parent' => $first_update_id,
+            },
+        );
+
+        return $self->err( 'FirstUpdateMismatch',
+            'first update id mismatch: u%d / u%d',
+            $first_update_id, $id )
+          unless $t;
+    }
+
+    return $data;
+}
+
 sub get_topic {
-    my $self = shift;
+    my $self  = shift;
     my $token = shift // return;
+    my $kind  = shift;
 
     my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
 
     state $have_qv = DBIx::ThinSQL->import(qw/ qv bv /);
 
     if ( $token =~ m/^\d+$/ ) {
-        my $data = $db->xhash(
+        my $data = $db->xhashref(
             select => [
-                'topics.id',
-                'topics.kind',
-                'topics.uuid',
-                'topics.first_update_id',
+                't.id AS id',
+                't.kind AS kind',
+                't.uuid AS uuid',
+                't.first_update_id AS first_update_id',
                 qv(undef)->as('project_issue_id'),
                 qv(undef)->as('project_id'),
             ],
-            from  => 'topics',
-            where => [
-                'topics.id = ',         bv($token),
-                ' AND topics.kind != ', qv('issue')
-            ],
+            from  => 'topics t',
+            where => [ 't.id = ', qv($token), ' AND t.kind != ', qv('issue') ],
             union_all_select => [
-                'topics.id',
-                'topics.kind',
-                'topics.uuid',
-                'topics.first_update_id',
-                'project_issues.id AS project_issue_id',
-                'project_issues.project_id',
+                't.id AS id',
+                't.kind AS kind',
+                't.uuid AS uuid',
+                't.first_update_id AS first_update_id',
+                'pi.id AS project_issue_id',
+                'pi.project_id',
             ],
-            from       => 'project_issues',
-            inner_join => 'topics',
-            on         => 'topics.id = project_issues.issue_id',
-            where      => { 'project_issues.id' => $token },
+            from       => 'project_issues pi',
+            inner_join => 'topics t',
+            on         => 't.id = pi.issue_id',
+            where      => { 'pi.id' => $token },
+            order_by   => 'project_issue_id DESC',
+            limit      => 1,
         );
+
+        return $self->err( 'WrongKind', 'topic (%s) is not a %s: %d',
+            $data->{kind}, $kind, $token )
+          if $data && $kind && $kind ne $data->{kind};
 
         return $data if $data;
     }
 
     my $pinfo = eval { $self->get_project($token) };
+    die $@ if ( $@ && $@->isa('Bif::Error::AmbiguousPath') );
     return $pinfo if $pinfo;
 
-    return $self->err( 'TopicNotFound',
-        'topic, update or path not found: ' . $token );
+    $kind ||= 'topic';
+    return $self->err( 'TopicNotFound', "$kind not found: $token" );
 }
 
 sub new_update {
     my $self = shift;
     my %vals = @_;
 
-    my $dbw = $self->{_bif_dbw} || $self->dbw;
+    my $dbw    = $self->dbw;
     my $id     = ( delete $vals{id} ) // $dbw->nextval('updates');
     my $author = delete $vals{author};
     my $email  = delete $vals{email};
 
     state $have_dbix = DBIx::ThinSQL->import(qw/ qv coalesce /);
 
-    $dbw->xdo(
+    my $res = $dbw->xdo(
         insert_into => [
-            'updates', 'id', 'identity_id', 'author', 'email', sort keys %vals
+            'updates', 'id',    'identity_id', 'author',
+            'email',   'local', sort keys %vals
         ],
         select => [
             qv($id),
-            'ids.id',
+            'bif.identity_id',
             coalesce( qv($author), 'e.name' ),
             coalesce( qv($email),  'ecm.mvalue' ),
+            1,
             map { qv( $vals{$_} ) } sort keys %vals
         ],
-        from       => 'identity_self ids',
+        from       => 'bifkv bif',
         inner_join => 'entities e',
-        on         => 'e.id = ids.id',
+        on         => 'e.id = bif.identity_id',
         inner_join => 'entity_contact_methods ecm',
         on         => 'ecm.id = e.default_contact_method_id',
+        where      => { 'bif.key' => 'self' },
     );
 
+    return $self->err( 'NoSelfIdentity', 'no "self" identity' )
+      unless $res > 0;
     return $id;
-}
-
-sub update_localhub {
-    my $self = shift;
-    my $ref  = shift;
-
-    my $dbw = $self->{_bif_dbw} || $self->dbw;
-    my $hub = $self->get_topic( $dbw->get_localhub_id );
-    my $uid = $self->new_update(
-        id        => $ref->{id},
-        parent_id => $hub->{first_update_id},
-        message   => $ref->{message},
-    );
-
-    # TODO related_update_uuid is useless because we now do the
-    # update_localhub generally before the actual update and uuid isn't
-    # calculated. Get rid of it.
-
-    state $have_qv = DBIx::ThinSQL->import(qw/ qv /);
-    $dbw->xdo(
-        insert_into =>
-          [ 'hub_deltas', qw/hub_id update_id project_id related_update_uuid/ ],
-        select =>
-          [ qv( $hub->{id} ), qv($uid), qv( $ref->{project_id} ), 'u.uuid', ],
-        from      => '(select 1)',
-        left_join => 'updates u',
-        on        => {
-            'u.id' => $ref->{related_update_id},
-        },
-    );
-
-    # TODO this will update other updates which we may not wish to
-    # happen... remove?
-    $dbw->xdo(
-        insert_into => 'func_merge_updates',
-        values      => { merge => 1 },
-    );
-
-    return;
 }
 
 sub DESTROY {
@@ -587,62 +698,62 @@ __END__
 
 =head1 NAME
 
-App::bif::Context - A context class for App::bif::* commands
+App::bif::Context - A base class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
     # In App/bif/command/name.pm
     use strict;
     use warnings;
-    use App::bif::Context;
+    use parent 'App::bif::Context';
 
     sub run {
-        my $ctx  = App::bif::Context->new(shift);
-        my $db   = $ctx->db;
-        my $data = $db->xarray(...);
+        my $self  = __PACKAGE__->new(shift);
+        my $db   = $self->db;
+        my $data = $db->xarrayref(...);
 
-        return $ctx->err( 'SomeFailure', 'something failed' )
-          if ($ctx->{command_option});
+        return $self->err( 'SomeFailure', 'something failed' )
+          if ($self->{command_option});
 
-        $ctx->start_pager;
+        $self->start_pager;
 
-        print $ctx->render_table(
+        print $self->render_table(
             ' r  l  l ',
             [qw/ ID Title Status /],
             $data, 
         );
 
-        $ctx->end_pager;
+        $self->end_pager;
 
-        return $ctx->ok('CommandName');
+        return $self->ok('CommandName');
     }
 
 =head1 DESCRIPTION
 
-B<App::bif::Context> provides a context/configuration object for bif
-commands. It is a blessed hashref, and commands are expected to grab
-configuration keys and call methods on it.
+B<App::bif::Context> provides a context/configuration class for bif
+commands to inherit from. It is constructed as a blessed hashref, and
+commands are expected to grab configuration keys and call methods on
+it.
 
 The above synopsis is the basic template for any bif command. At run
 time the C<run> function is called by C<OptArgs::dispatch> with the
 options hashref as the first argument. The first thing the bif command
-should do it call C<App::bif::Context->new> to set up a bif context
-which sets up logging and merges the user and repository configurations
-with the command-line options.
+should do is instantiate itself to set up a bif context which sets up
+logging and merges the user and repository configurations with the
+command-line options.
 
-The following utility functions are all automatically exported into the
-calling package.  B<App::bif::Context> sets the encoding of C<STDOUT>
-and C<STDIN> to utf-8 when it is loaded.
+B<App::bif::Context> sets the encoding of C<STDOUT> and C<STDIN> to
+utf-8 when it is loaded.
 
 =head1 CONSTRUCTOR
 
 =over 4
 
-=item App::bif::Context->new( $ctx ) -> $ctx
+=item __PACKAGE__->new( $opts )
 
 Initializes the common elements of all bif scripts. Requires the
 options hashref as provided by L<OptArgs> but also returns it.
@@ -669,6 +780,28 @@ also set to true or C<STDOUT> is not connected to a terminal.
 =head1 METHODS
 
 =over 4
+
+=item colours( @colours ) -> @codes
+
+Calls C<color()> from L<Term::ANSIColor> on every string from
+C<@colours> and returns the results. Returns empty strings if the
+environment variable C<$ANSI_COLORS_DISABLED> is true (set by the
+C<--no-color> option).
+
+=item header( $key, $val, $val2 ) -> ArrayRef
+
+Returns a two or three element arrayref formatted as so:
+
+    ["$key:", $val, "<$val2>"]
+
+Colours are used to make the $val2 variable darker. The result is
+generally used when rendering tables by log and show commands.
+
+=item ago( $epoch, $offset ) -> $string, $timestamp
+
+Uses L<Time::Duration> to generate a human readable $string indicating
+how long ago UTC $epoch was (with $offset in +/- seconds) plus a
+regular timestamp string.
 
 =item err( $err, $message, [ @args ])
 
@@ -721,7 +854,8 @@ current working directory and searching upwards. Raises a
 
 Returns a handle for the SQLite database in the current respository (as
 found by C<bif_repo>). The handle is only good for read operations -
-use C<$ctx->dbw> when inserting,updating or deleting from the database.
+use C<$self->dbw> when inserting,updating or deleting from the
+database.
 
 You should manually import any L<DBIx::ThinSQL> functions you need only
 after calling C<bif_db>, in order to keep startup time short for cases
@@ -734,7 +868,7 @@ found by C<bif_repo>). The handle is good for INSERT, UPDATE and DELETE
 operations.
 
 You should manually import any L<DBIx::ThinSQL> functions you need only
-after calling C<$ctx->dbw>, in order to keep startup time short for
+after calling C<$self->dbw>, in order to keep startup time short for
 cases such as when the repository is not found.
 
 =item user_id -> Int
@@ -743,15 +877,21 @@ Returns the topic ID for the user (self) identity.
 
 =item uuid2id( $try ) -> Int
 
-Returns C<$try> unless a C<< $ctx->{uuid} >> option has been set.
+Returns C<$try> unless a C<< $self->{uuid} >> option has been set.
 Returns C<< Bif::DB->uuid2id($try) >> if the lookup succeeds or else
 raises an error.
 
-=item get_project( $path, [ $hub ]) -> HashRef
+=item get_project( $path ) -> HashRef
 
-Calls C<get_projects> from C<Bif::DB> and raises an error if more than
-one project is found. Otherwise it passes back the the single hashref
-returned.
+Calls C<get_project> from C<Bif::DB> and returns a single hashref.
+Raises an error if no project is found.  C<$path> is interpreted as a
+string of the form C<PROJECT[@HUB]>.
+
+=item get_hub( $name ) -> HashRef
+
+Looks up the hub where $name is either the topic ID, the hub name, or a
+hub location and returns the equivalent of C<get_topic($ID)> plus the
+hub name.
 
 =item render_table( $format, \@header, \@data, [ $indent ] ) -> Str
 
@@ -772,6 +912,24 @@ If a pager is not active this method prints C<$msg> to STDOUT and
 returns the cursor to the beginning of the line.  The next call
 over-writes the previously printed text before printing the new
 C<$msg>. In this way a continually updating status can be displayed.
+
+=item get_update( $UID, [$first_update_id] ) -> HashRef
+
+Looks up the update identified by C<$UID> (of the form "u23") and
+returns a hash reference containg the following keys:
+
+=over
+
+=item * id - the update ID
+
+=item * uuid - the universally unique identifier of the update
+
+=back
+
+An UpdateNotFound error will be raised if the update does not exist. If
+C<$first_update_id> is provided then a check will be made to ensure
+that that C<$UID> is a child of <$first_update_id> with a
+FirstUpdateMismatch error thrown if that is not the case.
 
 =item get_topic( $TOKEN ) -> HashRef
 
@@ -806,14 +964,6 @@ contain valid values:
 Creates a new row in the updates table according to the content of
 C<%args> (must include at least a C<message> value) and the current
 context (identity). Returns the integer ID of the update.
-
-=item update_localhub($hashref)
-
-Create an update of the local repo from a hashref containing a ruid (an
-update_id), user name, a user email, and a message. C<$hashref> can
-optionally contain an update_id which will be converted into a uuid,
-used for uniqueness in the event that multiple calls to update_localhub
-with the same values occur in the same second.
 
 =back
 

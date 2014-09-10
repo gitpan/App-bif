@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -57,7 +57,7 @@ sub connect {
 }
 
 package Bif::DB::db;
-use DBIx::ThinSQL qw/ qv bv /;
+DBIx::ThinSQL->import(qw/ qv bv case/);
 
 our @ISA = ('DBIx::ThinSQL::db');
 
@@ -66,17 +66,32 @@ sub uuid2id {
     my $uuid = shift || return;
 
     if ( length($uuid) == 40 ) {
-        return $self->xarrays(
-            select => 't.id',
-            from   => 'topics t',
-            where  => { 't.uuid' => $uuid },
+        return $self->xarrayrefs(
+            select => case (
+                when => 'pi.id',
+                then => 'pi.id',
+                else => 't.id',
+              )->as('id'),
+            from      => 'topics t',
+            left_join => 'project_issues pi',
+            on        => 'pi.issue_id = t.id',
+            where     => {
+                't.uuid' => $uuid
+            },
+            limit => 1,
         );
     }
 
-    return $self->xarrays(
-        select => 't.id',
-        from   => 'topics t',
-        where  => [ 't.uuid LIKE ', qv( $uuid . '%' ) ],
+    return $self->xarrayrefs(
+        select_distinct => case (
+            when => 'pi.id',
+            then => 'pi.id',
+            else => 't.id',
+          )->as('id'),
+        from      => 'topics t',
+        left_join => 'project_issues pi',
+        on        => 'pi.issue_id = t.id',
+        where     => [ 't.uuid LIKE ', qv( $uuid . '%' ) ],
     );
 }
 
@@ -87,7 +102,7 @@ sub get_update {
     if ( $token =~ m/^(\d+)\.(\d+)$/ ) {
         my $id        = $1;
         my $update_id = $2;
-        my $data      = $self->xhash(
+        my $data      = $self->xhashref(
             select => [
                 'topics.id',
                 'topics.kind',
@@ -122,20 +137,16 @@ sub get_update {
     return;
 }
 
-sub get_localhub_id {
+sub get_local_hub_id {
     my $self = shift;
 
-    my $hub = $self->xarray(
+    my $id = $self->xval(
         select => ['hubs.id'],
         from   => 'hubs',
         where  => { 'hubs.local' => 1 },
     );
 
-    if ( !$hub ) {
-        warn "get_localhub_id: no local repo!";
-        return;
-    }
-    return $hub->[0];
+    return $id;
 }
 
 sub get_projects {
@@ -144,12 +155,13 @@ sub get_projects {
     my $hub  = shift;
 
     if ($hub) {
-        return $self->xhashes(
+        return $self->xhashrefs(
             select => [
-                't.id',   't.kind',
-                't.uuid', 'p.parent_id',
-                'p.path', 't.first_update_id',
-                'p.local',
+                't.id',     't.kind',
+                't.uuid',   'p.parent_id',
+                'p.path',   't.first_update_id',
+                'p.hub_id', 'p.local',
+                'h.name AS hub_name',
             ],
             from       => 'projects p',
             inner_join => 'hubs h',
@@ -163,18 +175,23 @@ sub get_projects {
         );
     }
 
-    return $self->xhashes(
+    return $self->xhashrefs(
         select => [
-            't.id',   't.kind',            't.uuid', 'p.parent_id',
-            'p.path', 't.first_update_id', 'p.local',
+            't.id',     't.kind',
+            't.uuid',   'p.parent_id',
+            'p.path',   't.first_update_id',
+            'p.hub_id', 'p.local',
+            'h.name AS hub_name',
         ],
         from       => 'projects p',
         inner_join => 'topics t',
         on         => 't.id = p.id',
+        left_join  => 'hubs h',
+        on         => 'h.id = p.hub_id',
         where      => {
-            'p.path'  => $path,
-            'p.local' => 1,
+            'p.path' => $path,
         },
+        order_by => [qw/hub_name p.path/],
     );
 }
 
@@ -188,7 +205,7 @@ sub status_ids {
     my @ids;
     my %invalid = map { defined $_ ? ( $_ => 1 ) : () } @_;
 
-    my @known = $self->xarrays(
+    my @known = $self->xarrayrefs(
         select => 'id, status',
         from   => $kind . '_status',
         where  => { project_id => $project_id },
@@ -207,7 +224,7 @@ sub get_hub_repos {
     my $self = shift;
     my $hub = shift || return;
 
-    return $self->xhashes(
+    return $self->xhashrefs(
 
         # TODO get rid of this select once everything uses ctx->uuid2id
         select => [
@@ -260,7 +277,7 @@ sub get_hub_repos {
 
 sub get_max_update_id {
     my $self = shift;
-    my ($uid) = $self->xarray(
+    my $uid  = $self->xval(
         select => ['MAX(u.id)'],
         from   => 'updates u',
     );
@@ -273,6 +290,8 @@ sub check_fks {
     my $self = shift;
     my $sth = $self->table_info( '%', '%', '%' );
 
+    my %seen;
+
     while ( my $t_info = $sth->fetchrow_hashref('NAME_lc') ) {
         my $sth2 =
           $self->foreign_key_info( undef, undef, undef, undef, undef,
@@ -280,8 +299,14 @@ sub check_fks {
 
         while ( my $fk_info = $sth2->fetchrow_hashref('NAME_lc') ) {
 
-            my @missing = $self->xarrays(
-                select_distinct => $fk_info->{fkcolumn_name},
+            next
+              if $seen{ $fk_info->{fktable_name}
+                  . $fk_info->{fkcolumn_name}
+                  . $fk_info->{pktable_name}
+                  . $fk_info->{pkcolumn_name} }++;
+
+            my @missing = $self->xarrayrefs(
+                select_distinct => "$fk_info->{fkcolumn_name} AS col1",
                 from            => $fk_info->{fktable_name},
                 where           => "$fk_info->{fkcolumn_name} IS NOT NULL",
                 except_select   => $fk_info->{pkcolumn_name},
@@ -308,7 +333,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_26 (2014-07-23)
+0.1.0_27 (2014-09-10)
 
 =head1 SYNOPSIS
 
@@ -366,16 +391,15 @@ contain valid values:
 
 =back
 
-
-=item get_localhub_id -> Int
+=item get_local_hub_id -> Int
 
 Returns the ID for the local repository topic.
 
-=item get_projects( $PATH, [$ALIAS] ) -> [HashRef, ...]
+=item get_projects( $PATH, [$HUB] ) -> [HashRef, ...]
 
-Looks up the project(s) identified by C<$PATH> (and optionally a hub
-C<$ALIAS>) returns undef, or a list of hash references containg the
-following keys:
+Looks up the project(s) identified by C<$PATH> (and optionally C<$HUB>)
+returns undef, or a list of hash references containg the following
+keys:
 
 =over
 
@@ -391,9 +415,15 @@ following keys:
 
 =item * parent_id - the parent ID of the project
 
+=item * hub_id - the id of the project's hub
+
+=item * hub_name - the name of the project's hub
+
 =item * local - true if the project is locally synchronized
 
 =back
+
+The list is sorted by hub name then by project path.
 
 =item status_ids( $project_id, $kind, @status ) -> \@ids, \@invalid
 

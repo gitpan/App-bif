@@ -49,7 +49,7 @@ run_in_tempdir {
 
                 $db->xdo(
                     insert_into => 'func_import_update',
-                    values      => $xdb->xhash(
+                    values      => $xdb->xhashref(
                         select => [
                             'updates.uuid',  'updates.author',
                             'updates.email', 'updates.lang',
@@ -63,7 +63,7 @@ run_in_tempdir {
 
                 $db->xdo(
                     insert_into => 'func_import_project',
-                    values      => $xdb->xhash(
+                    values      => $xdb->xhashref(
                         select => [
                             'u.uuid AS update_uuid',
                             'project_deltas.name AS name',
@@ -81,7 +81,7 @@ run_in_tempdir {
 
                 $db->xdo(
                     insert_into => 'func_import_project_status',
-                    values      => $xdb->xhash(
+                    values      => $xdb->xhashref(
                         select => [
                             'u.uuid AS update_uuid',
                             'project_status_deltas.status AS status',
@@ -107,7 +107,7 @@ run_in_tempdir {
 
                 $db->xdo(
                     insert_into => 'func_import_project_delta',
-                    values      => $xdb->xhash(
+                    values      => $xdb->xhashref(
                         select => [
                             'u.uuid AS update_uuid',
                             'projects.uuid AS project_uuid',
@@ -132,11 +132,11 @@ run_in_tempdir {
                     values      => { merge => 1 },
                 );
 
-                my $u1 = $xdb->xhashes(
+                my $u1 = $xdb->xhashrefs(
                     select => '*',
                     from   => 'updates',
                 );
-                my $u2 = $db->xhashes(
+                my $u2 = $db->xhashrefs(
                     select => '*',
                     from   => 'updates',
                 );
@@ -145,11 +145,11 @@ run_in_tempdir {
                 delete $_->{itime} for @$u2;
                 is_deeply $u1, $u2, 'updates match';
 
-                $u1 = $xdb->xhashes(
+                $u1 = $xdb->xhashrefs(
                     select => '*',
                     from   => 'projects',
                 );
-                $u2 = $db->xhashes(
+                $u2 = $db->xhashrefs(
                     select => '*',
                     from   => 'projects',
                 );
@@ -160,11 +160,11 @@ run_in_tempdir {
                 delete $_->{itime} for @$u2;
                 is_deeply $u1, $u2, 'projects match';
 
-                $u1 = $xdb->xhashes(
+                $u1 = $xdb->xhashrefs(
                     select => '*',
                     from   => 'project_related_updates_merkle',
                 );
-                $u2 = $db->xhashes(
+                $u2 = $db->xhashrefs(
                     select => '*',
                     from   => 'project_related_updates_merkle',
                 );

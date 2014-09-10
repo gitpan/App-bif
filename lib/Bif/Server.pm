@@ -8,7 +8,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_26';
+our $VERSION = '0.1.0_27';
 
 with 'Bif::Role::Sync';
 
@@ -75,7 +75,7 @@ my %METHODS = (
 sub BUILD {
     my $self = shift;
     $self->json->pretty if $self->debug;
-    $self->hub_id( $self->db->get_localhub_id );
+    $self->hub_id( $self->db->get_local_hub_id );
 }
 
 sub run {
@@ -160,11 +160,12 @@ sub export_self {
     my $self = shift;
     my $db   = $self->db;
 
-    my ( $id, $uuid ) = $db->xarray(
-        select     => [ 'ids.id', 't.uuid' ],
-        from       => 'identity_self ids',
+    my ( $id, $uuid ) = $db->xlist(
+        select     => [ 'bif.identity_id', 't.uuid' ],
+        from       => 'bifkv bif',
         inner_join => 'topics t',
-        on         => 't.id = ids.id',
+        on         => 't.id = bif.identity_id',
+        where => { 'bif.key' => 'self' },
     );
 
     if ( !$uuid ) {
@@ -179,9 +180,9 @@ sub export_self {
 sub export_hub {
     my $self = shift;
     my $db   = $self->db;
-    my $id   = shift || $db->get_localhub_id;
+    my $id   = shift || $db->get_local_hub_id;
 
-    my ($uuid) = $db->xarray(
+    my $uuid = $db->xval(
         select => 't.uuid',
         from   => 'topics t',
         where  => { 't.id' => $id },
@@ -197,7 +198,7 @@ sub sync_hub {
     my $hash = shift || 'unknown';
 
     my $db  = $self->db;
-    my $hub = $db->xhash(
+    my $hub = $db->xhashref(
         select     => [ 'h.id', 'h.hash' ],
         from       => 'topics t',
         inner_join => 'hubs h',
@@ -232,7 +233,7 @@ sub import_project {
         return;
     }
 
-    my $local = $self->db->xhash(
+    my $local = $self->db->xhashref(
         select    => [ 'p.id AS id', 't2.uuid AS other_uuid', ],
         from      => '(select 1,2)',
         left_join => 'topics t',
@@ -289,7 +290,7 @@ sub sync_projects {
             return 'MissingHash';
         }
 
-        my $pinfo = $self->db->xhash(
+        my $pinfo = $self->db->xhashref(
             select     => [ 't.id', 'hrp.hash' ],
             from       => 'topics t',
             inner_join => 'hub_related_projects hrp',

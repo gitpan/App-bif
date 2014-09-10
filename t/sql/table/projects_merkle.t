@@ -55,7 +55,7 @@ sub test_topic_hash {
     my $p1     = shift;
     my $db     = shift;
 
-    my $result = $db->xarray(
+    my $result = $db->xarrayref(
         select => [qw/hash num_updates/],
         from   => 'projects',
         where  => { id => $p1->{project_id} },
@@ -104,7 +104,7 @@ run_in_tempdir {
                     values      => $p1,
                 );
 
-                my $result = $db->xhashes(
+                my $result = $db->xhashrefs(
                     select   => [qw/project_id prefix hash num_updates/],
                     from     => 'project_related_updates_merkle',
                     order_by => 'prefix',
@@ -126,7 +126,7 @@ run_in_tempdir {
                     values      => $p1,
                 );
 
-                $result = $db->xhashes(
+                $result = $db->xhashrefs(
                     select   => [qw/project_id prefix hash num_updates/],
                     from     => 'project_related_updates_merkle',
                     order_by => 'prefix',
@@ -144,7 +144,7 @@ run_in_tempdir {
                     values      => $p1,
                 );
 
-                $result = $db->xhashes(
+                $result = $db->xhashrefs(
                     select   => [qw/project_id prefix hash num_updates/],
                     from     => 'project_related_updates_merkle',
                     order_by => 'prefix',

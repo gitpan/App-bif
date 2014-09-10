@@ -10,7 +10,7 @@ run_in_tempdir {
     like exception { bif(qw/list project-status/) }, qr/^usage:/, 'usage';
 
     bif(qw/init/);
-    bif(qw/ new project todo --message message title /);
+    bif(qw/ new project todo --message m1 title /);
 
     isa_ok bif(qw/list project-status todo/), 'ARRAY';
 
