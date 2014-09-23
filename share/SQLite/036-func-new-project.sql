@@ -1,5 +1,5 @@
 CREATE TABLE func_new_project(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     parent_id INTEGER,
     name VARCHAR(40),
@@ -16,7 +16,7 @@ BEGIN
     SELECT debug(
         'TRIGGER func_new_project_bi_1',
         NEW.id,
-        NEW.update_id,
+        NEW.change_id,
         NEW.parent_id,
         NEW.name,
         NEW.title
@@ -38,14 +38,14 @@ BEGIN
 
     INSERT INTO
         project_deltas(
-            update_id,
+            change_id,
             project_id,
             new,
             name,
             title
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         1,
         NEW.name,

@@ -1,5 +1,5 @@
 CREATE TABLE func_import_project_status(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     topic_uuid VARCHAR(40) NOT NULL,
     project_uuid VARCHAR(40) NOT NULL,
     status VARCHAR(40) NOT NULL,
@@ -15,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.topic_uuid,
         NEW.project_uuid,
         NEW.status,
@@ -24,20 +24,20 @@ BEGIN
 
     INSERT INTO
         func_new_project_status(
-            update_id,
+            change_id,
             id,
             project_id,
             status,
             rank
         )
     SELECT
-        u.id,
+        c.id,
         t.id,
         p.id,
         NEW.status,
         NEW.rank
     FROM
-        updates u
+        changes c
     INNER JOIN
         topics t
     ON
@@ -47,7 +47,7 @@ BEGIN
     ON
         p.uuid = NEW.project_uuid
     WHERE
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     ;
 
     SELECT RAISE(IGNORE);

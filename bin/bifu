@@ -23,7 +23,7 @@ bifu - run bif commands in your user repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -43,7 +43,7 @@ which current directory your shell is in.
 
 =over
 
-=item F<$HOME/.local/share/bif-user/>
+=item F<$HOME/.local/share/bifu/>
 
 User repository directory.
 

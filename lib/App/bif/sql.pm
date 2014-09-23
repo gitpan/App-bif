@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -63,7 +63,7 @@ bif-sql -  run an SQL command against the database
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -75,7 +75,7 @@ The C<bif sql> command runs an SQL statement directly against the
 database of the current bif repository.
 
     #!sh
-    bif sql "select id,message from updates"
+    bif sql "select id,message from changes"
 
 If C<STATEMENT> is not given on the command line it will be read from
 I<stdin>.  If the statement begins with "select", "pragma" or "explain"

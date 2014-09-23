@@ -5,7 +5,7 @@ use parent 'App::bif::Context';
 use IO::Prompt::Tiny qw/prompt/;
 use DBIx::ThinSQL qw/ qv sq/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub dup {
     my $self = shift;
@@ -34,12 +34,12 @@ sub dup {
     $db->txn(
         sub {
             my $id = $db->nextval('topics');
-            my $uid = $self->new_update( message => $self->{message}, );
+            my $uid = $self->new_change( message => $self->{message}, );
 
             $db->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $id,
                     kind      => 'project',
                 },
@@ -48,7 +48,7 @@ sub dup {
             $db->xdo(
                 insert_into => 'func_new_project',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $id,
                     parent_id => $self->{parent_id},
                     name      => $self->{path},
@@ -69,7 +69,7 @@ sub dup {
                 $db->xdo(
                     insert_into => 'hub_deltas',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         hub_id     => $dup_pinfo->{hub_id},
                         project_id => $id,
                     },
@@ -77,7 +77,7 @@ sub dup {
 
                 $db->xdo(
                     insert_into =>
-                      [ 'func_update_project', qw/id update_id hub_uuid/ ],
+                      [ 'func_change_project', qw/id change_id hub_uuid/ ],
                     select => [ $id, $uid, 't.uuid' ],
                     from   => 'topics t',
                     where => { 't.id' => $dup_pinfo->{hub_id} },
@@ -100,7 +100,7 @@ sub dup {
                 $db->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
-                        update_id => $uid,
+                        change_id => $uid,
                         id        => $sid,
                         kind      => 'project_status',
                     },
@@ -109,7 +109,7 @@ sub dup {
                 $db->xdo(
                     insert_into => 'func_new_project_status',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $sid,
                         project_id => $id,
                         status     => $status->{status},
@@ -121,7 +121,7 @@ sub dup {
             $db->xdo(
                 insert_into => 'project_deltas',
                 values      => {
-                    update_id  => $uid,
+                    change_id  => $uid,
                     project_id => $id,
                     status_id  => $status_id,
                 },
@@ -139,7 +139,7 @@ sub dup {
                 $db->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
-                        update_id => $uid,
+                        change_id => $uid,
                         id        => $sid,
                         kind      => 'issue_status',
                     },
@@ -148,7 +148,7 @@ sub dup {
                 $db->xdo(
                     insert_into => 'func_new_issue_status',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $sid,
                         project_id => $id,
                         status     => $status->{status},
@@ -170,7 +170,7 @@ sub dup {
                 $db->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
-                        update_id => $uid,
+                        change_id => $uid,
                         id        => $sid,
                         kind      => 'task_status',
                     },
@@ -179,7 +179,7 @@ sub dup {
                 $db->xdo(
                     insert_into => 'func_new_task_status',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $sid,
                         project_id => $id,
                         status     => $status->{status},
@@ -190,25 +190,25 @@ sub dup {
             }
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id     => $uid,
+                    change_id     => $uid,
                     new           => 1,
-                    action_format => "dup project %s ($self->{path}) "
-                      . "from %s ($dup_pinfo->{path})",
+                    action_format => "dup project (%s) $self->{path} "
+                      . "from (%s) $dup_pinfo->{path}",
                     action_topic_id_1 => $id,
                     action_topic_id_1 => $dup_pinfo->{id},
                 },
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
             # For test scripts
             $self->{id}        = $id;
-            $self->{update_id} = $uid;
+            $self->{change_id} = $uid;
         }
     );
 
@@ -269,12 +269,12 @@ sub run {
     $db->txn(
         sub {
             my $id = $db->nextval('topics');
-            my $uid = $self->new_update( message => $self->{message}, );
+            my $uid = $self->new_change( message => $self->{message}, );
 
             $db->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $id,
                     kind      => 'project',
                 },
@@ -283,7 +283,7 @@ sub run {
             $db->xdo(
                 insert_into => 'func_new_project',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $id,
                     parent_id => $self->{parent_id},
                     name      => $self->{path},
@@ -311,7 +311,7 @@ sub run {
                 $db->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
-                        update_id => $uid,
+                        change_id => $uid,
                         id        => $sid,
                         kind      => 'project_status',
                     },
@@ -320,7 +320,7 @@ sub run {
                 $db->xdo(
                     insert_into => 'func_new_project_status',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $sid,
                         project_id => $id,
                         status     => $status->{status},
@@ -331,7 +331,7 @@ sub run {
 
             $db->xdo(
                 insert_into =>
-                  [ 'project_deltas', qw/update_id project_id status_id/, ],
+                  [ 'project_deltas', qw/change_id project_id status_id/, ],
                 select     => [ qv($uid), qv($id), 'project_status.id', ],
                 from       => 'default_status',
                 inner_join => 'project_status',
@@ -368,7 +368,7 @@ sub run {
                 $db->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
-                        update_id => $uid,
+                        change_id => $uid,
                         id        => $sid,
                         kind      => 'issue_status',
                     },
@@ -377,7 +377,7 @@ sub run {
                 $db->xdo(
                     insert_into => 'func_new_issue_status',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $sid,
                         project_id => $id,
                         status     => $status->{status},
@@ -399,7 +399,7 @@ sub run {
                 $db->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
-                        update_id => $uid,
+                        change_id => $uid,
                         id        => $sid,
                         kind      => 'task_status',
                     },
@@ -408,7 +408,7 @@ sub run {
                 $db->xdo(
                     insert_into => 'func_new_task_status',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $sid,
                         project_id => $id,
                         status     => $status->{status},
@@ -419,23 +419,23 @@ sub run {
             }
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $uid,
+                    change_id         => $uid,
                     new               => 1,
-                    action_format     => "new project %s ($self->{path})",
+                    action_format     => "new project (%s) $self->{path}",
                     action_topic_id_1 => $id,
                 },
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
             # For test scripts
             $self->{id}        = $id;
-            $self->{update_id} = $uid;
+            $self->{change_id} = $uid;
         }
     );
 
@@ -452,7 +452,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

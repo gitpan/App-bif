@@ -10,7 +10,7 @@ use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 use Term::Size ();
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 our ( $term_width, $term_height ) = Term::Size::chars(*STDOUT);
 $term_width  ||= 80;
@@ -55,12 +55,7 @@ sub find_user_repo {
     return $self->{_bif_user_repo} if $self->{_bif_user_repo};
 
     my $home_dir = File::HomeDir->my_home;
-    my $data_dir = File::HomeDir->my_data;
-
-    my $user_repo =
-      $home_dir eq $data_dir
-      ? path( $home_dir, '.bif-user' )->absolute
-      : path( $data_dir, 'bif-user' )->absolute;
+    my $user_repo = path( $home_dir, '.bifu' )->absolute;
 
     return $user_repo;
 }
@@ -137,6 +132,8 @@ sub err {
     Carp::croak('err($type, $msg, [$arg])') unless @_ >= 2;
     my $err = shift;
     my $msg = shift;
+
+    die $msg if eval { $msg->isa('Bif::Error') };
     my ( $red, $reset ) = $self->colours(qw/red reset/);
 
     $msg = $red . 'fatal:' . $reset . ' ' . $msg . "\n";
@@ -414,12 +411,12 @@ sub get_hub {
     my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
 
     my ($hub) = $db->xhashref(
-        select           => [qw/h.id h.name t.kind t.uuid t.first_update_id/],
+        select           => [qw/h.id h.name t.kind t.uuid t.first_change_id/],
         from             => 'hubs h',
         inner_join       => 'topics t',
         on               => 't.id = h.id',
         where            => { 'h.name' => $self->uuid2id($name) },
-        union_all_select => [qw/h.id h.name t.kind t.uuid t.first_update_id/],
+        union_all_select => [qw/h.id h.name t.kind t.uuid t.first_change_id/],
         from             => 'hub_repos hr',
         inner_join       => 'hubs h',
         on               => 'h.id = hr.hub_id',
@@ -447,11 +444,10 @@ sub render_table {
     my $table = Text::FormatTable->new($format);
 
     if ($header) {
+        $header->[$_] = uc $header->[$_] for -1 .. $#$header;
         $header->[0] = $white . $header->[0];
         push( @$header, ( pop @$header ) . $reset );
         $table->head(@$header);
-        $table->rule(
-            $dark . ( $self->{_bif_terminal} ? '–' : '-' ) . $reset );
     }
 
     foreach my $row (@$data) {
@@ -524,39 +520,39 @@ sub lprint {
     return $chars;
 }
 
-sub get_update {
+sub get_change {
     my $self            = shift;
     my $token           = shift // return;
-    my $first_update_id = shift;
+    my $first_change_id = shift;
 
-    return $self->err( 'UpdateNotFound', "update not found: $token" )
-      unless $token =~ m/^u(\d+)$/;
+    return $self->err( 'ChangeNotFound', "change not found: $token" )
+      unless $token =~ m/^c(\d+)$/;
 
     my $id = $1;
     my $db = $self->{_bif_dbw} || $self->{_bif_db} || $self->db;
 
     my $data = $db->xhashref(
-        select => [ 'u.id AS id', 'u.uuid AS uuid', ],
-        from   => 'updates u',
-        where => { 'u.id' => $id },
+        select => [ 'c.id AS id', 'c.uuid AS uuid', ],
+        from   => 'changes c',
+        where => { 'c.id' => $id },
     );
 
-    return $self->err( 'UpdateNotFound', "update not found: $token" )
+    return $self->err( 'ChangeNotFound', "change not found: $token" )
       unless $data;
 
-    if ($first_update_id) {
+    if ($first_change_id) {
         my $t = $db->xhashref(
             select => 1,
-            from   => 'updates_tree ut',
+            from   => 'changes_tree ct',
             where  => {
-                'ut.child'  => $id,
-                'ut.parent' => $first_update_id,
+                'ct.child'  => $id,
+                'ct.parent' => $first_change_id,
             },
         );
 
-        return $self->err( 'FirstUpdateMismatch',
-            'first update id mismatch: u%d / u%d',
-            $first_update_id, $id )
+        return $self->err( 'FirstChangeMismatch',
+            'first change id mismatch: c%d / c%d',
+            $first_change_id, $id )
           unless $t;
     }
 
@@ -578,7 +574,7 @@ sub get_topic {
                 't.id AS id',
                 't.kind AS kind',
                 't.uuid AS uuid',
-                't.first_update_id AS first_update_id',
+                't.first_change_id AS first_change_id',
                 qv(undef)->as('project_issue_id'),
                 qv(undef)->as('project_id'),
             ],
@@ -588,7 +584,7 @@ sub get_topic {
                 't.id AS id',
                 't.kind AS kind',
                 't.uuid AS uuid',
-                't.first_update_id AS first_update_id',
+                't.first_change_id AS first_change_id',
                 'pi.id AS project_issue_id',
                 'pi.project_id',
             ],
@@ -615,36 +611,25 @@ sub get_topic {
     return $self->err( 'TopicNotFound', "$kind not found: $token" );
 }
 
-sub new_update {
+sub new_change {
     my $self = shift;
     my %vals = @_;
 
     my $dbw    = $self->dbw;
-    my $id     = ( delete $vals{id} ) // $dbw->nextval('updates');
+    my $id     = ( delete $vals{id} ) // $dbw->nextval('changes');
     my $author = delete $vals{author};
     my $email  = delete $vals{email};
 
     state $have_dbix = DBIx::ThinSQL->import(qw/ qv coalesce /);
 
     my $res = $dbw->xdo(
-        insert_into => [
-            'updates', 'id',    'identity_id', 'author',
-            'email',   'local', sort keys %vals
-        ],
-        select => [
-            qv($id),
-            'bif.identity_id',
-            coalesce( qv($author), 'e.name' ),
-            coalesce( qv($email),  'ecm.mvalue' ),
-            1,
+        insert_into => [ 'changes', 'id', 'identity_id', sort keys %vals ],
+        select      => [
+            qv($id), 'bif.identity_id',
             map { qv( $vals{$_} ) } sort keys %vals
         ],
-        from       => 'bifkv bif',
-        inner_join => 'entities e',
-        on         => 'e.id = bif.identity_id',
-        inner_join => 'entity_contact_methods ecm',
-        on         => 'ecm.id = e.default_contact_method_id',
-        where      => { 'bif.key' => 'self' },
+        from  => 'bifkv bif',
+        where => { 'bif.key' => 'self' },
     );
 
     return $self->err( 'NoSelfIdentity', 'no "self" identity' )
@@ -702,7 +687,7 @@ App::bif::Context - A base class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -913,23 +898,23 @@ returns the cursor to the beginning of the line.  The next call
 over-writes the previously printed text before printing the new
 C<$msg>. In this way a continually updating status can be displayed.
 
-=item get_update( $UID, [$first_update_id] ) -> HashRef
+=item get_change( $CID, [$first_change_id] ) -> HashRef
 
-Looks up the update identified by C<$UID> (of the form "u23") and
+Looks up the change identified by C<$CID> (of the form "c23") and
 returns a hash reference containg the following keys:
 
 =over
 
-=item * id - the update ID
+=item * id - the change ID
 
-=item * uuid - the universally unique identifier of the update
+=item * uuid - the universally unique identifier of the change
 
 =back
 
-An UpdateNotFound error will be raised if the update does not exist. If
-C<$first_update_id> is provided then a check will be made to ensure
-that that C<$UID> is a child of <$first_update_id> with a
-FirstUpdateMismatch error thrown if that is not the case.
+An ChangeNotFound error will be raised if the change does not exist. If
+C<$first_change_id> is provided then a check will be made to ensure
+that that C<$CID> is a child of <$first_change_id> with a
+FirstChangeMismatch error thrown if that is not the case.
 
 =item get_topic( $TOKEN ) -> HashRef
 
@@ -940,7 +925,7 @@ reference containg the following keys:
 
 =item * id - the topic ID
 
-=item * first_update_id - the update_id that created the topic
+=item * first_change_id - the change_id that created the topic
 
 =item * kind - the type of the topic
 
@@ -959,11 +944,11 @@ contain valid values:
 
 =back
 
-=item new_update( %args ) -> Int
+=item new_change( %args ) -> Int
 
-Creates a new row in the updates table according to the content of
+Creates a new row in the changes table according to the content of
 C<%args> (must include at least a C<message> value) and the current
-context (identity). Returns the integer ID of the update.
+context (identity). Returns the integer ID of the change.
 
 =back
 

@@ -10,7 +10,7 @@ run_in_tempdir {
 
     my $dbw = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
 
-    my ( $hub, $update, $project, $ps, $ts, $is, $task, $issue );
+    my ( $hub, $change, $project, $ps, $ts, $is, $task, $issue );
     $dbw->txn(
         sub {
             $dbw->deploy;
@@ -18,11 +18,11 @@ run_in_tempdir {
             $hub = new_test_hub( $dbw, 1 );
 
             $dbw->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            $update  = new_test_update($dbw);
+            $change  = new_test_change($dbw);
             $project = new_test_project($dbw);
 
             $ps = new_test_project_status( $dbw, $project );
@@ -31,16 +31,16 @@ run_in_tempdir {
             $task = new_test_task( $dbw, $ts );
             $issue = new_test_issue( $dbw, $is );
             $dbw->xdo(
-                insert_into => 'func_update_project',
+                insert_into => 'func_change_project',
                 values      => {
                     id        => $project->{id},
-                    update_id => $update->{id},
+                    change_id => $change->{id},
                     status_id => $ps->{id},
                 },
             );
 
             $dbw->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -50,65 +50,65 @@ run_in_tempdir {
     my $db = Bif::DB->connect('dbi:SQLite:dbname=db.sqlite3');
     isa_ok $db, 'Bif::DB::db';
 
-    # get_update
-    subtest 'get_update', sub {
+    # get_change
+    subtest 'get_change', sub {
         my $ref;
-        is_deeply $ref = $db->get_update(undef), undef, 'get_update undef';
+        is_deeply $ref = $db->get_change(undef), undef, 'get_change undef';
 
-        is_deeply $ref = $db->get_update( $project->{id} ), undef,
-          'get_update topic ID';
+        is_deeply $ref = $db->get_change( $project->{id} ), undef,
+          'get_change topic ID';
 
-        is_deeply $ref = $db->get_update("$project->{id}.1243566789"),
+        is_deeply $ref = $db->get_change("$project->{id}.1243566789"),
           undef,
-          'get_update ID.unknown';
+          'get_change ID.unknown';
 
         is_deeply $ref =
-          $db->get_update("$project->{id}.$project->{update_id}"), {
+          $db->get_change("$project->{id}.$project->{change_id}"), {
             id         => $project->{id},
             kind       => 'project',
             uuid       => $ref->{uuid},           # hard to know this in advance
-            update_id  => $project->{update_id},
+            change_id  => $project->{change_id},
             project_id => undef,
             project_issue_id => undef,
           },
-          'get_update ID.UPDATE_ID';
+          'get_change ID.UPDATE_ID';
 
         is_deeply $ref =
-          $db->get_update("$project->{id}.$project->{update_id}"), {
+          $db->get_change("$project->{id}.$project->{change_id}"), {
             id         => $project->{id},
             kind       => 'project',
             uuid       => $ref->{uuid},           # hard to know this in advance
-            update_id  => $project->{update_id},
+            change_id  => $project->{change_id},
             project_id => undef,
             project_issue_id => undef,
           },
-          'get_update project ID.UPDATE_ID';
+          'get_change project ID.UPDATE_ID';
 
-        is_deeply $ref = $db->get_update("$task->{id}.$task->{update_id}"), {
+        is_deeply $ref = $db->get_change("$task->{id}.$task->{change_id}"), {
             id         => $task->{id},
             kind       => 'task',
             uuid       => $ref->{uuid},           # hard to know this in advance
-            update_id  => $task->{update_id},
+            change_id  => $task->{change_id},
             project_id => undef,
             project_issue_id => undef,
           },
-          'get_update task ID.UPDATE_ID';
+          'get_change task ID.UPDATE_ID';
 
-        is_deeply $ref = $db->get_update("$issue->{id}.$issue->{update_id}"), {
+        is_deeply $ref = $db->get_change("$issue->{id}.$issue->{change_id}"), {
             id         => $issue->{id},
             kind       => 'issue',
             uuid       => $ref->{uuid},           # hard to know this in advance
-            update_id  => $issue->{update_id},
+            change_id  => $issue->{change_id},
             project_id => $project->{id},
             project_issue_id => $issue->{id},
           },
-          'get_update issue ID.UPDATE_ID';
+          'get_change issue ID.UPDATE_ID';
 
       TODO: {
-            local $TODO = "No easy way to match update/topic IDs";
+            local $TODO = "No easy way to match change/topic IDs";
             is_deeply $ref =
-              $db->get_update("$project->{id}.$task->{update_id}"), undef,
-              'get_update bad ID/UPDATE_ID combo';
+              $db->get_change("$project->{id}.$task->{change_id}"), undef,
+              'get_change bad ID/UPDATE_ID combo';
 
         }
     };
@@ -137,7 +137,7 @@ run_in_tempdir {
         is_deeply \@ref, [
             {
                 id              => $project->{id},
-                first_update_id => $project->{update_id},
+                first_change_id => $project->{change_id},
                 kind            => 'project',
                 uuid      => $ref[0]->{uuid},    # hard to know this in advance
                 parent_id => undef,

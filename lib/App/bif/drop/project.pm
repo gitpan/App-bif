@@ -4,7 +4,7 @@ use warnings;
 use parent 'App::bif::Context';
 use DBIx::ThinSQL qw/sq/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -24,10 +24,7 @@ sub run {
               $info->{hub_id}
               ? "$info->{path}\@$info->{hub_name}"
               : $info->{path};
-            $self->new_update(
-                message => '',
-                action  => "drop project $path",
-            );
+            $self->new_change( message => "drop project $path", );
             my $res;
 
             if ( $info->{hub_id} ) {
@@ -41,7 +38,7 @@ sub run {
             }
 
             $dbw->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -145,7 +142,7 @@ bif-drop-project - remove an project from the repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

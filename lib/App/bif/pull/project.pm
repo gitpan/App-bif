@@ -5,8 +5,9 @@ use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
 use Coro;
+use DBIx::ThinSQL qw/qv/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = shift;
@@ -48,7 +49,10 @@ sub run {
         location      => $hub->{location},
         debug         => $self->{debug},
         debug_bifsync => $self->{debug_bifsync},
-        on_error      => sub {
+        on_update     => sub {
+            $self->lprint("$hub->{name}: $_[0]");
+        },
+        on_error => sub {
             $error = shift;
             $cv->send;
         },
@@ -58,15 +62,23 @@ sub run {
         eval {
             $db->txn(
                 sub {
-                    my $uid;
+                    my $uid = $db->get_max_change_id + 1;
 
                     foreach my $pinfo (@pinfo) {
-                        my $tmp = $self->new_update(
-                            action =>
-                              "pull project $pinfo->{path}\@$hub->{name}",
-                            message =>
-                              "pull project $pinfo->{path}\@$hub->{name}"
-                              . " from $hub->{location}"
+                        my $tmp =
+                          $self->new_change( message =>
+                                "pull project $pinfo->{path}\@$hub->{name}"
+                              . " from $hub->{location}" );
+
+                        $db->xdo(
+                            insert_into => 'change_deltas',
+                            values      => {
+                                new           => 1,
+                                change_id     => $tmp,
+                                action_format => "pull project (%s) "
+                                  . "$pinfo->{path}\@$hub->{name}",
+                                action_topic_id_1 => $pinfo->{id},
+                            },
                         );
 
                         $db->xdo(
@@ -75,23 +87,7 @@ sub run {
                             where  => { id => $pinfo->{id} },
                         );
 
-                        if ( !$uid ) {
-                            $uid = $tmp;
-                            $db->xdo(
-                                insert_or_replace_into => 'bifkv',
-                                values                 => {
-                                    key       => 'last_sync',
-                                    update_id => $uid,
-                                },
-                            );
-                        }
                     }
-
-                    $client->on_update(
-                        sub {
-                            $self->lprint("$hub->{name} : $_[0] ");
-                        }
-                    );
 
                     my $status = $client->sync_hub( $hub->{id} );
 
@@ -105,9 +101,9 @@ sub run {
                     }
 
                     if ( $status eq 'RepoSync' ) {
-                        $status = $client->transfer_hub_updates;
+                        $status = $client->transfer_hub_changes;
 
-                        if ( $status ne 'TransferHubUpdates' ) {
+                        if ( $status ne 'TransferHubChanges' ) {
                             $db->rollback;
                             $error = " unexpected status received : $status ";
                             return;
@@ -122,22 +118,34 @@ sub run {
                         return;
                     }
 
-                    $status = $client->transfer_project_related_updates;
+                    $status = $client->transfer_project_related_changes;
 
-                    if ( $status ne 'TransferProjectRelatedUpdates' ) {
+                    if ( $status ne 'TransferProjectRelatedChanges' ) {
                         $db->rollback;
                         $error = " unexpected status received : $status ";
                         return;
                     }
-                    print " \n ";
 
+                    $db->xdo(
+                        insert_into => 'func_merge_changes',
+                        values      => { merge => 1 },
+                    );
+
+                    $db->xdo(
+                        insert_or_replace_into =>
+                          [ 'bifkv', qw/key change_id change_id2/ ],
+                        select => [ qv('last_sync'), $uid, 'MAX(c.id)', ],
+                        from   => 'changes c',
+                    );
+
+                    print " \n ";
                     return;
                 }
             );
         };
 
         if ($@) {
-            $error .= $@;
+            $error = $@;
             print " \n ";
         }
 
@@ -162,7 +170,7 @@ bif-pull-project -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

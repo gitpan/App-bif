@@ -1,20 +1,20 @@
 =head1 NAME
 
-bif-doc-func-new-project - add a new project to an update
+bif-doc-func-new-project - add a new project to an change
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
     #!sqlite
     BEGIN;
 
-    INSERT INTO updates(...);
+    INSERT INTO changes(...);
 
     INSERT INTO func_new_project(
-        update_id,  -- integer NOT NULL,
+        change_id,  -- integer NOT NULL,
         id,         -- integer NOT NULL,
         parent_id,  -- integer,
         name,       -- varchar(40),
@@ -23,16 +23,16 @@ bif-doc-func-new-project - add a new project to an update
 
     INSERT INTO func_new_project_status(...);
 
-    INSERT INTO func_update_project(...);
+    INSERT INTO func_change_project(...);
 
-    INSERT INTO func_merge_updates(...);
+    INSERT INTO func_merge_changes(...);
 
     COMMIT;
 
 =head1 DESCRIPTION
 
 The func_new_project() function creates a new project in the repository
-against an in-progress update #1 by taking the following actions:
+against an in-progress change #1 by taking the following actions:
 
 =over
 
@@ -41,10 +41,10 @@ the values resulting in the project/topic UUID.
 
 =item * A row is inserted into the F<projects> table.
 
-=item * Update #2 is started by inserting a new row into the
-F<updates> table.
+=item * Change #2 is started by inserting a new row into the
+F<changes> table.
 
-=item * A row is inserted into F<hub_deltas> against update #2 for the
+=item * A row is inserted into F<hub_deltas> against change #2 for the
 local hub with project_id set to topics.id / projects.id, which kicks
 of the following trigger actions:
 
@@ -53,13 +53,13 @@ of the following trigger actions:
 =item * A row is inserted into F<hub_related_projects> connecting the
 project to the local hub.
 
-=item * A row is inserted into F<hub_related_updates> connecting the
-update to the local hub, which kicks off the following trigger actions:
+=item * A row is inserted into F<hub_related_changes> connecting the
+change to the local hub, which kicks off the following trigger actions:
 
 =over
 
-=item * A row is inserted into hub_related_updates_merkle taking into account the new
-update #2.
+=item * A row is inserted into hub_related_changes_merkle taking into account the new
+change #2.
 
 =back
 
@@ -68,28 +68,28 @@ values.
 
 =back
 
-=item * A row is inserted into F<project_deltas> against update #1, which kicks off the
+=item * A row is inserted into F<project_deltas> against change #1, which kicks off the
 following trigger actions:
 
 =over
 
 =item * A row is inserted into F<projects_tomerge>.
 
-=item * A row is inserted into F<project_related_updates> connecting
-update #1 to the project, which kicks off the following trigger
+=item * A row is inserted into F<project_related_changes> connecting
+change #1 to the project, which kicks off the following trigger
 actions:
 
 =over
 
-=item * A row is inserted into project_related_updates_merkle taking into account the new
-update #1.
+=item * A row is inserted into project_related_changes_merkle taking into account the new
+change #1.
 
 =back
 
 
 =item * If project_delta.hub_uuid exists in the repository then every
-project-only update from F<project_related_updates> is added to 
-F<hub_related_updates> 
+project-only change from F<project_related_changes> is added to 
+F<hub_related_changes> 
 
 =back
 
@@ -99,15 +99,15 @@ The enclosing transaction will fail with a foreign key violation unless
 at least one call to
 L<func_new_project_status()|bif-doc-func-new-project-status> is also
 made and a row is inserted into
-L<project_deltas|bif-doc-table-project-updates> resulting in
+L<project_deltas|bif-doc-table-project-changes> resulting in
 C<projects.status_id> containing a valid foreign key value into the
 L<project_status|bif-doc-table-project-status> table.
 
 =head1 SEE ALSO
 
-L<bif-doc-table-updates>, L<bif-doc-table-topics>,
+L<bif-doc-table-changes>, L<bif-doc-table-topics>,
 L<bif-doc-table-projects>, L<bif-doc-func-new-project-status>,
-L<bif-doc-table-project-updates>, L<bif-doc-func-merge-updates>
+L<bif-doc-table-project-changes>, L<bif-doc-func-merge-changes>
 
 =head1 AUTHOR
 

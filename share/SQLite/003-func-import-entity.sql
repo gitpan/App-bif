@@ -1,6 +1,8 @@
 CREATE TABLE func_import_entity(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     topic_uuid VARCHAR(40) NOT NULL,
+    contact_uuid VARCHAR(40),
+    default_contact_method_uuid VARCHAR(40),
     name VARCHAR NOT NULL
 );
 
@@ -12,29 +14,43 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.topic_uuid,
+        NEW.contact_uuid,
+        NEW.default_contact_method_uuid,
         NEW.name
     );
 
     INSERT INTO
         func_new_entity(
-            update_id,
+            change_id,
             id,
+            contact_id,
+            default_contact_method_id,
             name
         )
     SELECT
-        u.id,
+        c.id,
         t.id,
+        ct.id,
+        ecm.id,
         NEW.name
     FROM
-        updates u
+        changes c
     INNER JOIN
         topics t
     ON
         t.uuid = NEW.topic_uuid
+    LEFT JOIN
+        topics ct
+    ON
+        ct.uuid = NEW.contact_uuid
+    LEFT JOIN
+        topics ecm
+    ON
+        ecm.uuid = NEW.default_contact_method_uuid
     WHERE
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     ;
 
     SELECT RAISE(IGNORE);

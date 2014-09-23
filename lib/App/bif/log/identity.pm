@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::log';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -24,80 +24,86 @@ sub run {
     my $sth = $db->xprepare(
         select => [
             'id.id AS id',
-            concat( qv('u'), 'u.id' )->as('update_id'),
-            'SUBSTR(u.uuid,1,8) AS update_uuid',
-            'u.mtime AS mtime',
-            'u.mtimetz AS mtimetz',
-            'u.action AS action',
-            'u.author AS author',
-            'u.email AS email',
-            'u.message AS message',
-            'u.ucount AS ucount',
+            concat( qv('c'), 'c.id' )->as('change_id'),
+            'SUBSTR(c.uuid,1,8) AS change_uuid',
+            'c.mtime AS mtime',
+            'c.mtimetz AS mtimetz',
+            'c.action AS action',
+            'COALESCE(c.author,e.name) AS author',
+            'c.email AS email',
+            'c.message AS message',
+            'c.ucount AS ucount',
             qv(undef)->as('name'),
             qv(undef)->as('method'),
             qv(undef)->as('mvalue'),
-            'u.path AS path',
-            'ut.depth AS depth',
+            'c.path AS path',
+            'ct.depth AS depth',
         ],
         from       => 'identity_deltas id',
-        inner_join => 'updates u',
-        on         => 'u.id = id.update_id',
-        inner_join => 'updates_tree ut',
+        inner_join => 'changes c',
+        on         => 'c.id = id.change_id',
+        inner_join => 'entities e',
+        on         => 'e.id = c.identity_id',
+        inner_join => 'changes_tree ct',
         on         => {
-            'ut.child' => \'u.id',
+            'ct.child' => \'c.id',
         },
         where            => { 'id.identity_id' => $info->{id}, },
         union_all_select => [
             'ed.id AS id',
-            concat( qv('u'), 'u.id' )->as('update_id'),
-            'SUBSTR(u.uuid,1,8) AS update_uuid',
-            'u.mtime AS mtime',
-            'u.mtimetz AS mtimetz',
-            'u.action AS action',
-            'u.author AS author',
-            'u.email AS email',
-            'u.message AS message',
-            'u.ucount AS ucount',
+            concat( qv('c'), 'c.id' )->as('change_id'),
+            'SUBSTR(c.uuid,1,8) AS change_uuid',
+            'c.mtime AS mtime',
+            'c.mtimetz AS mtimetz',
+            'c.action AS action',
+            'COALESCE(c.author,e.name) AS author',
+            'c.email AS email',
+            'c.message AS message',
+            'c.ucount AS ucount',
             'ed.name AS name',
             qv(undef)->as('method'),
             qv(undef)->as('mvalue'),
-            'u.path AS path',
-            'ut.depth AS depth',
+            'c.path AS path',
+            'ct.depth AS depth',
         ],
         from       => 'entity_deltas ed',
-        inner_join => 'updates u',
-        on         => 'u.id = ed.update_id',
-        inner_join => 'updates_tree ut',
+        inner_join => 'changes c',
+        on         => 'c.id = ed.change_id',
+        inner_join => 'entities e',
+        on         => 'e.id = c.identity_id',
+        inner_join => 'changes_tree ct',
         on         => {
-            'ut.child' => \'u.id',
+            'ct.child' => \'c.id',
         },
         where            => { 'ed.entity_id' => $info->{id}, },
         union_all_select => [
             'ecmd.id AS id',
-            concat( qv('u'), 'u.id' )
-              ->as('update_id'),
-            'SUBSTR(u.uuid,1,8) AS update_uuid',
-            'u.mtime',
-            'u.mtimetz',
-            'u.action',
-            'u.author',
-            'u.email',
-            'u.message',
-            'u.ucount',
+            concat( qv('c'), 'c.id' )
+              ->as('change_id'),
+            'SUBSTR(c.uuid,1,8) AS change_uuid',
+            'c.mtime',
+            'c.mtimetz',
+            'c.action',
+            'COALESCE(c.author,e.name) AS author',
+            'c.email',
+            'c.message',
+            'c.ucount',
             qv(undef),    # 'ecmd.name',
             'ecmd.method',
             'ecmd.mvalue',
-            'u.path',
-            'ut.depth',
+            'c.path',
+            'ct.depth',
         ],
         from       => 'entity_contact_methods ecm',
         inner_join => 'entity_contact_method_deltas ecmd',
         on         => 'ecmd.entity_contact_method_id = ecm.id',
-        inner_join => 'updates u',
-        on         => 'u.id = ecmd.update_id',
-        inner_join => 'updates_tree ut',
+        inner_join => 'changes c',
+        on         => 'c.id = ecmd.change_id',
+        inner_join => 'entities e',
+        on         => 'e.id = c.identity_id',
+        inner_join => 'changes_tree ct',
         on         => {
-            'ut.child' => \'u.id',
+            'ct.child' => \'c.id',
         },
         where => { 'ecm.entity_id' => $info->{id}, },
         order_by => [ 'path ASC', 'id' ],
@@ -123,21 +129,21 @@ sub run {
                 $self->header(
                     $dark
                       . $yellow
-                      . ( $row->{depth} > 1 ? 'reply' : 'update' ),
-                    $dark . $yellow . $row->{update_id},
-                    $row->{update_uuid}
+                      . ( $row->{depth} > 1 ? 'reply' : 'change' ),
+                    $dark . $yellow . $row->{change_id},
+                    $row->{change_uuid}
                 ),
             );
         }
         else {
-            $row->{update_id} =~ s/(.+)\./$yellow$1$dark\./;
+            $row->{change_id} =~ s/(.+)\./$yellow$1$dark\./;
 
             push(
                 @data,
                 $self->header(
                     $yellow . 'identity',
-                    $row->{update_id},
-                    substr( $info->{uuid}, 0, 8 ) . '.' . $row->{update_uuid}
+                    $row->{change_id},
+                    substr( $info->{uuid}, 0, 8 ) . '.' . $row->{change_uuid}
                 ),
             );
         }
@@ -182,7 +188,7 @@ bif-log-identity - review the history of a identity
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

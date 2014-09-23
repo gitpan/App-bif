@@ -51,14 +51,14 @@ run_in_tempdir {
         #        bif( qw/update/, $tinfo->{id}, qw/-m m7/ );
         my $u = bif( qw/update --uuid/, $tinfo->{uuid}, qw/-m m12b/ );
         $x = bif( qw/sql --noprint/,
-            qq{select uuid from updates where id=$u->{update_id}} );
+            qq{select uuid from changes where id=$u->{change_id}} );
         $u->{uuid} = $x->[0][0];
         bif(qw/sync/);
 
         bif2(qw/sync/);
         $ref2 = bif2( qw/sql --noprint/,
-            qq{select 1 from updates where uuid="$u->{uuid}"} );
-        ok $ref2->[0][0], 'task update sync';
+            qq{select 1 from changes where uuid="$u->{uuid}"} );
+        ok $ref2->[0][0], 'task change sync';
     };
 
     subtest 'issue sync' => sub {

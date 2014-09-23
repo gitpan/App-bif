@@ -23,7 +23,7 @@ run_in_tempdir {
 
     bif(qw/init repo .bif/);
 
-    isa_ok bif( qw/pull identity/, $repo ), 'Bif::OK::PullIdentity';
+    isa_ok bif( qw/pull identity --self/, $repo ), 'Bif::OK::PullIdentity';
     isa_ok bif(qw/show identity 1/), 'Bif::OK::ShowIdentity';
 };
 

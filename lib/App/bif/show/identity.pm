@@ -4,7 +4,7 @@ use warnings;
 use parent 'App::bif::show';
 use DBIx::ThinSQL qw/sum case coalesce concat qv/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -18,12 +18,12 @@ sub run {
 
     my $ref = $db->xhashref(
         select => [
-            'i.id',              'substr(t.uuid,1,8) as uuid',
-            'e.name',            'c.contact_id != e.id AS other_contact',
-            'c.name AS contact', 't.ctime',
-            't.ctimetz',         't.mtime',
-            't.mtimetz',         'u.author',
-            'u.email',           'u.message',
+            'i.id',               'substr(t.uuid,1,8) as uuid',
+            'e.name',             'ct.contact_id != e.id AS other_contact',
+            'ct.name AS contact', 't.ctime',
+            't.ctimetz',          't.mtime',
+            't.mtimetz',          'c.author',
+            'c.email',            'c.message',
             'e.local',
         ],
         from       => 'identities i',
@@ -31,10 +31,10 @@ sub run {
         on         => 'e.id = i.id',
         inner_join => 'topics t',
         on         => 't.id = i.id',
-        inner_join => 'updates u',
-        on         => 'u.id = t.first_update_id',
-        inner_join => 'entities c',
-        on         => 'c.id = e.contact_id',
+        inner_join => 'changes c',
+        on         => 'c.id = t.first_change_id',
+        inner_join => 'entities ct',
+        on         => 'ct.id = e.contact_id',
         where      => { 'i.id' => $self->{id} },
     );
 
@@ -80,7 +80,8 @@ sub run {
 
     $self->start_pager;
     print $self->render_table( 'l  l',
-        $self->header( 'Identity', $ref->{name} ), \@data );
+        $self->header( 'Identity', $ref->{name} ),
+        \@data, 1 );
     $self->end_pager;
 
     return $self->ok( 'ShowIdentity', \@data );
@@ -95,7 +96,7 @@ bif-show-identity - display a identity's current status
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

@@ -4,9 +4,10 @@ use warnings;
 use feature 'state';
 use locale;
 use parent 'App::bif::Context';
+use utf8;
 use Text::Autoformat qw/autoformat/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub init {
     my $self = shift;
@@ -74,17 +75,20 @@ sub log_item {
     $title = $row->{title};
     $path  = $row->{path};
 
-    ( my $id = $row->{update_id} ) =~
+    ( my $id = $row->{change_id} ) =~
       s/(.+)\./$self->{_colours}->{yellow}$1$self->{_colours}->{dark}\./;
     my @data = (
         $self->header(
-            $self->{_colours}->{yellow} . $row->{update_id},
+            $self->{_colours}->{yellow} . $row->{change_id},
             $self->{_colours}->{yellow} . $row->{action},
-            $row->{update_uuid}
+            $row->{change_uuid}
         ),
-        $self->header( 'From', $row->{author},            $row->{email} ),
-        $self->header( 'When', $self->ago( $row->{mtime}, $row->{mtimetz} ) ),
+        $self->header( 'From', $row->{author}, $row->{email} ),
     );
+
+    push( @data, $self->header( 'To', $row->{path} ) ) if $row->{path};
+    push( @data,
+        $self->header( 'When', $self->ago( $row->{mtime}, $row->{mtimetz} ) ) );
 
     if ( $row->{status} ) {
         push(
@@ -120,28 +124,29 @@ sub log_comment {
         $self->header(
             $self->{_colours}->{dark}
               . $self->{_colours}->{yellow}
-              . $row->{update_id},
+              . $row->{change_id},
             $self->{_colours}->{dark}
               . $self->{_colours}->{yellow}
               . $row->{action},
-            $row->{update_uuid}
+            $row->{change_uuid}
         ),
-        $self->header( 'From', $row->{author},            $row->{email} ),
-        $self->header( 'When', $self->ago( $row->{mtime}, $row->{mtimetz} ) ),
+        $self->header( 'From', $row->{author}, $row->{email} ),
     );
 
     $path = $row->{path} if $row->{path};
+    push( @data, $self->header( 'To', $path ) ) if $path;
+    push( @data,
+        $self->header( 'When', $self->ago( $row->{mtime}, $row->{mtimetz} ) ) );
 
     if ( $row->{title} ) {
         $title = $row->{title} if $row->{title};
-        push( @data, $self->header( 'Subject', "[$path] $title" ) );
+        push( @data, $self->header( 'Subject', "$title" ) );
     }
     elsif ( $row->{status} ) {
-        push( @data,
-            $self->header( 'Subject', "[$path][$row->{status}] Re: $title" ) );
+        push( @data, $self->header( 'Subject', "[$row->{status}] $title" ) );
     }
     else {
-        push( @data, $self->header( 'Subject', "[$path] Re: $title" ) );
+        push( @data, $self->header( 'Subject', "↪ $title" ) );
     }
 
     foreach my $field (@_) {
@@ -170,7 +175,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

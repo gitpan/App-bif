@@ -1,5 +1,5 @@
 CREATE TABLE func_new_host(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     provider_id INTEGER NOT NULL,
     name VARCHAR NOT NULL
@@ -14,7 +14,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         NEW.provider_id,
         NEW.name
@@ -34,13 +34,13 @@ BEGIN
 
     INSERT INTO
         host_deltas(
-            update_id,
+            change_id,
             host_id,
             name,
             new
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         NEw.name,
         1

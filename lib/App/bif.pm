@@ -4,7 +4,7 @@ use warnings;
 use File::Basename;
 use OptArgs ':all';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 $OptArgs::COLOUR = 1;
 $OptArgs::SORT   = 1;
@@ -50,7 +50,7 @@ opt no_color => (
 
 opt user_repo => (
     isa     => 'Bool',
-    alias   => 'u',
+    alias   => 'c',
     comment => 'use the user repository',
     hidden  => 1,
 );
@@ -251,6 +251,12 @@ arg value => (
 opt self => (
     isa     => 'Bool',
     comment => 'Create a "self" identity',
+);
+
+opt shortname => (
+    isa     => 'Str',
+    alias   => 's',
+    comment => 'identity initials or short name',
 );
 
 # ------------------------------------------------------------------------
@@ -714,17 +720,17 @@ arg id => (
 );
 
 # ------------------------------------------------------------------------
-# bif show update
+# bif show change
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/show update/],
+    cmd     => [qw/show change/],
     comment => 'show an update as YAML',
 );
 
 arg uid => (
     isa      => 'Str',
     required => 1,
-    comment  => 'the update uID',
+    comment  => 'the change cID',
 );
 
 # ------------------------------------------------------------------------
@@ -843,11 +849,17 @@ subcmd(
     comment => 'review history of current repository',
 );
 
+opt full => (
+    isa     => 'Bool',
+    alias   => 'f',
+    comment => 'include all actions',
+);
+
 opt order => (
     isa     => 'Str',
     alias   => 'o',
     default => 'time',
-    comment => 'the field to order updates by [time|uid]'
+    comment => 'the field to order changes by [time|uid]'
 );
 
 # ------------------------------------------------------------------------
@@ -901,7 +913,7 @@ opt message => (
 
 opt reply => (
     isa     => 'Str',
-    comment => 'reply to an update uID',
+    comment => 'reply to a change cID',
     alias   => 'r',
 );
 
@@ -919,6 +931,12 @@ arg id => (
     comment  => 'identity ID',
 );
 
+opt shortname => (
+    isa     => 'Str',
+    alias   => 's',
+    comment => 'identity initials or short name',
+);
+
 # ------------------------------------------------------------------------
 # bif update entity
 # ------------------------------------------------------------------------
@@ -931,6 +949,20 @@ arg id => (
     isa      => 'Int',
     required => 1,
     comment  => 'entity ID',
+);
+
+# ------------------------------------------------------------------------
+# bif update hub
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/update hub/],
+    comment => 'update a hub',
+);
+
+arg id => (
+    isa      => 'Int',
+    required => 1,
+    comment  => 'hub ID',
 );
 
 # ------------------------------------------------------------------------
@@ -959,7 +991,7 @@ opt title => (
 );
 
 # ------------------------------------------------------------------------
-# update plan
+# change plan
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/update plan/],
@@ -1098,17 +1130,17 @@ arg id => (
 );
 
 # ------------------------------------------------------------------------
-# bif drop update
+# bif drop change
 # ------------------------------------------------------------------------
 subcmd(
-    cmd     => [qw/drop update/],
-    comment => 'remove an update',
+    cmd     => [qw/drop change/],
+    comment => 'remove a change',
 );
 
 arg uid => (
     isa      => 'Int',
     required => 1,
-    comment  => 'update uID',
+    comment  => 'change cID',
 );
 
 # ------------------------------------------------------------------------
@@ -1226,7 +1258,7 @@ arg item => (
 
 opt message => (
     isa     => 'Str',
-    comment => 'optional comment for the associated update',
+    comment => 'optional comment for the associated change',
     alias   => 'm',
 );
 
@@ -1312,6 +1344,7 @@ opt debug_bifsync => (
 subcmd(
     cmd     => [qw/signup/],
     comment => 'sign up with a hub provider',
+    hidden  => 1,
 );
 
 arg name => (
@@ -1338,7 +1371,7 @@ opt debug_bs => (
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => [qw/sync/],
-    comment => 'exchange updates with a hub',
+    comment => 'exchange changes with a hub',
 );
 
 opt path => (
@@ -1358,7 +1391,7 @@ opt message => (
     alias   => 'm',
     default => '',
     hidden  => 1,
-    comment => 'message for multiple test script updates / second ',
+    comment => 'message for multiple test script changes / second ',
 );
 
 opt debug_bifsync => (
@@ -1445,7 +1478,7 @@ App::bif - OptArgs dispatch module for bif.
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

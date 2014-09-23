@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -19,10 +19,7 @@ sub run {
 
     $db->txn(
         sub {
-            $self->new_update(
-                message => '',
-                action  => "drop task $info->{id} <$uuid>",
-            );
+            $self->new_change( message => "drop task $info->{id} <$uuid>", );
 
             my $res = $db->xdo(
                 delete_from => 'tasks',
@@ -30,7 +27,7 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -55,7 +52,7 @@ bif-drop-task - remove an task from the repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

@@ -5,8 +5,9 @@ use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
 use Coro;
+use DBIx::ThinSQL qw/qv/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $opts = shift;
@@ -45,7 +46,6 @@ sub run {
     foreach my $hub (@hubs) {
         my $error;
         my $cv = AE::cv;
-        $self->lprint("$hub->{name}: connecting...");
 
         my $client = Bif::Client->new(
             name          => $hub->{name},
@@ -53,7 +53,10 @@ sub run {
             location      => $hub->{location},
             debug         => $self->{debug},
             debug_bifsync => $self->{debug_bifsync},
-            on_error      => sub {
+            on_update     => sub {
+                $self->lprint("$hub->{name}: $_[0]");
+            },
+            on_error => sub {
                 $error = shift;
                 $cv->send;
             },
@@ -63,29 +66,9 @@ sub run {
             eval {
                 $dbw->txn(
                     sub {
-                        my $uid = $self->new_update(
-                            message =>
-                              "sync hub $hub->{name} via $hub->{location}"
-                              . $self->{message},
-                            action => "sync hub $hub->{name}",
-                        );
+                        my $uid = $dbw->nextval('changes');
 
-                        $dbw->xdo(
-                            insert_or_replace_into => 'bifkv',
-                            values                 => {
-                                key       => 'last_sync',
-                                update_id => $uid,
-                            },
-                        );
-
-                        $client->on_update(
-                            sub {
-                                $self->lprint("$hub->{name}: $_[0]");
-                            }
-                        );
-
-                        my $previous = $dbw->get_max_update_id;
-                        my $status   = $client->sync_hub( $hub->{id} );
+                        my $status = $client->sync_hub( $hub->{id} );
 
                         unless ( $status eq 'RepoMatch'
                             or $status eq 'RepoSync' )
@@ -97,8 +80,8 @@ sub run {
                         }
 
                         if ( $status eq 'RepoSync' ) {
-                            $status = $client->transfer_hub_updates;
-                            if ( $status ne 'TransferHubUpdates' ) {
+                            $status = $client->transfer_hub_changes;
+                            if ( $status ne 'TransferHubChanges' ) {
                                 $dbw->rollback;
                                 $error = "unexpected status received: $status";
                                 return;
@@ -113,17 +96,43 @@ sub run {
                             return;
                         }
 
-                        $status = $client->transfer_project_related_updates;
+                        $status = $client->transfer_project_related_changes;
 
-                        if ( $status ne 'TransferProjectRelatedUpdates' ) {
+                        if ( $status ne 'TransferProjectRelatedChanges' ) {
                             $dbw->rollback;
                             $error = "unexpected status received: $status";
                             return;
                         }
                         print "\n";
 
-                        my $current = $dbw->get_max_update_id;
-                        my $delta   = $current - $previous;
+                        $self->new_change(
+                            id => $uid,
+                            message =>
+                              "sync hub $hub->{name} via $hub->{location}"
+                              . $self->{message},
+                        );
+
+                        $dbw->xdo(
+                            insert_into => 'change_deltas',
+                            values      => {
+                                new           => 1,
+                                change_id     => $uid,
+                                action_format => "sync hub $hub->{name} (%s)",
+                                action_topic_id_1 => $hub->{id},
+                            },
+                        );
+
+                        $dbw->xdo(
+                            insert_into => 'func_merge_changes',
+                            values      => { merge => 1 },
+                        );
+
+                        $dbw->xdo(
+                            insert_or_replace_into =>
+                              [ 'bifkv', qw/key change_id change_id2/ ],
+                            select => [ qv('last_sync'), $uid, 'MAX(c.id)', ],
+                            from   => 'changes c',
+                        );
 
                         return;
                     }
@@ -131,7 +140,7 @@ sub run {
             };
 
             if ($@) {
-                $error .= $@;
+                $error = $@;
                 print "\n";
             }
 
@@ -147,7 +156,7 @@ sub run {
 
     }
 
-    # TODO make this dependent on how many updates received/made since the last
+    # TODO make this dependent on how many changes received/made since the last
     # analyze
     $dbw->do('ANALYZE');
 
@@ -160,11 +169,11 @@ __END__
 
 =head1 NAME
 
-bif-sync -  exchange updates with hubs
+bif-sync -  exchange changes with hubs
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -173,7 +182,7 @@ bif-sync -  exchange updates with hubs
 =head1 DESCRIPTION
 
 The C<bif sync> command connects to all remote repositories registered
-as hubs in the local repository and exchanges updates.
+as hubs in the local repository and exchanges changes.
 
 =head1 ARGUMENTS & OPTIONS
 

@@ -3,9 +3,9 @@ use strict;
 use warnings;
 use utf8;
 use parent 'App::bif::Context';
-use Time::Duration qw/concise ago/;
+use Time::Duration qw/concise duration/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -13,10 +13,11 @@ sub run {
 
     require Term::ANSIColor;
     my $dark  = Term::ANSIColor::color('dark');
-    my $bold  = Term::ANSIColor::color('white');
+    my $bold  = Term::ANSIColor::color('bold');
+    my $white = Term::ANSIColor::color('dark white');
     my $reset = Term::ANSIColor::color('reset');
 
-    DBIx::ThinSQL->import(qw/ qv case concat coalesce/);
+    DBIx::ThinSQL->import(qw/ qv case concat coalesce sq/);
 
     my @projects = $db->xarrayrefs(
         select =>
@@ -51,9 +52,22 @@ sub run {
     foreach my $project (@projects) {
 
         my $data = $db->xarrayrefs(
+            with => 'b',
+            as   => sq(
+                select => [ 'b.change_id AS start', 'b.change_id2 AS stop' ],
+                from   => 'bifkv b',
+                where => { 'b.key' => 'last_sync' },
+            ),
             select => [
-                qv( $dark . 'task' . $reset )->as('type'),
-                'tasks.id AS id',
+                qv('task')->as('type'),
+                concat(
+                    case (
+                        when => 'b.start',
+                        then => qv($bold),
+                        else => qv(''),
+                    ),
+                    'tasks.id',
+                  )->as('id'),
                 'tasks.title AS title',
                 'task_status.status',
                 "strftime('%s','now') - t.ctime",
@@ -63,6 +77,8 @@ sub run {
             on         => 'tasks.status_id = task_status.id',
             inner_join => 'topics t',
             on         => 't.id = tasks.id',
+            left_join  => 'b',
+            on         => 't.last_change_id BETWEEN b.start AND b.stop',
             where      => {
                 'task_status.project_id' => $project->[0],
                 do {
@@ -75,11 +91,18 @@ sub run {
                 },
             },
             union_all_select => [
-                qv( $dark . 'issue' . $reset )->as('type'),
-                'project_issues.id',
+                qv('issue')->as('type'),
+                concat(
+                    case (
+                        when => 'b.start',
+                        then => qv($bold),
+                        else => qv(''),
+                    ),
+                    'project_issues.id',
+                  )->as('id'),
                 'issues.title AS title',
                 'issue_status.status',
-                "strftime('%s','now') - t.ctime",
+                "strftime('%s','now') - t.ctime AS age",
             ],
             from       => 'issue_status',
             inner_join => 'project_issues',
@@ -88,6 +111,8 @@ sub run {
             on         => 'issues.id = project_issues.issue_id',
             inner_join => 'topics t',
             on         => 't.id = issues.id',
+            left_join  => 'b',
+            on         => 't.last_change_id BETWEEN b.start AND b.stop',
             where      => {
                 'issue_status.project_id' => $project->[0],
                 do {
@@ -99,7 +124,7 @@ sub run {
                     }
                 },
             },
-            order_by => 'id ASC',
+            order_by => [ 'age ASC', 'id ASC' ],
         );
 
         next unless $data;
@@ -110,23 +135,14 @@ sub run {
         }
 
         $table->head(
-            $bold . 'Type',
-            'ID', "[$project->[1]] Topic",
-            'Status', 'Age' . $reset
+            $white . 'TYPE',
+            'ID', uc( $project->[1] ),
+            'STATUS', 'AGE' . $reset
         );
         $i++;
 
-        if ($dark) {
-            $table->rule( $dark . '–' . $reset );
-        }
-        else {
-            $table->rule('-');
-        }
-
-        $i++;
-
         foreach (@$data) {
-            ( $_->[4] = concise( ago( $_->[4], 1 ) ) ) =~ s/ ago//;
+            $_->[4] = concise( duration( $_->[4], 1 ) ) . $reset;
             $table->row(@$_);
             $project->[2]++;
             $i++;
@@ -151,7 +167,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

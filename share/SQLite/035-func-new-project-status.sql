@@ -1,5 +1,5 @@
 CREATE TABLE func_new_project_status(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     project_id INTEGER,
     status VARCHAR(40) NOT NULL,
@@ -35,14 +35,14 @@ FOR EACH ROW BEGIN
 
     INSERT INTO
         project_status_deltas(
-            update_id,
+            change_id,
             project_status_id,
             new,
             status,
             rank
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         1,
         NEW.status,

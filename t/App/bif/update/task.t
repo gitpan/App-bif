@@ -20,9 +20,9 @@ run_in_tempdir {
     my $t = bif(qw/new task todo title --message m4/);
 
     my $u =
-      bif( qw/update task/, $t->{id}, qw/closed --title title --message m4/ );
+      bif( qw/update task/, $t->{id}, qw/done --title title --message m4/ );
 
-    isa_ok $u, 'Bif::OK::UpdateTask';
+    isa_ok $u, 'Bif::OK::ChangeTask';
 };
 
 done_testing();

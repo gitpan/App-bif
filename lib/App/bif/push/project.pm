@@ -6,7 +6,7 @@ use AnyEvent;
 use Bif::Client;
 use Coro;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = shift;
@@ -59,7 +59,10 @@ sub run {
         location      => $hub->{location},
         debug         => $self->{debug},
         debug_bifsync => $self->{debug_bifsync},
-        on_error      => sub {
+        on_update     => sub {
+            $self->lprint("$hub->{name}: $_[0]");
+        },
+        on_error => sub {
             $error = shift;
             $cv->send;
         },
@@ -70,18 +73,26 @@ sub run {
             $db->txn(
                 sub {
                     foreach my $pinfo (@pinfo) {
-                        my $uid = $self->new_update(
-                            parent_id => $hub->{first_update_id},
+                        my $uid = $self->new_change(
+                            parent_id => $hub->{first_change_id},
                             message   => "Imported $pinfo->{path}",
-                            action =>
-                              "push project $pinfo->{path} $hub->{name}",
+                        );
+
+                        $db->xdo(
+                            insert_into => 'change_deltas',
+                            values      => {
+                                change_id     => $uid,
+                                new           => 1,
+                                action_format => "imported $pinfo->{path} (%s)",
+                                action_topic_id_1 => $pinfo->{id},
+                            },
                         );
 
                         # TODO make this a trigger somehow?
                         $db->xdo(
                             insert_into => 'hub_deltas',
                             values      => {
-                                update_id  => $uid,
+                                change_id  => $uid,
                                 hub_id     => $hub->{id},
                                 project_id => $pinfo->{id},
                             },
@@ -92,33 +103,36 @@ sub run {
                             $msg .= "\n\n$self->{message}\n";
                         }
 
-                        $self->{update_id} = $self->new_update(
-                            parent_id => $pinfo->{first_update_id},
+                        $self->{change_id} = $self->new_change(
+                            parent_id => $pinfo->{first_change_id},
                             message   => $msg,
-                            action =>
-                              "push project $pinfo->{path} $hub->{name}",
                         );
 
                         $db->xdo(
-                            insert_into => 'func_update_project',
+                            insert_into => 'change_deltas',
+                            values      => {
+                                change_id     => $self->{change_id},
+                                new           => 1,
+                                action_format => "push project $pinfo->{path} "
+                                  . "(%s) $hub->{name}",
+                                action_topic_id_1 => $pinfo->{id},
+                            },
+                        );
+
+                        $db->xdo(
+                            insert_into => 'func_change_project',
                             values      => {
                                 id        => $pinfo->{id},
-                                update_id => $self->{update_id},
+                                change_id => $self->{change_id},
                                 hub_uuid  => $hub->{uuid},
                             },
                         );
 
                         $db->xdo(
-                            insert_into => 'func_merge_updates',
+                            insert_into => 'func_merge_changes',
                             values      => { merge => 1 },
                         );
                     }
-
-                    $client->on_update(
-                        sub {
-                            $self->lprint("$hub->{name}: $_[0]");
-                        }
-                    );
 
                     my $status = $client->sync_hub( $hub->{id} );
 
@@ -128,8 +142,8 @@ sub run {
                         return;
                     }
 
-                    $status = $client->transfer_hub_updates;
-                    if ( $status ne 'TransferHubUpdates' ) {
+                    $status = $client->transfer_hub_changes;
+                    if ( $status ne 'TransferHubChanges' ) {
                         $db->rollback;
                         $error = "unexpected status received: $status";
                         return;
@@ -143,9 +157,9 @@ sub run {
                         return;
                     }
 
-                    $status = $client->transfer_project_related_updates;
+                    $status = $client->transfer_project_related_changes;
 
-                    if ( $status ne 'TransferProjectRelatedUpdates' ) {
+                    if ( $status ne 'TransferProjectRelatedChanges' ) {
                         $db->rollback;
                         $error = "unexpected status received: $status";
                         return;
@@ -158,7 +172,7 @@ sub run {
         };
 
         if ($@) {
-            $error .= $@;
+            $error = $@;
             print "\n";
         }
 
@@ -182,7 +196,7 @@ bif-push-project -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -207,7 +221,7 @@ The name of a previously registered hub.
 
 =item --message, -m MESSAGE
 
-Add the optional MESSAGE to the update created for this action.
+Add the optional MESSAGE to the change created for this action.
 
 =back
 

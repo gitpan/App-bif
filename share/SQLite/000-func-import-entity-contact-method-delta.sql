@@ -1,5 +1,5 @@
 CREATE TABLE func_import_entity_contact_method_delta(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     entity_contact_method_uuid VARCHAR(40) NOT NULL,
     method VARCHAR,
     mvalue VARCHAR
@@ -14,30 +14,30 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.entity_contact_method_uuid,
         NEW.method,
         NEW.mvalue
     );
 
     INSERT INTO
-        func_update_entity_contact_method(
-            update_id,
+        func_change_entity_contact_method(
+            change_id,
             entity_contact_method_id,
             method,
             mvalue
         )
     SELECT
-        u.uuid,
+        c.uuid,
         t.id,
         NEW.method,
         NEW.mvalue
     FROM
         topics t
     INNER JOIN
-        updates u
+        changes c
     ON
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     WHERE
         t.uuid = NEW.entity_contact_method_uuid
     ;

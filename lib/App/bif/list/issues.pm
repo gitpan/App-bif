@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -100,7 +100,7 @@ bif-list-issues - list projects' issues
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

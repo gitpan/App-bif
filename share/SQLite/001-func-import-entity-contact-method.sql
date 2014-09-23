@@ -1,5 +1,5 @@
 CREATE TABLE func_import_entity_contact_method(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     topic_uuid VARCHAR(40) NOT NULL,
     entity_uuid VARCHAR(40) NOT NULL,
     method VARCHAR NOT NULL,
@@ -15,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.topic_uuid,
         NEW.entity_uuid,
         NEW.method,
@@ -24,20 +24,20 @@ BEGIN
 
     INSERT INTO
         func_new_entity_contact_method(
-            update_id,
+            change_id,
             id,
             entity_id,
             method,
             mvalue
         )
     SELECT
-        u.id,
+        c.id,
         t.id,
         e.id,
         NEW.method,
         NEW.mvalue
     FROM
-        updates u
+        changes c
     INNER JOIN
         topics t
     ON
@@ -47,7 +47,7 @@ BEGIN
     ON
         e.uuid = NEW.entity_uuid
     WHERE
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     ;
 
     SELECT RAISE(IGNORE);

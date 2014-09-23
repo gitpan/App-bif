@@ -4,7 +4,7 @@ use warnings;
 use feature 'state';
 use parent 'App::bif::log';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -16,24 +16,28 @@ sub run {
     my $sth = $db->xprepare(
         select => [
             'project_issues.issue_id AS "id"',
-            concat( qv('u'), 'updates.id' )->as('update_id'),
-            'SUBSTR(updates.uuid,1,8) AS update_uuid',
-            'updates.mtime',
-            'updates.mtimetz',
-            concat( 'updates.action', qv(' '), 'project_issues.id' )
+            concat( qv('c'), 'changes.id' )->as('change_id'),
+            'SUBSTR(changes.uuid,1,8) AS change_uuid',
+            'changes.mtime',
+            'changes.mtimetz',
+            concat( 'changes.action', qv(' '), 'project_issues.id' )
               ->as('action'),
-            'updates.author',
-            'updates.email',
-            'updates.message',
-            'updates.ucount',
+            'COALESCE(changes.author,e.name) AS author',
+            'COALESCE(changes.email,ecm.mvalue) AS email',
+            'changes.message',
+            'changes.ucount',
             'issue_status.status',
             'issue_deltas.title',
             'projects.path',
-            'updates_tree.depth',
+            'changes_tree.depth',
         ],
         from       => 'issue_deltas',
-        inner_join => 'updates',
-        on         => 'updates.id = issue_deltas.update_id',
+        inner_join => 'changes',
+        on         => 'changes.id = issue_deltas.change_id',
+        inner_join => 'entities e',
+        on         => 'e.id = changes.identity_id',
+        inner_join => 'entity_contact_methods ecm',
+        on         => 'ecm.id = e.default_contact_method_id',
         inner_join => 'projects',
         on         => 'projects.id = issue_deltas.project_id',
         inner_join => 'project_issues',
@@ -43,13 +47,13 @@ sub run {
         },
         left_join  => 'issue_status',
         on         => 'issue_status.id = issue_deltas.status_id',
-        inner_join => 'updates_tree',
+        inner_join => 'changes_tree',
         on         => {
-            'updates_tree.child'  => \'updates.id',
-            'updates_tree.parent' => $info->{first_update_id}
+            'changes_tree.child'  => \'changes.id',
+            'changes_tree.parent' => $info->{first_change_id}
         },
         where    => { 'issue_deltas.issue_id' => $info->{id} },
-        order_by => 'updates.path ASC',
+        order_by => 'changes.path ASC',
     );
 
     $sth->execute;
@@ -72,7 +76,7 @@ bif-log-issue - review the history of a issue
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

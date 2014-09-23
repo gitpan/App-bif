@@ -22,7 +22,7 @@ bif - distributed project management tool
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -158,8 +158,7 @@ domain name) after it has been registered with the local repository.
 =head2 Command Structure
 
 Bif commands are structured where possible the same way an English
-speaker describes actions, verb followed by an optional type and a
-subject. For example:
+speaker describes actions - verb followed by subject. For example:
 
     bif list topics
     bif update issue 34
@@ -182,9 +181,10 @@ The top level bif commands are as follows:
 
 In addition, a couple of useful aliases are created by default:
 
-    ls         # bif list projects plan define run
-    ll         # bif list topics --status open
-    lls        # bif list topics --status stalled
+    ls    # list topics --status open --project-status run
+    lsi   # list identities
+    lsp   # list projects define plan run
+    lss   # list topics --status stalled --project-status run
 
 =head2 Global Options
 
@@ -251,20 +251,20 @@ repository which will be created the first time you run L<bif-init>.
 
     #!sh
     bif init
-    # Initialising repository: /home/..../bif-user (v323)
+    # Initialising repository: $HOME/.bifu (v323)
     # Creating "self" identity:
     #   Name: [Your Name] 
     #   Contact Method: [email] 
     #   Contact Email: [your@email.adddr] 
     # Identity created: 1
-    # Initialising repository: /home/.../.bif (v323)
-    # Importing identity from /home/.../bif-user
+    # Initialising repository: $PWD/.bif (v323)
+    # Importing identity from $HOME/.bifu
 
-The local (or current working) bif repository is created in
-F<$PWD/.bif/>.  You do not have to remember the repository location
-when you are working in a subdirectory as it will be found
-automatically.  An initialized repository always starts out empty;
-there is no bif equivalent of the git-clone command.
+An initialized repository always starts out empty - there is no bif
+equivalent of the git-clone command.
+
+You generally do not have to remember the location of a repository as
+it is automatically discovered when you are working in a subdirectory.
 
 =head2 Scenario 1 - Standalone Project Management
 
@@ -412,7 +412,7 @@ change. However you will find that as soon as you re-synchronise with a
 hub that has those changes they will return to haunt you like the
 undead.
 
-=head2 Scenario 2 - External User Support
+=head2 Scenario 2 - Reporting Issues Upstream
 
 The above scenario only uses local operations.  However the real value
 of bif comes from its collaboration capabilities with others via the
@@ -699,17 +699,21 @@ working for some statements.
 
 =over
 
-=item F<.bif/config>
+=item F<$HOME/.bifu/db.sqlite3>
 
-Repository configuration file.
+User repository datatbase.
 
-=item F<.bif/db.sqlite3>
-
-Repository SQLite database.
-
-=item F<$HOME/.local/share/bif-user/config>
+=item F<$HOME/.bifu/config>
 
 User configuration file.
+
+=item F<$PWD/.bif/config>
+
+Curent repository configuration file.
+
+=item F<$PWD/.bif/db.sqlite3>
+
+Current repository database.
 
 =back
 

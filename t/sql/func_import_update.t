@@ -10,7 +10,7 @@ run_in_tempdir {
     my $db  = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
     my $xdb = Bif::DBW->connect('dbi:SQLite:dbname=xdb.sqlite3');
 
-    my $update;
+    my $change;
     my $project;
     my $project_status;
 
@@ -20,21 +20,21 @@ run_in_tempdir {
             $db->deploy;
             $xdb->deploy;
 
-            $update         = new_test_update($xdb);
+            $change         = new_test_change($xdb);
             $project        = new_test_project($xdb);
             $project_status = new_test_project_status( $xdb, $project );
 
             $xdb->xdo(
-                insert_into => 'func_update_project',
+                insert_into => 'func_change_project',
                 values      => {
-                    update_id => $update->{id},
+                    change_id => $change->{id},
                     id        => $project->{id},
                     status_id => $project_status->{id}
                 },
             );
 
             $xdb->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -48,16 +48,16 @@ run_in_tempdir {
             sub {
 
                 $db->xdo(
-                    insert_into => 'func_import_update',
+                    insert_into => 'func_import_change',
                     values      => $xdb->xhashref(
                         select => [
-                            'updates.uuid',  'updates.author',
-                            'updates.email', 'updates.lang',
-                            'updates.mtime', 'updates.mtimetz',
-                            'updates.message',
+                            'changes.uuid',  'changes.author',
+                            'changes.email', 'changes.lang',
+                            'changes.mtime', 'changes.mtimetz',
+                            'changes.message',
                         ],
-                        from  => 'updates',
-                        where => { id => $update->{id} },
+                        from  => 'changes',
+                        where => { id => $change->{id} },
                     ),
                 );
 
@@ -65,13 +65,13 @@ run_in_tempdir {
                     insert_into => 'func_import_project',
                     values      => $xdb->xhashref(
                         select => [
-                            'u.uuid AS update_uuid',
+                            'c.uuid AS change_uuid',
                             'project_deltas.name AS name',
                             'project_deltas.title AS title',
                         ],
                         from       => 'project_deltas',
-                        inner_join => 'updates u',
-                        on         => 'u.id = project_deltas.update_id',
+                        inner_join => 'changes c',
+                        on         => 'c.id = project_deltas.change_id',
                         where =>
                           { 'project_deltas.project_id' => $project->{id} },
                         order_by => 'project_deltas.id ASC',
@@ -83,14 +83,14 @@ run_in_tempdir {
                     insert_into => 'func_import_project_status',
                     values      => $xdb->xhashref(
                         select => [
-                            'u.uuid AS update_uuid',
+                            'c.uuid AS change_uuid',
                             'project_status_deltas.status AS status',
                             'project_status_deltas.rank AS rank',
                             'topics.uuid AS project_uuid',
                         ],
                         from       => 'project_status_deltas',
-                        inner_join => 'updates u',
-                        on         => 'u.id = project_status_deltas.update_id',
+                        inner_join => 'changes c',
+                        on         => 'c.id = project_status_deltas.change_id',
                         inner_join => 'project_status',
                         on         => {
                             'project_status.id' => \
@@ -109,13 +109,13 @@ run_in_tempdir {
                     insert_into => 'func_import_project_delta',
                     values      => $xdb->xhashref(
                         select => [
-                            'u.uuid AS update_uuid',
+                            'c.uuid AS change_uuid',
                             'projects.uuid AS project_uuid',
                             'status.uuid AS status_uuid',
                         ],
                         from       => 'project_deltas',
-                        inner_join => 'updates u',
-                        on         => 'u.id = project_deltas.update_id',
+                        inner_join => 'changes c',
+                        on         => 'c.id = project_deltas.change_id',
                         inner_join => 'topics AS projects',
                         on         => 'projects.id = project_deltas.project_id',
                         inner_join => 'topics AS status',
@@ -128,48 +128,48 @@ run_in_tempdir {
                 );
 
                 $db->xdo(
-                    insert_into => 'func_merge_updates',
+                    insert_into => 'func_merge_changes',
                     values      => { merge => 1 },
                 );
 
-                my $u1 = $xdb->xhashrefs(
+                my $c1 = $xdb->xhashrefs(
                     select => '*',
-                    from   => 'updates',
+                    from   => 'changes',
                 );
-                my $u2 = $db->xhashrefs(
+                my $c2 = $db->xhashrefs(
                     select => '*',
-                    from   => 'updates',
+                    from   => 'changes',
                 );
 
-                delete $_->{itime} for @$u1;
-                delete $_->{itime} for @$u2;
-                is_deeply $u1, $u2, 'updates match';
+                delete $_->{itime} for @$c1;
+                delete $_->{itime} for @$c2;
+                is_deeply $c1, $c2, 'changes match';
 
-                $u1 = $xdb->xhashrefs(
+                $c1 = $xdb->xhashrefs(
                     select => '*',
                     from   => 'projects',
                 );
-                $u2 = $db->xhashrefs(
+                $c2 = $db->xhashrefs(
                     select => '*',
                     from   => 'projects',
                 );
 
-                delete $_->{local} for @$u1;
-                delete $_->{local} for @$u2;
-                delete $_->{itime} for @$u1;
-                delete $_->{itime} for @$u2;
-                is_deeply $u1, $u2, 'projects match';
+                delete $_->{local} for @$c1;
+                delete $_->{local} for @$c2;
+                delete $_->{itime} for @$c1;
+                delete $_->{itime} for @$c2;
+                is_deeply $c1, $c2, 'projects match';
 
-                $u1 = $xdb->xhashrefs(
+                $c1 = $xdb->xhashrefs(
                     select => '*',
-                    from   => 'project_related_updates_merkle',
+                    from   => 'project_related_changes_merkle',
                 );
-                $u2 = $db->xhashrefs(
+                $c2 = $db->xhashrefs(
                     select => '*',
-                    from   => 'project_related_updates_merkle',
+                    from   => 'project_related_changes_merkle',
                 );
 
-                is_deeply $u1, $u2, 'project_related_updates_merkle match';
+                is_deeply $c1, $c2, 'project_related_changes_merkle match';
                 $res = 1;
             }
         );

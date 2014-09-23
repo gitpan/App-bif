@@ -1,6 +1,7 @@
 CREATE TABLE func_import_identity_delta(
-    update_uuid VARCHAR(40) NOT NULL,
-    identity_uuid VARCHAR(40) NOT NULL
+    change_uuid VARCHAR(40) NOT NULL,
+    identity_uuid VARCHAR(40) NOT NULL,
+    shortname VARCHAR
 );
 
 CREATE TRIGGER
@@ -11,24 +12,27 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
-        NEW.identity_uuid
+        NEW.change_uuid,
+        NEW.identity_uuid,
+        NEW.shortname
     );
 
     INSERT INTO
         identity_deltas(
-            update_id,
-            identity_id
+            change_id,
+            identity_id,
+            shortname
         )
     SELECT
-        u.id,
-        identities.id
+        c.id,
+        identities.id,
+        NEW.shortname
     FROM
         topics AS identities
     INNER JOIN
-        updates u
+        changes c
     ON
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     WHERE
         identities.uuid = NEW.identity_uuid
     ;

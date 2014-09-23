@@ -1,147 +1,40 @@
 package Bif::Role::Sync::Project;
 use strict;
 use warnings;
-use Coro;
-use DBIx::ThinSQL qw/qv/;
+use DBIx::ThinSQL qw/qv sq/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
-my %import_functions = (
-    NEW => {
-        topic                 => 'func_import_topic',
-        entity                => 'func_import_entity',
-        entity_contact_method => 'func_import_entity_contact_method',
-        identity              => 'func_import_identity',
-        issue                 => 'func_import_issue',
-        issue_status          => 'func_import_issue_status',
-        project               => 'func_import_project',
-        project_status        => 'func_import_project_status',
-        task                  => 'func_import_task',
-        task_status           => 'func_import_task_status',
-        update                => 'func_import_update',
-    },
-    UPDATE => {
-        entity                => 'func_import_entity_delta',
-        entity_contact_method => 'func_import_entity_contact_method_delta',
-        identity              => 'func_import_identity_delta',
-        issue                 => 'func_import_issue_delta',
-        issue_status          => 'func_import_issue_status_delta',
-        project               => 'func_import_project_delta',
-        project_status        => 'func_import_project_status_delta',
-        task                  => 'func_import_task_delta',
-        task_status           => 'func_import_task_status_delta',
-        update                => 'func_import_update_delta',
-    },
-    QUIT   => {},
-    CANCEL => {},
-);
-
-sub recv_project_deltas {
-    my $self = shift;
-    my $db   = $self->db;
-
-    my ( $action, $total ) = $self->read;
-    $total //= '*undef*';
-
-    if ( $action ne 'TOTAL' or $total !~ m/^\d+$/ ) {
-        return "expected TOTAL <int> (not $action $total)";
-    }
-
-    my $ucount;
-    my $i   = $total;
-    my $got = 0;
-
-    $self->updates_torecv( $self->updates_torecv + $total );
-    $self->trigger_on_update;
-
-    while ( $got < $total ) {
-        my ( $action, $type, $ref ) = $self->read;
-
-        if ( !exists $import_functions{$action} ) {
-            return "not implemented: $action";
-        }
-
-        if ( !exists $import_functions{$action}->{$type} ) {
-            return "not implemented: $action $type";
-        }
-
-        my $func = $import_functions{$action}->{$type};
-
-        my $id;
-        if ( $action eq 'NEW' and $type eq 'update' ) {
-            $ucount = delete $ref->{ucount};
-
-            $id = $db->xval(
-                select => 'u.id',
-                from   => 'updates u',
-                where  => { 'u.uuid' => $ref->{uuid} },
-            );
-        }
-
-        $got++;
-        $ucount--;
-        $self->updates_recv( $self->updates_recv + 1 );
-
-        # If we already have this update then skip the rest of the
-        # deltas
-        if ($id) {
-            while ($ucount) {
-                $self->read;
-                $got++;
-                $ucount--;
-                $self->updates_recv( $self->updates_recv + 1 );
-            }
-        }
-        else {
-
-            # This should be a savepoint?
-            my $res = $db->xdo(
-                insert_into => $func,
-                values      => $ref,
-            );
-
-            if ( 0 == $ucount ) {
-                $db->xdo(
-                    insert_into => 'func_merge_updates',
-                    values      => { merge => 1 },
-                );
-            }
-        }
-
-        $self->trigger_on_update;
-    }
-
-    return $total;
-}
+my $project_functions = {
+    entity_contact_method_delta => 'func_import_entity_contact_method_delta',
+    entity_contact_method       => 'func_import_entity_contact_method',
+    entity_delta                => 'func_import_entity_delta',
+    entity                      => 'func_import_entity',
+    identity_delta              => 'func_import_identity_delta',
+    identity                    => 'func_import_identity',
+    issue_delta                 => 'func_import_issue_delta',
+    issue                       => 'func_import_issue',
+    issue_status_delta          => 'func_import_issue_status_delta',
+    issue_status                => 'func_import_issue_status',
+    project_delta               => 'func_import_project_delta',
+    project                     => 'func_import_project',
+    project_status_delta        => 'func_import_project_status_delta',
+    project_status              => 'func_import_project_status',
+    task_delta                  => 'func_import_task_delta',
+    task                        => 'func_import_task',
+    task_status_delta           => 'func_import_task_status_delta',
+    task_status                 => 'func_import_task_status',
+    topic                       => 'func_import_topic',
+    change_delta                => 'func_import_change_delta',
+    change                      => 'func_import_change',
+};
 
 sub real_import_project {
-    my $self = shift;
-    my $uuid = shift;
-
-    my $result = $self->recv_project_deltas;
-
-    if ( $result =~ m/^\d+$/ ) {
-        my $id = $self->db->xval(
-            select => 't.id',
-            from   => 'topics t',
-            where  => {
-                't.uuid' => $uuid,
-            },
-        );
-
-        $self->db->xdo(
-            update => 'projects',
-            set    => 'local = 1',
-            where  => { id => $id },
-        );
-
-        $self->write( 'Recv', $result );
-        return 'ProjectImported';
-    }
-
-    $self->write( 'ProtocolError', $result );
+    my $self   = shift;
+    my $result = $self->recv_changesets($project_functions);
+    return 'ProjectImported' if $result eq 'RecvChangesets';
     return $result;
 }
 
@@ -162,7 +55,7 @@ sub real_sync_project {
 
     my @refs = $db->xarrayrefs(
         select => [qw/pm.prefix pm.hash/],
-        from   => 'project_related_updates_merkle pm',
+        from   => 'project_related_changes_merkle pm',
         where  => [
             'pm.project_id = ',     qv($id),
             ' AND pm.hub_id = ',    qv($hub_id),
@@ -195,16 +88,16 @@ sub real_sync_project {
         my @where;
         foreach my $miss (@missing) {
             push( @where, ' OR ' ) if @where;
-            push( @where, "u.uuid LIKE ", qv( $miss . '%' ) ),;
+            push( @where, "c.uuid LIKE ", qv( $miss . '%' ) ),;
         }
 
         $self->db->xdo(
             insert_into => "$tmp(id,ucount)",
-            select      => [ 'u.id', 'u.ucount' ],
-            from        => 'updates u',
-            inner_join  => 'project_related_updates pru',
+            select      => [ 'c.id', 'c.ucount' ],
+            from        => 'changes c',
+            inner_join  => 'project_related_changes pru',
             on          => {
-                'pru.update_id'           => \'u.id',
+                'pru.change_id'           => \'c.id',
                 'pru.project_id'          => $id,
                 'NOT pru.real_project_id' => \@ids,
             },
@@ -228,61 +121,30 @@ sub real_sync_project {
     return 'ProjectSync';
 }
 
-sub real_transfer_project_related_updates {
+sub real_transfer_project_related_changes {
     my $self = shift;
-    my $tmp  = $self->temp_table;
 
-    my $send = async {
-        my $total = $self->db->xval(
-            select => 'COALESCE(sum(t.ucount), 0)',
-            from   => "$tmp t",
-        );
+    my $tmp   = $self->temp_table;
+    my $total = $self->db->xval(
+        select => 'COUNT(t.id)',
+        from   => "$tmp t",
+    );
 
-        $self->updates_tosend( $self->updates_tosend + $total );
-        $self->write( 'TOTAL', $total );
+    my $r = $self->exchange_changesets(
+        $total,
+        [
+            with => 'src',
+            as   => sq(
+                select   => 't.id AS id',
+                from     => "$tmp t",
+                order_by => 't.id ASC',
+            ),
+        ],
+        $project_functions,
+    );
 
-        my $update_list = $self->db->xprepare(
-            select => [
-                'u.id',                  'u.uuid',
-                'p.uuid AS parent_uuid', 't.uuid AS identity_uuid',
-                'u.mtime',               'u.mtimetz',
-                'u.author',              'u.email',
-                'u.lang',                'u.message',
-                'u.action',              'u.ucount',
-            ],
-            from       => "$tmp tmp",
-            inner_join => 'updates u',
-            on         => 'u.id = tmp.id',
-            left_join  => 'topics t',
-
-            # Don't fetch the identity_uuid for the first identity
-            # update
-            on        => 't.id = u.identity_id AND t.first_update_id != u.id',
-            left_join => 'updates p',
-            on        => 'p.id = u.parent_id',
-            order_by  => 'u.id ASC',
-        );
-
-        $update_list->execute;
-        return $self->send_updates( $update_list, $total );
-    };
-
-    my $r1 = $self->recv_project_deltas;
-    my $r2 = $send->join;
-
-    $self->db->xdo( delete_from => $tmp );
-
-    if ( $r1 =~ m/^\d+$/ ) {
-        $self->write( 'Recv', $r1 );
-        my ( $recv, $count ) = $self->read;
-        return 'TransferProjectRelatedUpdates'
-          if $recv eq 'Recv' and $count == $r2;
-        $log->debug("MEH: $count $r2");
-        return $recv;
-    }
-
-    $self->write( 'ProtocolError', $r1 );
-    return $r1;
+    return $r unless $r eq 'ExchangeChangesets';
+    return 'TransferProjectRelatedChanges';
 }
 
 sub real_export_project {
@@ -290,44 +152,25 @@ sub real_export_project {
     my $id   = shift;
 
     my $total = $self->db->xval(
-        select     => 'sum(u.ucount)',
-        from       => 'project_related_updates pru',
-        inner_join => 'updates u',
-        on         => 'u.id = pru.update_id',
-        where      => { 'pru.project_id' => $id },
+        select => 'COUNT(oru.change_id)',
+        from   => 'project_related_changes pru',
+        where  => { 'pru.project_id' => $id },
     );
 
-    $self->updates_tosend( $self->updates_tosend + $total );
-    $self->write( 'TOTAL', $total );
-
-    my $sth = $self->db->xprepare(
-        select => [
-            'updates.id',                  'updates.uuid',
-            'parents.uuid AS parent_uuid', 't.uuid AS identity_uuid',
-            'updates.mtime',               'updates.mtimetz',
-            'updates.author',              'updates.email',
-            'updates.lang',                'updates.message',
-            'updates.action',              'updates.ucount',
-        ],
-        from       => 'project_related_updates AS pru',
-        inner_join => 'updates',
-        on         => 'updates.id = pru.update_id',
-        left_join  => 'topics t',
-
-        # Don't fetch the identity_uuid for the first identity
-        # update
-        on        => 't.id = u.identity_id AND t.first_update_id != u.id',
-        left_join => 'updates AS parents',
-        on        => 'parents.id = updates.parent_id',
-        where     => { 'pru.project_id' => $id },
-        order_by  => 'updates.id ASC',
+    my $recv = $self->send_changesets(
+        $total,
+        [
+            with => 'src',
+            as   => sq(
+                select   => 'pru.change_id AS id',
+                from     => 'project_related_changes pru',
+                where    => { 'pru.project_id' => $id },
+                order_by => 'pru.change_id ASC',
+            ),
+        ]
     );
 
-    $sth->execute;
-    $self->send_updates( $sth, $total );
-
-    my ( $recv, $count ) = $self->read;
-    return 'ProjectExported' if $recv eq 'Recv' and $count == $total;
+    return 'ProjectExported' if $recv eq 'ChangesetsSent';
     return $recv;
 }
 

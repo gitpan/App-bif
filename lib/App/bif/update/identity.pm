@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -15,37 +15,38 @@ sub run {
 
     if ( $self->{reply} ) {
         my $uinfo =
-          $self->get_update( $self->{reply}, $info->{first_update_id} );
+          $self->get_change( $self->{reply}, $info->{first_change_id} );
         $self->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_update_id};
+        $self->{parent_uid} = $info->{first_change_id};
     }
 
     $self->{message} ||= $self->prompt_edit( opts => $self );
 
     $db->txn(
         sub {
-            my $uid = $self->new_update(
+            my $uid = $self->new_change(
                 message   => $self->{message},
                 parent_id => $self->{parent_uid},
             );
 
             $db->xdo(
 
-                # TODO This shuld be update_entity
-                insert_into => 'func_update_identity',
+                # TODO This shuld be change_entity
+                insert_into => 'func_change_identity',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $info->{id},
                     name      => $self->{name},
+                    shortname => $self->{shortname},
                 },
             );
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $uid,
+                    change_id         => $uid,
                     new               => 1,
                     action_format     => "update identity %s",
                     action_topic_id_1 => $info->{id},
@@ -53,15 +54,15 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            print "Identity updated: $self->{id}.$uid\n";
+            print "Identity changed: $self->{id}.$uid\n";
         }
     );
 
-    return $self->ok('UpdateIdentity');
+    return $self->ok('ChangeIdentity');
 }
 
 1;
@@ -73,7 +74,7 @@ bif-update-identity - update or comment an identity
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -98,7 +99,11 @@ The new name for the identity.
 
 =item --message, -m
 
-The message describing this update in detail.
+The message describing this change in detail.
+
+=item --shortname, -s
+
+The shortname (initials) to be shown in some outputs
 
 =back
 

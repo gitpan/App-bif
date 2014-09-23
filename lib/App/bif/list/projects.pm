@@ -3,10 +3,10 @@ use strict;
 use warnings;
 use utf8;
 use parent 'App::bif::Context';
-use DBIx::ThinSQL qw/ qv sq case concat /;
+use DBIx::ThinSQL qw/ qv sq case coalesce concat /;
 use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub _invalid_status {
     my $self   = shift;
@@ -91,7 +91,7 @@ sub run {
         my $row = $data->[$i];
         if ( !$row->[7] ) {
             $row->[4] = $row->[5] = $row->[6] = '*';
-            $row->[4] = $dark . $row->[4];
+            $row->[4] = $row->[4];
             $row->[6] = '*' . $reset;
         }
         else {
@@ -124,16 +124,10 @@ sub run {
 sub _get_data {
     my $self = shift;
 
-    my $dark  = Term::ANSIColor::color('dark');
-    my $reset = Term::ANSIColor::color('reset');
     return $self->db->xarrayrefs(
         select => [
             qv( color('dark') . 'project' . color('reset') )->as('type'),
-            'p.path || COALESCE("'
-              . $dark
-              . '@" || h.name ||"'
-              . $reset
-              . '", "")',
+            'p.path || COALESCE("@" || h.name, "")',
             'p.title',
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
@@ -255,17 +249,34 @@ sub _get_data {
 sub _get_data2 {
     my $self = shift;
 
-    my $dark  = Term::ANSIColor::color('dark');
     my $reset = Term::ANSIColor::color('reset');
+    my $bold  = Term::ANSIColor::color('bold');
     return $self->db->xarrayrefs(
+        with => 'b',
+        as   => sq(
+            select => [ 'b.change_id AS start', 'b.change_id2 AS stop' ],
+            from   => 'bifkv b',
+            where => { 'b.key' => 'last_sync' },
+        ),
         select => [
-            qv( color('dark') . 'project' . color('reset') )->as('type'),
-            'p.path || COALESCE("'
-              . $dark
-              . '@" || h.name ||"'
-              . $reset
-              . '", "")',
-            'p.title',
+            qv('project')->as('type'),
+            concat(
+                case (
+                    when => 'b.start',
+                    then => qv($bold),
+                    else => qv(''),
+                ),
+                'p.path',
+                coalesce( concat( qv('@'), 'h.name' ), qv('') )
+              )->as('path'),
+            concat(
+                case (
+                    when => 'b.start',
+                    then => qv($bold),
+                    else => qv(''),
+                ),
+                'p.title'
+              )->as('title'),
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
             'sum( coalesce( total.stalled, 0 ) )',
@@ -273,6 +284,10 @@ sub _get_data2 {
             'p.local',
         ],
         from       => 'projects p',
+        inner_join => 'topics t',
+        on         => 't.id = p.id',
+        left_join  => 'b',
+        on         => 't.last_change_id BETWEEN b.start AND b.stop',
         left_join  => 'hubs h',
         on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
@@ -378,7 +393,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

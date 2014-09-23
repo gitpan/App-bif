@@ -16,7 +16,7 @@ run_in_tempdir {
     my $db = Bif::DBW->connect('dbi:SQLite:dbname=.bif/db.sqlite3');
 
     my $id        = $db->nextval('topics');
-    my $update_id = $db->nextval('updates');
+    my $change_id = $db->nextval('changes');
     my $mtime     = time;
     my $mtimetz   = int( Time::Piece->new->tzoffset );
 
@@ -37,7 +37,7 @@ run_in_tempdir {
         insert_into => 'func_new_topic',
         values      => {
             id          => $id,
-            update_id   => $update_id,
+            change_id   => $change_id,
             mtime       => $mtime,
             mtimetz     => $mtimetz,
             kind        => 'test',
@@ -60,9 +60,9 @@ run_in_tempdir {
         undef, $id ),
       [$uuid], 'sha match';
 
-    is_deeply $db->selectrow_arrayref( 'select uuid from updates where id=?',
-        undef, $update_id ),
-      [$uuid], 'update sha match';
+    is_deeply $db->selectrow_arrayref( 'select uuid from changes where id=?',
+        undef, $change_id ),
+      [$uuid], 'change sha match';
 
     is_deeply $db->selectrow_arrayref(
         'select mtime,mtimetz,title from topics where id=?',
@@ -70,9 +70,9 @@ run_in_tempdir {
       [ $mtime, $mtimetz, 'title' ], 'topic';
 
     is_deeply $db->selectrow_arrayref(
-        'select mtime,mtimetz,author from updates where id=?',
-        undef, $update_id ),
-      [ $mtime, $mtimetz, 'x' ], 'topic update';
+        'select mtime,mtimetz,author from changes where id=?',
+        undef, $change_id ),
+      [ $mtime, $mtimetz, 'x' ], 'topic change';
 
     like exception {
         $db->xdo(
@@ -91,14 +91,14 @@ run_in_tempdir {
         );
     }, qr/uuid is not unique/, 'duplicate uuid fail';
 
-    my $parent_update_id = $update_id;
-    $update_id = $db->nextval('updates');
+    my $parent_change_id = $change_id;
+    $change_id = $db->nextval('changes');
 
     ok $db->xdo(
-        insert_into => 'func_update_topic',
+        insert_into => 'func_change_topic',
         values      => {
             id          => $id,
-            update_id   => $update_id,
+            change_id   => $change_id,
             author      => 'x',
             email       => 'x',
             mtime       => $mtime + 1,
@@ -109,43 +109,43 @@ run_in_tempdir {
             hash_extras => 'morestuff',
         },
       ),
-      'update topic';
+      'change topic';
 
-    my $update_uuid = sha1_hex(
+    my $change_uuid = sha1_hex(
         $uuid,       $uuid, $mtime + 1, $mtimetz + 1,
         'x',         'x',   'en',       'title2',
         'a message', 'morestuff'
     );
 
     is_deeply $db->selectrow_arrayref(
-        'select uuid,parent_id from updates where id=?',
-        undef, $update_id ),
-      [ $update_uuid, $parent_update_id ], 'update sha and parent_id match';
+        'select uuid,parent_id from changes where id=?',
+        undef, $change_id ),
+      [ $change_uuid, $parent_change_id ], 'change sha and parent_id match';
 
-    $db->selectrow_arrayref(q{select debug('select * from updates')});
+    $db->selectrow_arrayref(q{select debug('select * from changes')});
 
     is_deeply $db->selectrow_arrayref(
         'select mtime,mtimetz,title from topics where id=?',
         undef, $id ),
       [ $mtime + 1, $mtimetz + 1, 'title2' ],
-      'updated title';
+      'changed title';
 
     is_deeply $db->selectrow_arrayref(
-        'select count(id) from updates
+        'select count(id) from changes
         where topic_id=?',
         undef,
         $id
       ),
-      [2], '2 updates';
+      [2], '2 changes';
 
-    my $new_update_id = $db->nextval('updates');
+    my $new_change_id = $db->nextval('changes');
 
     ok $db->xdo(
-        insert_into => 'func_update_topic',
+        insert_into => 'func_change_topic',
         values      => {
             id               => $id,
-            update_id        => $new_update_id,
-            parent_update_id => $update_id,
+            change_id        => $new_change_id,
+            parent_change_id => $change_id,
             author           => 'x',
             email            => 'x',
             mtime            => $mtime + 2,
@@ -155,24 +155,24 @@ run_in_tempdir {
             message          => 'a message',
         },
       ),
-      'update topic';
+      'change topic';
 
     my $sha1_hex = sha1_hex(
-        $uuid, $update_uuid, $mtime + 2, $mtimetz + 2,
+        $uuid, $change_uuid, $mtime + 2, $mtimetz + 2,
         'x',   'x',          'en',       'title2',
         'a message',
     );
 
-    is_deeply $db->selectrow_arrayref( 'select uuid from updates where id=?',
-        undef, $new_update_id ),
-      [$sha1_hex], 'update sha match with parent_uuid';
+    is_deeply $db->selectrow_arrayref( 'select uuid from changes where id=?',
+        undef, $new_change_id ),
+      [$sha1_hex], 'change sha match with parent_uuid';
 
-    $update_id = $db->nextval('updates');
+    $change_id = $db->nextval('changes');
     ok $db->xdo(
-        insert_into => 'func_update_topic',
+        insert_into => 'func_change_topic',
         values      => {
             id        => $id,
-            update_id => $update_id,
+            change_id => $change_id,
             author    => 'x',
             email     => 'x',
             mtime     => $mtime + 1,
@@ -181,20 +181,20 @@ run_in_tempdir {
             title     => 'earlier title',
         },
       ),
-      'update topic earlier';
+      'change topic earlier';
 
     is_deeply $db->selectrow_arrayref(
         'select
             topics.title,
             topics.mtime,
-            updates.title
-        from updates
+            changes.title
+        from changes
         inner join topics
-        on topics.id = updates.topic_id
-        where updates.id=?',
-        undef, $update_id
+        on topics.id = changes.topic_id
+        where changes.id=?',
+        undef, $change_id
       ),
-      [ 'title2', $mtime + 2, 'earlier title' ], 'out of order update ok';
+      [ 'title2', $mtime + 2, 'earlier title' ], 'out of order change ok';
 
     ok $db->xdo(
         insert_into => 'func_new_topic',

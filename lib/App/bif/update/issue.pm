@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -25,11 +25,11 @@ sub run {
 
     if ( $self->{reply} ) {
         my $uinfo =
-          $self->get_update( $self->{reply}, $info->{first_update_id} );
+          $self->get_change( $self->{reply}, $info->{first_change_id} );
         $self->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_update_id};
+        $self->{parent_uid} = $info->{first_change_id};
     }
 
     $self->{message} ||= $self->prompt_edit( opts => $self );
@@ -42,16 +42,16 @@ sub run {
                 where  => { 'p.id' => $info->{project_id} },
             );
 
-            $self->{update_id} = $self->new_update(
+            $self->{change_id} = $self->new_change(
                 message   => $self->{message},
                 parent_id => $self->{parent_uid},
             );
 
             $db->xdo(
-                insert_into => 'func_update_issue',
+                insert_into => 'func_change_issue',
                 values      => {
                     id         => $info->{id},
-                    update_id  => $self->{update_id},
+                    change_id  => $self->{change_id},
                     project_id => $info->{project_id},
                     $self->{title} ? ( title     => $self->{title} )   : (),
                     @$status_ids   ? ( status_id => $status_ids->[0] ) : (),
@@ -59,9 +59,9 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $self->{update_id},
+                    change_id         => $self->{change_id},
                     new               => 1,
                     action_format     => "update issue %s",
                     action_topic_id_1 => $info->{id},
@@ -69,20 +69,20 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
         }
     );
 
-    print "Issue updated: $info->{project_issue_id}.$self->{update_id}\n";
+    print "Issue changed: $info->{project_issue_id}.$self->{change_id}\n";
 
     # For testing
     $self->{id}               = $info->{id};
-    $self->{parent_update_id} = $info->{update_id};
+    $self->{parent_change_id} = $info->{change_id};
     $self->{status}           = $status_ids;
-    return $self->ok('UpdateIssue');
+    return $self->ok('ChangeIssue');
 }
 
 1;
@@ -94,7 +94,7 @@ bif-update-issue - update an issue
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

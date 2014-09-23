@@ -3,18 +3,18 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 1;
 __END__
 
 =head1 NAME
 
-bif-drop - delete a topic or topic update
+bif-drop - delete a topic or topic change
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -22,7 +22,7 @@ bif-drop - delete a topic or topic update
 
 =head1 DESCRIPTION
 
-Delete a topic or an update from the database. This really only makes
+Delete a topic or an change from the database. This really only makes
 sense if what you wish to drop does not exist on a hub somewhere,
 otherwise the next time you sync it would come back from the dead to
 haunt you.
@@ -41,13 +41,13 @@ C<--help> (C<-h>) is given.
 
 =item ITEM
 
-A topic type such as issue, task, update, etc.
+A topic type such as issue, task, change, etc.
 
 =back
 
 =item ID
 
-Either a topic ID, an update uID, or a project PATH. Required.
+Either a topic ID, an change cID, or a project PATH. Required.
 
 =back
 
@@ -64,7 +64,7 @@ stop you shooting yourself in the foot.
 
 =head1 SEE ALSO
 
-L<bif-drop-issue>(1), L<bif-drop-project>(1), L<bif-drop-task>(1), L<bif-drop-update>(1), L<bif>(1)
+L<bif-drop-issue>(1), L<bif-drop-project>(1), L<bif-drop-task>(1), L<bif-drop-change>(1), L<bif>(1)
 
 =head1 AUTHOR
 

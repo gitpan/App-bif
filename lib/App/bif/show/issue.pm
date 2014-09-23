@@ -4,7 +4,7 @@ use warnings;
 use parent 'App::bif::show';
 use DBIx::ThinSQL qw/qv case concat/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self   = __PACKAGE__->new(shift);
@@ -47,8 +47,8 @@ sub run {
                 )
               )->as('path'),
             'ist.status',
-            'u.mtime AS mtime',
-            'u.mtimetz AS mtimetz',
+            'c.mtime AS mtime',
+            'c.mtimetz AS mtimetz',
         ],
         from       => 'project_issues pi',
         inner_join => 'projects p',
@@ -57,8 +57,8 @@ sub run {
         on         => 'h.id = p.hub_id',
         inner_join => 'issue_status ist',
         on         => 'ist.id = pi.status_id',
-        inner_join => 'updates u',
-        on         => 'u.id = pi.update_id',
+        inner_join => 'changes c',
+        on         => 'c.id = pi.change_id',
         where      => { 'pi.issue_id' => $info->{id} },
         order_by   => 'path',
     );
@@ -87,7 +87,7 @@ sub run {
 
     $self->start_pager;
     print $self->render_table( 'l  l', $self->header( 'Issue', $ref->{title} ),
-        \@data );
+        \@data, 1 );
     $self->end_pager;
 
     $self->ok( 'ShowIssue', \@data );
@@ -102,7 +102,7 @@ bif-show-issue - display an issue's current status
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

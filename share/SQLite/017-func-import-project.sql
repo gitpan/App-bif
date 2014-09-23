@@ -1,5 +1,5 @@
 CREATE TABLE func_import_project(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     topic_uuid VARCHAR(40) NOT NULL,
     parent_uuid VARCHAR(40),
     name VARCHAR(40) NOT NULL,
@@ -15,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.topic_uuid,
         NEW.parent_uuid,
         NEW.name,
@@ -24,20 +24,20 @@ BEGIN
 
     INSERT INTO
         func_new_project(
-            update_id,
+            change_id,
             id,
             parent_id,
             name,
             title
         )
     SELECT
-        u.id,
+        c.id,
         t.id,
         p.id,
         NEW.name,
         NEW.title
     FROM
-        updates u
+        changes c
     INNER JOIN
         topics t
     ON
@@ -47,7 +47,7 @@ BEGIN
     ON
         p.uuid = NEW.parent_uuid
     WHERE
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     ;
 
     SELECT RAISE(IGNORE);

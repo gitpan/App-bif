@@ -1,5 +1,5 @@
 CREATE TABLE func_import_hub_repo(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     topic_uuid VARCHAR(40) NOT NULL,
     hub_uuid VARCHAR(40) NOT NULL,
     location VARCHAR NOT NULL
@@ -14,7 +14,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.topic_uuid,
         NEW.hub_uuid,
         NEW.location
@@ -22,18 +22,18 @@ BEGIN
 
     INSERT INTO
         func_new_hub_repo(
-            update_id,
+            change_id,
             id,
             hub_id,
             location
         )
     SELECT
-        u.id,
+        c.id,
         t.id,
         h.id,
         NEW.location
     FROM
-        updates u
+        changes c
     INNER JOIN
         topics t
     ON
@@ -43,7 +43,7 @@ BEGIN
     ON
         h.uuid = NEW.hub_uuid
     WHERE
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     ;
 
     SELECT RAISE(IGNORE);

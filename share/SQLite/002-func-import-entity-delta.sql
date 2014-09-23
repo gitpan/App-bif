@@ -1,5 +1,5 @@
 CREATE TABLE func_import_entity_delta(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     entity_uuid VARCHAR(40) NOT NULL,
     name VARCHAR,
     contact_uuid VARCHAR(40),
@@ -14,7 +14,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.entity_uuid,
         NEW.name,
         NEW.contact_uuid,
@@ -23,29 +23,29 @@ BEGIN
 
     INSERT INTO
         entity_deltas(
-            update_id,
+            change_id,
             entity_id,
             name,
             contact_id,
             default_contact_method_id
         )
     SELECT
-        u.id,
+        c.id,
         e.id,
         NEW.name,
-        c.id,
+        ct.id,
         dcm.id
         
     FROM
         topics e
     INNER JOIN
-        updates u
+        changes c
     ON
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     LEFT JOIN
-        topics c
+        topics ct
     ON
-        c.uuid = NEW.contact_uuid
+        ct.uuid = NEW.contact_uuid
     LEFT JOIN
         topics dcm
     ON

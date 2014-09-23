@@ -1,5 +1,5 @@
 CREATE TABLE func_import_hub_repo_delta(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     hub_uuid VARCHAR(40) NOT NULL,
     hub_repo_uuid VARCHAR(40) NOT NULL,
     location VARCHAR
@@ -14,7 +14,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.hub_uuid,
         NEW.hub_repo_uuid,
         NEW.location
@@ -22,23 +22,23 @@ BEGIN
 
     -- TODO: hah - doesn't exist yet and obviously never tested!
     INSERT INTO
-        func_update_hub_repo(
-            update_id,
+        func_change_hub_repo(
+            change_id,
             hub_id,
             hub_repo_id,
             location
         )
     SELECT
-        u.uuid,
+        c.uuid,
         hub.id,
         hub_repo.id,
         NEW.location
     FROM
         topics AS hub_repo
     INNER JOIN
-        updates u
+        changes c
     ON
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     LEFT JOIN
         topics hub
     ON

@@ -1,5 +1,5 @@
 CREATE TABLE func_import_hub_delta(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     hub_uuid VARCHAR(40) NOT NULL,
     name VARCHAR(128),
     project_uuid VARCHAR(40)
@@ -13,7 +13,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.hub_uuid,
         NEW.name,
         NEW.project_uuid
@@ -21,22 +21,22 @@ BEGIN
 
     INSERT INTO
         hub_deltas(
-            update_id,
+            change_id,
             hub_id,
             name,
             project_id
         )
     SELECT
-        u.id,
+        c.id,
         hubs.id,
         NEW.name,
         p.id
     FROM
         topics AS hubs
     INNER JOIN
-        updates u
+        changes c
     ON
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     LEFT JOIN
         topics p
     ON

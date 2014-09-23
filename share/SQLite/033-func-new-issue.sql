@@ -1,5 +1,5 @@
 CREATE TABLE func_new_issue(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     topic_id INTEGER NOT NULL,
     status_id INTEGER NOT NULL,
@@ -19,7 +19,7 @@ BEGIN
         NEW.topic_id,
         NEW.status_id,
         NEW.title,
-        NEW.update_id
+        NEW.change_id
     );
 
     INSERT INTO issues(
@@ -31,7 +31,7 @@ BEGIN
 
     INSERT INTO
         issue_deltas(
-            update_id,
+            change_id,
             new,
             issue_id,
             project_id,
@@ -39,7 +39,7 @@ BEGIN
             title
         )
     SELECT
-        NEW.update_id,
+        NEW.change_id,
         1,
         NEW.topic_id,
         issue_status.project_id,
@@ -52,7 +52,7 @@ BEGIN
     ;
 
     /*
-        This row would be inserted/updated by triggers on
+        This row would be inserted/changed by triggers on
         issues_tomerge[_status] anyway, but we do it here because the
         callers want to be able to define and know the project_issue_id
         in advance.
@@ -63,14 +63,14 @@ BEGIN
             issue_id,
             project_id,
             status_id,
-            update_id
+            change_id
         )
     SELECT
         NEW.id,
         NEW.topic_id,
         issue_status.project_id,
         NEW.status_id,
-        NEW.update_id
+        NEW.change_id
     FROM
         issue_status
     WHERE

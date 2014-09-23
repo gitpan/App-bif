@@ -1,5 +1,5 @@
 CREATE TABLE func_import_topic(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     kind VARCHAR NOT NULL
 );
 
@@ -11,22 +11,22 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.kind
     );
 
     INSERT INTO
         func_new_topic(
-            update_id,
+            change_id,
             kind
         )
     SELECT
-        u.id,
+        c.id,
         NEW.kind
     FROM
-        updates u
+        changes c
     WHERE
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     ;
 
     SELECT RAISE(IGNORE);

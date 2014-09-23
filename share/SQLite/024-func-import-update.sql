@@ -1,4 +1,4 @@
-CREATE TABLE func_import_update(
+CREATE TABLE func_import_change(
     uuid char(40) NOT NULL,
     parent_uuid VARCHAR(40),
     identity_uuid VARCHAR(40),
@@ -13,9 +13,9 @@ CREATE TABLE func_import_update(
 
 
 CREATE TRIGGER
-    func_import_update_bi_1
+    func_import_change_bi_1
 BEFORE INSERT ON
-    func_import_update
+    func_import_change
 FOR EACH ROW
 BEGIN
 
@@ -32,7 +32,7 @@ BEGIN
     );
 
     INSERT INTO
-        updates(
+        changes(
             id,
             uuid,
             parent_id,
@@ -46,9 +46,9 @@ BEGIN
             action
         )
     SELECT
-        nextval('updates'),
+        nextval('changes'),
         NEW.uuid,
-        updates.id,
+        changes.id,
         COALESCE(t.id,-1),
         NEW.author,
         NEW.email,
@@ -60,7 +60,7 @@ BEGIN
     FROM
 
         /*
-            If was is the first update in a repo then there is no
+            If was is the first change in a repo then there is no
             identity yet matching identity_uuid, and parent_uuid may be
             NULL, so we (SELECT 1) to ensure that the query generates
             a row regardless.
@@ -68,9 +68,9 @@ BEGIN
 
         (SELECT 1)
     LEFT JOIN
-        updates
+        changes
     ON
-        updates.uuid = NEW.parent_uuid
+        changes.uuid = NEW.parent_uuid
     LEFT JOIN
         topics t
     ON

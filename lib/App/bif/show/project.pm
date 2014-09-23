@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::show';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -20,8 +20,8 @@ sub run {
             'projects.path',         'projects.title',
             'topics.ctime',          'topics.ctimetz',
             'topics.mtime',          'topics.mtimetz',
-            'updates.author',        'updates.email',
-            'updates.message',       'project_status.status',
+            'changes.author',        'changes.email',
+            'changes.message',       'project_status.status',
             'project_status.status', 'projects.local',
             'h.name AS hub',         't2.uuid AS hub_uuid',
             'hr.location',
@@ -29,8 +29,8 @@ sub run {
         from       => 'projects',
         inner_join => 'topics',
         on         => 'topics.id = projects.id',
-        inner_join => 'updates',
-        on         => 'updates.id = topics.first_update_id',
+        inner_join => 'changes',
+        on         => 'changes.id = topics.first_change_id',
         inner_join => 'project_status',
         on         => 'project_status.id = projects.status_id',
         left_join  => 'hubs h',
@@ -146,7 +146,8 @@ sub run {
     }
     $self->start_pager;
     print $self->render_table( 'l  l',
-        $self->header( 'Project', $ref->{title} ), \@data );
+        $self->header( 'Project', $ref->{title} ),
+        \@data, 1 );
     $self->end_pager;
 
     return $self->ok( 'ShowProject', \@data );
@@ -161,7 +162,7 @@ bif-show-project - display a project's current status
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

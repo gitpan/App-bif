@@ -1,5 +1,5 @@
 CREATE TABLE func_import_task_delta(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     task_uuid VARCHAR(40),
     task_status_uuid VARCHAR(40),
     title VARCHAR(1024)
@@ -14,30 +14,30 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.task_uuid,
         NEW.task_status_uuid,
         NEW.title
     );
 
     INSERT INTO
-        func_update_task(
-            update_id,
+        func_change_task(
+            change_id,
             id,
             status_id,
             title
         )
     SELECT
-        u.id,
+        c.id,
         tasks.id,
         task_status.id,
         NEW.title
     FROM
         (SELECT 1)
     INNER JOIN
-        updates u
+        changes c
     ON
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     LEFT JOIN
         topics AS tasks
     ON

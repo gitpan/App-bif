@@ -4,7 +4,7 @@ use warnings;
 use parent 'App::bif::Context';
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -13,18 +13,18 @@ sub run {
     $self->{name} ||= prompt( 'Name:', '' )
       || return $self->err( 'NameRequired', 'name is required' );
 
-    $self->{message} ||= '';
+    $self->{message} ||= "New hub $self->{name}";
 
     $db->txn(
         sub {
-            my $uid = $self->new_update( message => $self->{message}, );
+            my $uid = $self->new_change( message => $self->{message}, );
             my $id = $db->nextval('topics');
 
             $db->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     id        => $id,
-                    update_id => $uid,
+                    change_id => $uid,
                     kind      => 'hub',
                 },
             );
@@ -33,7 +33,7 @@ sub run {
                 insert_into => 'func_new_hub',
                 values      => {
                     id        => $id,
-                    update_id => $uid,
+                    change_id => $uid,
                     name      => $self->{name},
                 },
             );
@@ -44,7 +44,7 @@ sub run {
                     insert_into => 'func_new_topic',
                     values      => {
                         id        => $rid,
-                        update_id => $uid,
+                        change_id => $uid,
                         kind      => 'hub_repo',
                     },
                 );
@@ -53,7 +53,7 @@ sub run {
                     insert_into => 'func_new_hub_repo',
                     values      => {
                         id        => $rid,
-                        update_id => $uid,
+                        change_id => $uid,
                         hub_id    => $id,
                         location  => $loc,
                     },
@@ -61,17 +61,17 @@ sub run {
             }
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $uid,
+                    change_id         => $uid,
                     new               => 1,
-                    action_format     => "new hub %s ($self->{name})",
+                    action_format     => "new hub (%s) $self->{name}",
                     action_topic_id_1 => $id,
                 },
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -87,7 +87,7 @@ sub run {
 
             # For test scripts
             $self->{id}        = $id;
-            $self->{update_id} = $uid;
+            $self->{change_id} = $uid;
         }
     );
 
@@ -103,7 +103,7 @@ bifhub-new-hub - create a new hub in the repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

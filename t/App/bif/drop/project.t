@@ -97,7 +97,7 @@ run_in_tempdir {
       'Bif::Error::UuidNotFound';
 
     # This will fail to pull in the task if the drop didn't take care
-    # of the related_updates[_merkle] tables
+    # of the related_changes[_merkle] tables
     bif(qw/pull project todo2/);
 
     # Of course, this also can fail if the pull failed, but we still

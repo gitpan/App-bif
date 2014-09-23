@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::show';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self  = __PACKAGE__->new(shift);
@@ -38,14 +38,15 @@ sub run {
     my $info = $db->xhashref(
         select     => [qw/t.ctime t.ctimetz t.mtime t.mtimetz/],
         from       => 'topics t',
-        inner_join => 'updates u',
-        on         => 'u.id = t.first_update_id',
+        inner_join => 'changes c',
+        on         => 'c.id = t.first_change_id',
         where      => { 't.id' => $hub->{id} },
     );
 
     $self->start_pager;
     print $self->render_table( 'l  l',
-        $self->header( $bold . 'Hub', $bold . $hub->{name} ), \@data );
+        $self->header( $bold . 'Hub', $bold . $hub->{name} ),
+        \@data, 1 );
     $self->end_pager;
 
     return $self->ok( 'ShowHub', \@data );
@@ -60,7 +61,7 @@ bif-show-hub - display a hub's current status
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

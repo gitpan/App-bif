@@ -9,7 +9,7 @@ use Exporter::Tidy default => [
       bifhub
       debug_on
       debug_off
-      new_test_update
+      new_test_change
       new_test_hub
       new_test_project
       new_test_project_status
@@ -109,19 +109,19 @@ sub debug_off {
     $DEBUG = undef;
 }
 
-my $update = 0;
+my $change = 0;
 
-sub new_test_update {
+sub new_test_change {
     my $db  = shift;
     my $ref = {
-        id      => $db->nextval('updates'),
+        id      => $db->nextval('changes'),
         mtime   => int( rand(time) ),
         mtimetz => int( Time::Piece->new->tzoffset ),
-        author  => 'author' . $update++,
-        email   => 'email' . $update++,
+        author  => 'author' . $change++,
+        email   => 'email' . $change++,
     };
     $db->xdo(
-        insert_into => 'updates',
+        insert_into => 'changes',
         values      => $ref,
     );
     return $ref;
@@ -132,14 +132,14 @@ my $location = 0;
 sub new_test_hub {
     my $db     = shift;
     my $local  = shift;
-    my $update = new_test_update($db);
+    my $change = new_test_change($db);
 
     my $id  = $db->nextval('topics');
     my $lid = $db->nextval('topics');
 
     my $ref = {
         id        => $id,
-        update_id => $update->{id},
+        change_id => $change->{id},
         local     => $local,
         name      => 'location' . $location++,
     };
@@ -147,7 +147,7 @@ sub new_test_hub {
     $db->xdo(
         insert_into => 'func_new_topic',
         values      => {
-            update_id => $update->{id},
+            change_id => $change->{id},
             id        => $id,
             kind      => 'hub',
         },
@@ -161,7 +161,7 @@ sub new_test_hub {
     $db->xdo(
         insert_into => 'func_new_hub_repo',
         values      => {
-            update_id => $update->{id},
+            change_id => $change->{id},
             hub_id    => $id,
             id        => $lid,
             location  => 'location' . $location++,
@@ -171,7 +171,7 @@ sub new_test_hub {
     $db->xdo(
         insert_into => 'hub_deltas',
         values      => {
-            update_id => $update->{id},
+            change_id => $change->{id},
             hub_id    => $id,
         },
     );
@@ -183,7 +183,7 @@ sub new_test_hub {
     );
 
     $db->xdo(
-        insert_into => 'func_merge_updates',
+        insert_into => 'func_merge_changes',
         values      => { merge => 1 },
     );
 
@@ -194,13 +194,13 @@ my $project = 0;
 
 sub new_test_project {
     my $db        = shift;
-    my $update_id = shift || $db->currval('updates');
+    my $change_id = shift || $db->currval('changes');
     my $id        = $db->nextval('topics');
 
     $project++;
 
     my $ref = {
-        update_id => $update_id,
+        change_id => $change_id,
         id        => $id,
         name      => 'todo' . $project,
         title     => 'title' . $project,
@@ -209,7 +209,7 @@ sub new_test_project {
     $db->xdo(
         insert_into => 'func_new_topic',
         values      => {
-            update_id => $update_id,
+            change_id => $change_id,
             id        => $id,
             kind      => 'project',
         },
@@ -234,13 +234,13 @@ my $project_status = 0;
 sub new_test_project_status {
     my $db        = shift;
     my $project   = shift;
-    my $update_id = shift || $db->currval('updates');
+    my $change_id = shift || $db->currval('changes');
     my $id        = $db->nextval('topics');
 
     $project_status++;
 
     my $ref = {
-        update_id  => $update_id,
+        change_id  => $change_id,
         id         => $id,
         status     => 'status' . $project_status,
         rank       => $project_status,
@@ -250,7 +250,7 @@ sub new_test_project_status {
     $db->xdo(
         insert_into => 'func_new_topic',
         values      => {
-            update_id => $update_id,
+            change_id => $change_id,
             id        => $id,
             kind      => 'project_status',
         },
@@ -269,13 +269,13 @@ my $task_status = 0;
 sub new_test_task_status {
     my $db        = shift;
     my $project   = shift;
-    my $update_id = shift || $db->currval('updates');
+    my $change_id = shift || $db->currval('changes');
     my $id        = $db->nextval('topics');
 
     $task_status++;
 
     my $ref = {
-        update_id  => $update_id,
+        change_id  => $change_id,
         id         => $id,
         status     => 'status' . $task_status,
         rank       => $task_status,
@@ -286,7 +286,7 @@ sub new_test_task_status {
     $db->xdo(
         insert_into => 'func_new_topic',
         values      => {
-            update_id => $update_id,
+            change_id => $change_id,
             id        => $id,
             kind      => 'task_status',
         },
@@ -305,13 +305,13 @@ my $issue_status = 0;
 sub new_test_issue_status {
     my $db        = shift;
     my $project   = shift;
-    my $update_id = shift || $db->currval('updates');
+    my $change_id = shift || $db->currval('changes');
     my $id        = $db->nextval('topics');
 
     $issue_status++;
 
     my $ref = {
-        update_id  => $update_id,
+        change_id  => $change_id,
         id         => $id,
         status     => 'status' . $issue_status,
         rank       => $issue_status,
@@ -322,7 +322,7 @@ sub new_test_issue_status {
     $db->xdo(
         insert_into => 'func_new_topic',
         values      => {
-            update_id => $update_id,
+            change_id => $change_id,
             id        => $id,
             kind      => 'issue_status',
         },
@@ -342,13 +342,13 @@ sub new_test_task {
     $task++;
     my $db        = shift;
     my $status    = shift;
-    my $update_id = shift || $db->currval('updates');
+    my $change_id = shift || $db->currval('changes');
     my $id        = $db->nextval('topics');
 
     $task++;
 
     my $ref = {
-        update_id => $update_id,
+        change_id => $change_id,
         id        => $id,
         title     => 'title' . $task,
         status_id => $status->{id},
@@ -357,7 +357,7 @@ sub new_test_task {
     $db->xdo(
         insert_into => 'func_new_topic',
         values      => {
-            update_id => $update_id,
+            change_id => $change_id,
             id        => $id,
             kind      => 'task',
         },
@@ -377,14 +377,14 @@ sub new_test_issue {
     $issue++;
     my $db        = shift;
     my $status    = shift;
-    my $update_id = shift || $db->currval('updates');
+    my $change_id = shift || $db->currval('changes');
     my $id        = $db->nextval('topics');
     my $topic_id  = $db->nextval('topics');
 
     $issue++;
 
     my $ref = {
-        update_id => $update_id,
+        change_id => $change_id,
         id        => $id,
         topic_id  => $topic_id,
         title     => 'title' . $issue,
@@ -394,7 +394,7 @@ sub new_test_issue {
     $db->xdo(
         insert_into => 'func_new_topic',
         values      => {
-            update_id => $update_id,
+            change_id => $change_id,
             id        => $topic_id,
             kind      => 'issue',
         },

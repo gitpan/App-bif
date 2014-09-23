@@ -1,5 +1,5 @@
 CREATE TABLE func_new_topic(
-    update_id INTEGER,
+    change_id INTEGER,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     kind VARCHAR
 );
@@ -13,35 +13,36 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         NEW.kind
     );
 
     -- TODO if we ever create topic_deltas then move this into there
     UPDATE
-        updates
+        changes
     SET
         ucount = ucount + 1
     WHERE
-        id = NEW.update_id
+        id = NEW.change_id
     ;
 
     -- TODO if we ever create topic_deltas then move this into there
     UPDATE
-        updates_pending
+        changes_pending
     SET
         terms = terms
-            || '  - topic:' || x'0A'
-            || '      kind: ' || NEW.kind || x'0A'
+            || '- _: topic' || x'0A'
+            || '  kind: ' || NEW.kind || x'0A'
     WHERE
-        update_id = NEW.update_id
+        change_id = NEW.change_id
     ;
 
     INSERT INTO
         topics(
             id,
-            first_update_id,
+            first_change_id,
+            last_change_id,
             kind,
             ctime,
             ctimetz,
@@ -52,22 +53,24 @@ BEGIN
         )
     SELECT
         NEW.id,
-        NEW.update_id,
+        NEW.change_id,
+        NEW.change_id,
         NEW.kind,
-        u.mtime,
-        u.mtimetz,
-        u.mtime,
-        u.mtimetz,
-        u.lang,
+        c.mtime,
+        c.mtimetz,
+        c.mtime,
+        c.mtimetz,
+        c.lang,
         sha1_hex(up.terms)
     FROM
-        updates u
+        changes c
     INNER JOIN
-        updates_pending up
+        changes_pending up
     ON
-        up.update_id = u.id
+        up.change_id = c.id
     WHERE
-        u.id = NEW.update_id
+        c.id = NEW.change_id
     ;
 
+    SELECT RAISE(IGNORE);
 END;

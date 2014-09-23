@@ -22,7 +22,7 @@ bifhub - bif hub management tool
 
 =head1 VERSION
 
-0.1.0_19 (2014-09-10)
+0.1.0_19 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -193,7 +193,7 @@ Per-repository configuration file.
 
 Per-repository SQLite database.
 
-=item F<$HOME/.config/bif-user/config>
+=item F<$HOME/.bifu/config>
 
 User configuration file.
 

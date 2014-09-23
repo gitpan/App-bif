@@ -4,7 +4,7 @@ use warnings;
 use parent 'App::bif::Context';
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -60,12 +60,12 @@ sub run {
     $db->txn(
         sub {
             my $id = $db->nextval('topics');
-            my $uid = $self->new_update( message => $self->{message}, );
+            my $uid = $self->new_change( message => $self->{message}, );
 
             $db->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $id,
                     kind      => 'task',
                 },
@@ -75,24 +75,24 @@ sub run {
                 insert_into => 'func_new_task',
                 values      => {
                     id        => $id,
-                    update_id => $uid,
+                    change_id => $uid,
                     status_id => $self->{status_id},
                     title     => $self->{title},
                 },
             );
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $uid,
+                    change_id         => $uid,
                     new               => 1,
-                    action_format     => 'new task %s',
+                    action_format     => 'new task (%s)',
                     action_topic_id_1 => $id,
                 },
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -100,7 +100,7 @@ sub run {
 
             # For test scripts
             $self->{id}        = $id;
-            $self->{update_id} = $uid;
+            $self->{change_id} = $uid;
         }
     );
 
@@ -116,7 +116,7 @@ bif-new-task - add a new task to a project
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

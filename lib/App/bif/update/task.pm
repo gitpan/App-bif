@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -30,11 +30,11 @@ sub run {
 
     if ( $self->{reply} ) {
         my $uinfo =
-          $self->get_update( $self->{reply}, $info->{first_update_id} );
+          $self->get_change( $self->{reply}, $info->{first_change_id} );
         $self->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_update_id};
+        $self->{parent_uid} = $info->{first_change_id};
     }
 
     $self->{message} ||= $self->prompt_edit( opts => $self );
@@ -51,25 +51,25 @@ sub run {
                 where      => { 't.id' => $info->{id} },
             );
 
-            $self->{update_id} = $self->new_update(
+            $self->{change_id} = $self->new_change(
                 message   => $self->{message},
                 parent_id => $self->{parent_uid},
             );
 
             $db->xdo(
-                insert_into => 'func_update_task',
+                insert_into => 'func_change_task',
                 values      => {
                     id        => $info->{id},
-                    update_id => $self->{update_id},
+                    change_id => $self->{change_id},
                     $self->{title} ? ( title     => $self->{title} )   : (),
                     $status_ids    ? ( status_id => $status_ids->[0] ) : (),
                 },
             );
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $self->{update_id},
+                    change_id         => $self->{change_id},
                     new               => 1,
                     action_format     => 'update task %s',
                     action_topic_id_1 => $info->{id},
@@ -77,19 +77,19 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            print "Task updated: $info->{id}.$self->{update_id}\n";
+            print "Task changed: $info->{id}.$self->{change_id}\n";
         }
     );
 
     # For testing
     $self->{id}               = $info->{id};
-    $self->{parent_update_id} = $info->{update_id};
+    $self->{parent_change_id} = $info->{change_id};
     $self->{status}           = $status_ids;
-    return $self->ok('UpdateTask');
+    return $self->ok('ChangeTask');
 }
 
 1;
@@ -101,7 +101,7 @@ bif-update-task - update a task
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

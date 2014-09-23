@@ -8,7 +8,7 @@ use App::bif::pull::identity;
 use Log::Any '$log';
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $opts = shift;
@@ -23,6 +23,7 @@ sub run {
     if ( !-e $user_repo ) {
         App::bif::init::repo::run(
             {
+                %$opts,
                 directory => $user_repo,
                 config    => 1,
             },
@@ -45,7 +46,9 @@ sub run {
         sub {
             App::bif::pull::identity::run(
                 {
-                    @_, location => $user_repo,
+                    @_,
+                    location => $user_repo,
+                    self     => 1,
                 }
             );
         }
@@ -63,7 +66,7 @@ bif-init -  create a new bif repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -73,8 +76,6 @@ bif-init -  create a new bif repository
 
 The B<bif-init> command creates a new local repository in F<.bif/>
 after creating (if necessary) the system-wide user repository.
-Attempting to initialise an existing repository is considered an error.
-
 B<bif-init> does all of its work through other bif commands.  They are
 wrapped by this command in order to simplify the most common
 initialization scenario, which on the command-line would look something
@@ -92,23 +93,35 @@ like this:
 
 See the FILES section below for the location of $USER_REPO.
 
-=head1 ARGUMENTS & OPTIONS
+=head2 Arguments & Options
 
 =over
 
 =item ITEM
 
-The type of item to initialize. See the following for details:
+One of the following sub-commands:
 
 =over
 
-=item L<bif-init-repo>
+=item repo
+
+L<bif-init-repo>
+
+=item hub
+
+L<bif-init-hub>
 
 =back
 
 =back
 
-The global C<--user-repo> option is ignored by B<bif-init>.
+Note that the global C<--user-repo> option does not apply in the
+context of B<bif-init> and is ignored.
+
+=head2 Errors
+
+Attempting to initialise an existing repository is considered an error.
+
 
 =head1 FILES
 
@@ -116,12 +129,7 @@ The global C<--user-repo> option is ignored by B<bif-init>.
 
 =item $HOME/.bifu/
 
-User repository location when not running under a Free Desktop
-environment.
-
-=item $XDG_DATA_HOME/.bifu/
-
-User repository location when running under a Free Desktop environment.
+Default user repository location.
 
 =back
 

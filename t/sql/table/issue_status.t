@@ -16,7 +16,7 @@ run_in_tempdir {
     my $db = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
 
     my $id        = $db->nextval('topics');
-    my $update_id = $db->nextval('updates');
+    my $change_id = $db->nextval('changes');
     my $mtime     = time;
     my $mtimetz   = int( Time::Piece->new->tzoffset );
 
@@ -35,7 +35,7 @@ run_in_tempdir {
                     insert_into => 'func_new_issue_status',
                     values      => {
                         id         => $id,
-                        update_id  => $update_id,
+                        change_id  => $change_id,
                         project_id => -1,           # does not exist yet
                         mtime      => $mtime,
                         mtimetz    => $mtimetz,
@@ -56,9 +56,9 @@ run_in_tempdir {
                   [ $mtime, $mtimetz, 'a_status:a_status' ], 'topic';
 
                 is_deeply $db->selectrow_arrayref(
-                    'select mtime,mtimetz,author from updates where id=?',
-                    undef, $update_id ),
-                  [ $mtime, $mtimetz, 'x' ], 'topic update';
+                    'select mtime,mtimetz,author from changes where id=?',
+                    undef, $change_id ),
+                  [ $mtime, $mtimetz, 'x' ], 'topic change';
 
                 is_deeply $db->selectrow_arrayref(
                     'select status,status,rank,def from issue_status
@@ -71,7 +71,7 @@ run_in_tempdir {
                     'select issue_status_id,status,status,rank,def
                      from issue_status_deltas
                      where id=?',
-                    undef, $update_id
+                    undef, $change_id
                   ),
                   [ $id, qw/a_status a_status/, 10, 1 ], 'issue_status_deltas';
 
@@ -98,7 +98,7 @@ run_in_tempdir {
                 like $@, qr/not unique/, 'duplicate failed';
 
                 ok $db->xdo(
-                    insert_into => 'func_update_issue_status',
+                    insert_into => 'func_change_issue_status',
                     values      => {
                         id      => $id,
                         author  => 'x',
@@ -109,13 +109,13 @@ run_in_tempdir {
                         status  => 'b_status',
                     },
                   ),
-                  'update issue_status';
+                  'change issue_status';
 
                 is_deeply $db->selectrow_arrayref(
                     'select mtime,mtimetz from topics where id=?',
                     undef, $id ),
                   [ $mtime + 1, $mtimetz + 1 ],
-                  'updated mtime';
+                  'changed mtime';
 
                 is_deeply $db->selectrow_arrayref(
                     'select count(id) from issue_status_deltas
@@ -123,14 +123,14 @@ run_in_tempdir {
                     undef,
                     $id
                   ),
-                  [2], '2 issue_status updates';
+                  [2], '2 issue_status changes';
 
                 is_deeply $db->selectrow_arrayref(
                     'select status,status,rank,def from issue_status
                      where id=?',
                     undef, $id
                   ),
-                  [ qw/a_status b_status/, 10, 1 ], 'updated issue_status';
+                  [ qw/a_status b_status/, 10, 1 ], 'changed issue_status';
 
                 $res = 1;
             }

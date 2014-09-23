@@ -2,12 +2,12 @@
 
 Bif is a project management tool with a command-line interface. It
 helps you track tasks, issues and bugs using a local database,
-exchanging updates with remote databases on demand.  This introduction
+exchanging changes with remote databases on demand.  This introduction
 to bif is based on situations typically encountered by software
 developers; It is assumed that you are comfortable working with command
 line programs and your operating system shell (e.g. bash).
 
-This document is based on bif version 0.1.0_27 (2014-09-10).
+This document is based on bif version 0.1.0_28 (2014-09-23).
 
 =begin comment
 
@@ -34,7 +34,7 @@ and name.
 =head1 Create, List And Modify Topics
 
 Create a project, identified by a name and a title. You will also be
-prompted to add an initial update message.
+prompted to add an initial change message.
 
     #!sh
     bif new project todo Things to do
@@ -52,7 +52,7 @@ Retrieve the lists of things you have created:
     bif list projects
     bif list topics
 
-Change the status of some things using the C<update> command, but first
+Change the status of some things using the C<change> command, but first
 you might want to know which status types are valid:
 
     #!sh
@@ -113,7 +113,7 @@ just want to work on it too:
     bif import todo organisation
     bif list projects
 
-Then to exchange updates you make and get updates others have made,
+Then to exchange changes you make and get changes others have made,
 just call C<sync>:
 
     #!sh
@@ -121,7 +121,7 @@ just call C<sync>:
 
 =head1 See Also
 
-L<bif>(1), L<bif-doc-faq>(1), L<bif-doc-toc>(1)
+L<bif-doc>
 
 =head1 Author
 

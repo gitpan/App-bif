@@ -144,8 +144,7 @@ END
         is $ctx->render_table( 'l r', [ 'Item', 'Cost' ],
             [ [ 'apple', 1.3 ] ] ),
           <<"END", 'render_table ok';
-Item  Cost
-----------
+ITEM  COST
 apple  1.3
 END
 
@@ -155,8 +154,7 @@ END
             [ [ 'apple', 1.3 ] ], 1
           ),
           <<"END", 'render_table ok';
- Item  Cost
- ----------
+ ITEM  COST
  apple  1.3
 END
 
@@ -170,24 +168,24 @@ END
           'prompt_edit not empty';
     };
 
-    subtest 'get_update', sub {
+    subtest 'get_change', sub {
         my $dbw = $ctx->dbw;
         $dbw->txn(
             sub {
-                is $ctx->get_update(undef), undef, 'undef';
+                is $ctx->get_change(undef), undef, 'undef';
 
-                isa_ok exception { $ctx->get_update('not a uID') },
-                  'Bif::Error::UpdateNotFound';
+                isa_ok exception { $ctx->get_change('not a cID') },
+                  'Bif::Error::ChangeNotFound';
 
-                isa_ok exception { $ctx->get_update(1000000) },
-                  'Bif::Error::UpdateNotFound';
+                isa_ok exception { $ctx->get_change(1000000) },
+                  'Bif::Error::ChangeNotFound';
 
-                isa_ok exception { $ctx->get_update('u1000000') },
-                  'Bif::Error::UpdateNotFound';
+                isa_ok exception { $ctx->get_change('c1000000') },
+                  'Bif::Error::ChangeNotFound';
 
-                my $uid = $ctx->new_update( action => 'junk', );
+                my $uid = $ctx->new_change( action => 'junk', );
 
-                my $res = $ctx->get_update( 'u' . $uid );
+                my $res = $ctx->get_change( 'c' . $uid );
                 is $res->{id}, $uid, 'uid found';
 
                 $dbw->rollback;
@@ -199,7 +197,7 @@ END
         my $dbw = $ctx->dbw;
         $dbw->txn(
             sub {
-                my $uid = $ctx->new_update( action => 'junk', );
+                my $uid = $ctx->new_change( action => 'junk', );
                 my $project = new_test_project($dbw);
 
                 my $ps = new_test_project_status( $dbw, $project );
@@ -215,7 +213,7 @@ END
 
                 is_deeply $ref = $ctx->get_topic( $project->{id} ), {
                     id              => $project->{id},
-                    first_update_id => $project->{update_id},
+                    first_change_id => $project->{change_id},
                     kind            => 'project',
                     uuid => $ref->{uuid},    # hard to know this in advance
                     project_issue_id => undef,
@@ -231,7 +229,7 @@ END
 
                 is_deeply $ref = $ctx->get_topic( $task->{id} ), {
                     id              => $task->{id},
-                    first_update_id => $task->{update_id},
+                    first_change_id => $task->{change_id},
                     kind            => 'task',
                     uuid => $ref->{uuid},    # hard to know this in advance
                     project_issue_id => undef,
@@ -241,7 +239,7 @@ END
 
                 is_deeply $ref = $ctx->get_topic( $issue->{id} ), {
                     id              => $issue->{topic_id},
-                    first_update_id => $issue->{update_id},
+                    first_change_id => $issue->{change_id},
                     kind            => 'issue',
                     uuid => $ref->{uuid},    # hard to know this in advance
                     project_issue_id => $issue->{id},

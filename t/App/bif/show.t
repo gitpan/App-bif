@@ -33,10 +33,10 @@ run_in_tempdir {
     $show = bif( qw/show /, $i1->{id} );
     isa_ok( $show, 'Bif::OK::ShowIssue' );
 
-    my $update = bif(qw/update todo -m m4/);
+    my $change = bif(qw/update todo -m m4/);
 
     isa_ok exception {
-        bif( qw/ show /, "$update->{id}.$update->{update_id}" );
+        bif( qw/ show /, "$change->{id}.$change->{change_id}" );
     }, 'Bif::Error::TopicNotFound';
 };
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::show';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -16,7 +16,7 @@ sub run {
         select => [
             'topics.id AS id',
             'substr(topics.uuid,1,8) as uuid',
-            'projects.path',
+            "projects.path || COALESCE('\@' || h.name,'') AS path",
             'h.name AS hub',
             'hr.location',
             'substr(topics2.uuid,1,8) AS project_uuid',
@@ -25,15 +25,15 @@ sub run {
             'topics.mtimetz AS mtimetz',
             'topics.ctime AS ctime',
             'topics.ctimetz AS ctimetz',
-            'updates.author AS author',
-            'updates.email AS email',
-            'updates.message AS message',
+            'changes.author AS author',
+            'changes.email AS email',
+            'changes.message AS message',
             'task_status.status AS status',
-            'updates2.mtime AS smtime',
+            'changes2.mtime AS smtime',
         ],
         from       => 'topics',
-        inner_join => 'updates',
-        on         => 'updates.id = topics.first_update_id',
+        inner_join => 'changes',
+        on         => 'changes.id = topics.first_change_id',
         inner_join => 'tasks',
         on         => 'tasks.id = topics.id',
         inner_join => 'task_status',
@@ -46,8 +46,8 @@ sub run {
         on         => 'hr.id = h.default_repo_id',
         inner_join => 'topics AS topics2',
         on         => 'topics2.id = projects.id',
-        inner_join => 'updates AS updates2',
-        on         => 'updates2.id = tasks.update_id',
+        inner_join => 'changes AS changes2',
+        on         => 'changes2.id = tasks.change_id',
         where      => [ 'topics.id = ', qv( $info->{id} ) ],
     );
 
@@ -63,8 +63,7 @@ sub run {
         push(
             @data,
             $self->header(
-                '  Project',
-                "$ref->{path}\@$ref->{hub}",
+                '  Project', $ref->{path},
                 "$ref->{project_uuid}\@$ref->{location}"
             )
         );
@@ -107,7 +106,7 @@ sub run {
 
     $self->start_pager;
     print $self->render_table( 'l  l', $self->header( 'Task', $ref->{title} ),
-        \@data );
+        \@data, 1 );
     $self->end_pager;
 
     $self->ok( 'ShowTask', \@data );
@@ -123,7 +122,7 @@ bif-show-task - display a task's current status
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

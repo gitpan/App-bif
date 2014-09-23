@@ -4,7 +4,7 @@ bif-doc-table-projects - project current meta data
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 DEFINITION
 
@@ -28,7 +28,7 @@ bif-doc-table-projects - project current meta data
 
 Table C<projects> contains the project-specific meta data for a topic.
 Rows should only be inserted into this table by
-L<func_new_project()|bif-doc-func-new-project> and only updated by
+L<func_new_project()|bif-doc-func-new-project> and only changed by
 triggers on the L<projects_tomerge|bif-doc-table-projects-tomerge>
 table. Deleting directly from this table is fine.
 
@@ -44,7 +44,7 @@ Modified on INSERT, UPDATE, and DELETE.
 
 Cascading DELETEs.
 
-=item * L<updates|bif-doc-table-updates>
+=item * L<changes|bif-doc-table-changes>
 
 Cascading DELETEs.
 
@@ -54,7 +54,7 @@ Cascading DELETEs.
 
 L<bif-doc-func-new-project>,  L<bif-doc-table-topics>,
 L<bif-doc-table-projects-tomerge>, L<bif-doc-table-project-status>,
-L<bif-doc-table-projects-tree>, L<bif-doc-table-updates>
+L<bif-doc-table-projects-tree>, L<bif-doc-table-changes>
 
 =head1 AUTHOR
 

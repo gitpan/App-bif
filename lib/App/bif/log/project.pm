@@ -4,7 +4,7 @@ use warnings;
 use feature 'state';
 use parent 'App::bif::log';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -17,16 +17,16 @@ sub run {
         select => [
             'project_deltas.project_id AS id',
             'SUBSTR(t.uuid,1,8) AS uuid',
-            concat( qv('u'), 'updates.id' )->as('update_id'),
-            'SUBSTR(updates.uuid,1,8) AS update_uuid',
+            concat( qv('c'), 'changes.id' )->as('change_id'),
+            'SUBSTR(changes.uuid,1,8) AS change_uuid',
             'project_deltas.title',
-            'updates.mtime',
-            'updates.mtimetz',
-            'updates.action',
-            'updates.author',
-            'updates.email',
-            'updates.message',
-            'updates_tree.depth',
+            'changes.mtime',
+            'changes.mtimetz',
+            'changes.action',
+            'COALESCE(changes.author,e.name) AS author',
+            'COALESCE(changes.email,ecm.mvalue) AS email',
+            'changes.message',
+            'changes_tree.depth',
             'project_status.status',
             'project_status.status',
             'projects.path',
@@ -37,17 +37,21 @@ sub run {
         on         => 'projects.id = project_deltas.project_id',
         inner_join => 'topics t',
         on         => 't.id = projects.id',
-        inner_join => 'updates_tree',
-        on         => 'updates_tree.parent = t.first_update_id AND
-                       updates_tree.child = project_deltas.update_id',
-        inner_join => 'updates',
-        on         => 'updates.id = updates_tree.child',
+        inner_join => 'changes_tree',
+        on         => 'changes_tree.parent = t.first_change_id AND
+                       changes_tree.child = project_deltas.change_id',
+        inner_join => 'changes',
+        on         => 'changes.id = changes_tree.child',
+        inner_join => 'entities e',
+        on         => 'e.id = changes.identity_id',
+        inner_join => 'entity_contact_methods ecm',
+        on         => 'ecm.id = e.default_contact_method_id',
         left_join  => 'project_status',
         on         => 'project_status.id = project_deltas.status_id',
         where      => {
             'project_deltas.project_id' => $info->{id},
         },
-        order_by => 'updates.path asc',
+        order_by => 'changes.path asc',
     );
 
     $sth->execute;
@@ -72,7 +76,7 @@ bif-log-project - review a project history
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

@@ -15,11 +15,11 @@ run_in_tempdir {
             sub {
                 $db->deploy;
 
-                my $update  = new_test_update($db);
+                my $change  = new_test_change($db);
                 my $project = new_test_project($db);
 
                 my $task_status = {
-                    update_id  => $update->{id},
+                    change_id  => $change->{id},
                     id         => $db->nextval('topics'),
                     project_id => $project->{id},
                     status     => 'a_status',

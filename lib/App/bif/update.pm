@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self  = __PACKAGE__->new(shift);
@@ -19,8 +19,8 @@ sub run {
 
     die $@ if $@;
 
-    return $self->err( 'UpdateUnimplemented',
-        'cannnot update type: ' . $info->{kind} );
+    return $self->err( 'ChangeUnimplemented',
+        'cannnot change type: ' . $info->{kind} );
 }
 
 1;
@@ -28,11 +28,11 @@ __END__
 
 =head1 NAME
 
-bif-update - update or comment a topic
+bif-update - change or comment a topic
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -56,7 +56,7 @@ A topic ID, a topic ID.UPDATE_ID, or project PATH. Required.
 =item STATUS
 
 The new status for the topic. The status cannot be set when commenting
-as a reply to another update.
+as a reply to another change.
 
 =back
 
@@ -67,7 +67,7 @@ as a reply to another update.
 =item --title, -t
 
 The new title for the topic.  The title cannot be set when commenting
-as a reply to another update.
+as a reply to another change.
 
 =item --message, -m
 

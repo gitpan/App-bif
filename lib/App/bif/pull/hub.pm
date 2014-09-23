@@ -5,10 +5,11 @@ use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
 use Coro;
+use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $opts = shift;
@@ -47,7 +48,10 @@ sub run {
         location      => $self->{location},
         debug         => $self->{debug},
         debug_bifsync => $self->{debug_bifsync},
-        on_error      => sub {
+        on_update     => sub {
+            $self->lprint("$self->{location}: $_[0]");
+        },
+        on_error => sub {
             $error = shift;
             $cv->send;
         },
@@ -57,16 +61,9 @@ sub run {
         eval {
             $dbw->txn(
                 sub {
-                    my $uid = $dbw->nextval('updates');
+                    my $uid = $dbw->nextval('changes');
 
-                    $client->on_update(
-                        sub {
-                            $self->lprint("$self->{location}: $_[0]");
-                        }
-                    );
-
-                    my $previous = $dbw->get_max_update_id;
-                    my $status   = $client->pull_hub;
+                    my $status = $client->pull_hub;
 
                     print "\n";
 
@@ -78,9 +75,6 @@ sub run {
                         return $status;
                     }
 
-                    my $current = $dbw->get_max_update_id;
-                    my $delta   = $current - $previous;
-
                     my ( $hid, $rid, $name ) = $dbw->xlist(
                         select     => [ 'h.id', 'hr.id', 'h.name' ],
                         from       => 'hub_repos hr',
@@ -89,24 +83,43 @@ sub run {
                         where => { 'hr.location' => $self->{location} },
                     );
 
+                    if ( !$rid ) {
+                        $error = 'could not find repository from location!';
+                        $dbw->rollback;
+                        return;
+                    }
+
                     $dbw->xdo(
                         update => 'hubs',
                         set    => { default_repo_id => $rid },
                         where  => { id => $hid },
                     );
 
-                    $self->new_update(
+                    $self->new_change(
                         id      => $uid,
-                        action  => "pull hub $name",
-                        message => "Registered hub $name via $self->{location}",
+                        message => "Registered hub at $self->{location}",
                     );
 
                     $dbw->xdo(
-                        insert_or_replace_into => 'bifkv',
-                        values                 => {
-                            key       => 'last_sync',
-                            update_id => $uid,
+                        insert_into => 'change_deltas',
+                        values      => {
+                            new               => 1,
+                            change_id         => $uid,
+                            action_format     => "pull hub (%s) $name",
+                            action_topic_id_1 => $hid,
                         },
+                    );
+
+                    $dbw->xdo(
+                        insert_into => 'func_merge_changes',
+                        values      => { merge => 1 },
+                    );
+
+                    $dbw->xdo(
+                        insert_or_replace_into =>
+                          [ 'bifkv', qw/key change_id change_id2/ ],
+                        select => [ qv('last_sync'), $uid, 'MAX(c.id)', ],
+                        from   => 'changes c',
                     );
 
                     print "Hub pulled: $name\n";
@@ -116,7 +129,7 @@ sub run {
         };
 
         if ($@) {
-            $error .= $@;
+            $error = $@;
             print "\n";
         }
 
@@ -138,7 +151,7 @@ bif-pull-hub -  import project lists from a remote repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -152,7 +165,7 @@ L<bif-list-hubs> command to display it) which is useable afterwards
 with all other hub-aware commands to save typing the full address.
 
 The retrieved project list is stored locally and is used by the
-L<bif-pull-project> and L<bif-push-issue> commands, and updated by the
+L<bif-pull-project> and L<bif-push-issue> commands, and changed by the
 L<bif-sync> command.
 
 =head1 ARGUMENTS & OPTIONS

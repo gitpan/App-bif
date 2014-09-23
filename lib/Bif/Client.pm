@@ -9,7 +9,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 with 'Bif::Role::Sync';
 
@@ -48,13 +48,13 @@ has stderr_watcher => ( is => 'rw' );
 
 has debug_bifsync => ( is => 'ro' );
 
-has updates_tosend => ( is => 'rw', default => 0 );
+has changes_tosend => ( is => 'rw', default => 0 );
 
-has updates_torecv => ( is => 'rw', default => 0 );
+has changes_torecv => ( is => 'rw', default => 0 );
 
-has updates_sent => ( is => 'rw', default => 0 );
+has changes_sent => ( is => 'rw', default => 0 );
 
-has updates_recv => ( is => 'rw', default => 0 );
+has changes_recv => ( is => 'rw', default => 0 );
 
 has on_update => (
     is      => 'rw',
@@ -90,6 +90,7 @@ has temp_table => (
 
 sub BUILD {
     my $self = shift;
+    $self->on_update->('connecting...');
 
     if ( $self->location =~ m!^ssh://(.+)! ) {
         $self->child(
@@ -154,7 +155,7 @@ sub bootstrap_identity {
 
     my $dbw = $self->db;
     my ( $iid, $uid ) = $dbw->xlist(
-        select     => [ 't.id', 't.first_update_id' ],
+        select     => [ 't.id', 't.first_change_id' ],
         from       => 'topics t',
         inner_join => 'identities i',
         on         => 'i.id = t.id',
@@ -169,7 +170,12 @@ sub bootstrap_identity {
     );
 
     $dbw->xdo(
-        update => 'updates',
+        insert_into => 'bifkv',
+        values      => { key => 'bootstrap', identity_id => $iid },
+    );
+
+    $dbw->xdo(
+        update => 'changes',
         set    => { identity_id => $iid },
         where  => { id => $uid },
     );
@@ -215,11 +221,11 @@ sub sync_hub {
     return $action;
 }
 
-sub transfer_hub_updates {
+sub transfer_hub_changes {
     my $self = shift;
 
-    $self->write( 'TRANSFER', 'hub_updates' );
-    return $self->real_transfer_hub_updates;
+    $self->write( 'TRANSFER', 'hub_changes' );
+    return $self->real_transfer_hub_changes;
 }
 
 sub import_project {
@@ -241,8 +247,8 @@ sub import_project {
     if ( $action eq 'SYNC' and $type eq 'project' ) {
         my $result = $self->real_sync_project( $pinfo->{id} );
         if ( $result eq 'ProjectSync' or $result eq 'ProjectMatch' ) {
-            my $status = $self->transfer_project_related_updates;
-            return $status unless $status eq 'TransferProjectRelatedUpdates';
+            my $status = $self->transfer_project_related_changes;
+            return $status unless $status eq 'TransferProjectRelatedChanges';
 
             $self->db->xdo(
                 update => 'projects',
@@ -298,11 +304,11 @@ sub sync_projects {
     return 'ProjectSync';
 }
 
-sub transfer_project_related_updates {
+sub transfer_project_related_changes {
     my $self = shift;
 
-    $self->write( 'TRANSFER', 'project_related_updates' );
-    return $self->real_transfer_project_related_updates;
+    $self->write( 'TRANSFER', 'project_related_changes' );
+    return $self->real_transfer_project_related_changes;
 }
 
 sub export_project {
@@ -365,7 +371,7 @@ Bif::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -419,9 +425,9 @@ B<Bif::Client> is a class for communicating with a bif hub.
 
 =item location
 
-=item updates_sent
+=item changes_sent
 
-=item updates_recv
+=item changes_recv
 
 =item on_update
 
@@ -445,9 +451,9 @@ B<Bif::Client> is a class for communicating with a bif hub.
 
 =item sync_hub($hub_id)
 
-Compares the C<hub_related_updates> table in the local repository
-against the same table on the hub and exchanges updates until they are
-the same. This method only results in project-only updates.
+Compares the C<hub_related_changes> table in the local repository
+against the same table on the hub and exchanges changes cntil they are
+the same. This method only results in project-only changes.
 
 =item import_project
 

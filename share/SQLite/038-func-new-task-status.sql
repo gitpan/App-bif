@@ -1,5 +1,5 @@
 CREATE TABLE func_new_task_status(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     project_id INTEGER,
     status VARCHAR(40) NOT NULL,
@@ -16,7 +16,7 @@ BEGIN
 
     SELECT debug(
         'TRIGGER func_new_task_status_bi_1',
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         NEW.project_id,
         NEW.status,
@@ -48,7 +48,7 @@ BEGIN
 
     INSERT INTO
         task_status_deltas(
-            update_id,
+            change_id,
             task_status_id,
             new,
             status,
@@ -56,7 +56,7 @@ BEGIN
             def
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         1,
         NEW.status,

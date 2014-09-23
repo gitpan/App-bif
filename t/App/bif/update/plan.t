@@ -20,21 +20,21 @@ run_in_tempdir {
     my $h  = bif(qw/ new host h/);
     my $p  = bif(qw/ new plan p title/);
 
-    isa_ok bif( qw/update plan/, $p->{id}, qw/-m m1/ ), 'Bif::OK::UpdatePlan';
+    isa_ok bif( qw/update plan/, $p->{id}, qw/-m m1/ ), 'Bif::OK::ChangePlan';
 
     isa_ok exception {
         bif( qw/update plan/, $p->{id}, '--add', -$h->{id}, qw/-m m2/ );
     }, 'Bif::Error::HostNotFound';
 
     isa_ok bif( qw/update plan/, $p->{id}, '--add', $h->{id}, qw/-m m2/ ),
-      'Bif::OK::UpdatePlan';
+      'Bif::OK::ChangePlan';
 
     isa_ok exception {
         bif( qw/update plan/, $p->{id}, '--remove', -$h->{id}, qw/-m m3/ );
     }, 'Bif::Error::HostNotFound';
 
     isa_ok bif( qw/update plan/, $p->{id}, '--remove', $h->{id}, qw/-m m3/ ),
-      'Bif::OK::UpdatePlan';
+      'Bif::OK::ChangePlan';
 };
 
 done_testing();

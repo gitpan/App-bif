@@ -5,7 +5,7 @@ use parent 'App::bif::Context';
 use DBIx::ThinSQL qw/bv/;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -17,7 +17,7 @@ sub run {
     $self->{title} ||= prompt( 'Title:', '' )
       || return $self->err( 'TitleRequired', 'title is required' );
 
-    $self->{message} ||= '';
+    $self->{message} ||= "New plan $self->{name}";
 
     my $provider;
     if ( $self->{name} =~ s/(.*?):(.*)/$2/ ) {
@@ -51,14 +51,14 @@ sub run {
 
     $db->txn(
         sub {
-            my $uid = $self->new_update( message => $self->{message}, );
+            my $uid = $self->new_change( message => $self->{message}, );
             my $id = $db->nextval('topics');
 
             $db->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     id        => $id,
-                    update_id => $uid,
+                    change_id => $uid,
                     kind      => 'plan',
                 },
             );
@@ -67,7 +67,7 @@ sub run {
                 insert_into => 'func_new_plan',
                 values      => {
                     id          => $id,
-                    update_id   => $uid,
+                    change_id   => $uid,
                     provider_id => $provider->{id},
                     name        => $self->{name},
                     title       => $self->{title},
@@ -75,17 +75,17 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $uid,
+                    change_id         => $uid,
                     new               => 1,
-                    action_format     => "new plan %s ($self->{name})",
+                    action_format     => "new plan (%s) $self->{name}",
                     action_topic_id_1 => $id,
                 },
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -93,7 +93,7 @@ sub run {
 
             # For test scripts
             $self->{id}        = $id;
-            $self->{update_id} = $uid;
+            $self->{change_id} = $uid;
         }
     );
 
@@ -109,7 +109,7 @@ bifhub-new-plan - create a new plan in the repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

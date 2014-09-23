@@ -13,7 +13,7 @@ exit;
 
 sub rehash {
     my $table = shift;
-    my $row   = shift;    # id, prefix, hash, num_updates
+    my $row   = shift;    # id, prefix, hash, num_changes
 
     my $prefix = $row->{prefix};
     while ( length($prefix) >= 1 ) {
@@ -21,7 +21,7 @@ sub rehash {
         $prefix = substr( $prefix, 0, length($prefix) - 1 );
     }
 
-    push( @$table, $row ) if $row->{num_updates};
+    push( @$table, $row ) if $row->{num_changes};
 
     $prefix = $row->{prefix};
     while ( length($prefix) > 1 ) {
@@ -32,7 +32,7 @@ sub rehash {
         my $hash =
           substr( sha1_hex( sort map { $_->{hash} } @list ), 0, 8 );
 
-        my $sum = sum( map { $_->{num_updates} } @list );
+        my $sum = sum( map { $_->{num_changes} } @list );
 
         push(
             @$table,
@@ -40,7 +40,7 @@ sub rehash {
                 project_id  => $row->{project_id},
                 prefix      => $new,
                 hash        => $hash,
-                num_updates => $sum
+                num_changes => $sum
             }
         ) if $sum;
 
@@ -56,7 +56,7 @@ sub test_topic_hash {
     my $db     = shift;
 
     my $result = $db->xarrayref(
-        select => [qw/hash num_updates/],
+        select => [qw/hash num_changes/],
         from   => 'projects',
         where  => { id => $p1->{project_id} },
     );
@@ -70,12 +70,12 @@ sub test_topic_hash {
         0, 8
     );
 
-    my $num_updates = sum(
-        map  { $_->{num_updates} }
+    my $num_changes = sum(
+        map  { $_->{num_changes} }
         grep { length( $_->{prefix} ) == 1 } @$merkle
     );
 
-    is_deeply $result, [ $hash, $num_updates ], 'topic update ok';
+    is_deeply $result, [ $hash, $num_changes ], 'topic change ok';
 
 }
 
@@ -88,47 +88,47 @@ run_in_tempdir {
         $db->txn(
             sub {
                 $db->deploy;
-                my $update  = new_test_update($db);
+                my $change  = new_test_change($db);
                 my $project = new_test_project($db);
 
                 my $p1 = {
                     project_id  => $project->{id},
                     prefix      => 'abcde',
                     hash        => sha1_hex('abcde'),
-                    num_updates => 13,
+                    num_changes => 13,
                 };
                 my $merkle = rehash( [], $p1 );
 
                 $db->xdo(
-                    insert_into => 'project_related_updates_merkle',
+                    insert_into => 'project_related_changes_merkle',
                     values      => $p1,
                 );
 
                 my $result = $db->xhashrefs(
-                    select   => [qw/project_id prefix hash num_updates/],
-                    from     => 'project_related_updates_merkle',
+                    select   => [qw/project_id prefix hash num_changes/],
+                    from     => 'project_related_changes_merkle',
                     order_by => 'prefix',
                 );
 
-                is_deeply $result, $merkle, 'project_related_updates_merkle';
+                is_deeply $result, $merkle, 'project_related_changes_merkle';
                 test_topic_hash( $merkle, $p1, $db );
 
                 $p1 = {
                     project_id  => $project->{id},
                     prefix      => 'ab1de',
                     hash        => sha1_hex('ab1de'),
-                    num_updates => 2,
+                    num_changes => 2,
                 };
                 $merkle = rehash( $merkle, $p1 );
 
                 $db->xdo(
-                    insert_into => 'project_related_updates_merkle',
+                    insert_into => 'project_related_changes_merkle',
                     values      => $p1,
                 );
 
                 $result = $db->xhashrefs(
-                    select   => [qw/project_id prefix hash num_updates/],
-                    from     => 'project_related_updates_merkle',
+                    select   => [qw/project_id prefix hash num_changes/],
+                    from     => 'project_related_changes_merkle',
                     order_by => 'prefix',
                 );
 
@@ -136,22 +136,22 @@ run_in_tempdir {
                 test_topic_hash( $merkle, $p1, $db );
 
                 # simulate a delete
-                $p1->{num_updates} = 0;
+                $p1->{num_changes} = 0;
                 $merkle = rehash( $merkle, $p1 );
 
                 $db->xdo(
-                    insert_into => 'project_related_updates_merkle',
+                    insert_into => 'project_related_changes_merkle',
                     values      => $p1,
                 );
 
                 $result = $db->xhashrefs(
-                    select   => [qw/project_id prefix hash num_updates/],
-                    from     => 'project_related_updates_merkle',
+                    select   => [qw/project_id prefix hash num_changes/],
+                    from     => 'project_related_changes_merkle',
                     order_by => 'prefix',
                 );
 
                 is_deeply $result, $merkle,
-                  '"delete" from project_related_updates_merkle';
+                  '"delete" from project_related_changes_merkle';
                 test_topic_hash( $merkle, $p1, $db );
 
                 $res = 1;

@@ -5,7 +5,7 @@ use feature 'state';
 use parent 'App::bif::log';
 use locale;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self  = __PACKAGE__->new(shift);
@@ -18,18 +18,18 @@ sub run {
 
     my $sth = $db->xprepare(
         select => [
-            q{strftime('%w',u.mtime,'unixepoch','localtime') AS weekday},
-            q{strftime('%Y-%m-%d',u.mtime,'unixepoch','localtime') AS mdate},
-            q{strftime('%H:%M:%S',u.mtime,'unixepoch','localtime') AS mtime},
-            'u.action',
+            q{strftime('%w',c.mtime,'unixepoch','localtime') AS weekday},
+            q{strftime('%Y-%m-%d',c.mtime,'unixepoch','localtime') AS mdate},
+            q{strftime('%H:%M:%S',c.mtime,'unixepoch','localtime') AS mtime},
+            'c.action',
         ],
         from       => 'hub_deltas hd',
-        inner_join => 'updates u',
-        on         => 'u.id = hd.update_id',
+        inner_join => 'changes c',
+        on         => 'c.id = hd.change_id',
         where      => { 'hd.hub_id' => $hub->{id} },
 
         #        group_by   => [qw/weekday mdate mtime/],
-        order_by => 'u.id DESC',
+        order_by => 'c.id DESC',
     );
 
     $sth->execute;
@@ -71,7 +71,7 @@ bif-log-hub - review the history of a hub
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

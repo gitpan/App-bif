@@ -5,7 +5,7 @@ management tool does what it does.
 
 =head1 Version
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 Background
 
@@ -107,7 +107,7 @@ A RESTful object API just doesn't seem suitable either for working with
 large collections of objects like bugs or projects, and how does one
 not lose all the benefits associated with database transactions?
 
-A project history is not a hierarchical tree al-la Git trees. Updates
+A project history is not a hierarchical tree al-la Git trees. Changes
 can be merged without needing to reparent anything.
 
 =item Locally Unique Integers
@@ -135,7 +135,7 @@ organisation the size of Debian?
 
 There were close to forty thousand packages in Debian 7.0,
 progressively fewer in previous distributions.  Packages were released
-multiple times during development and for security updates, and each
+multiple times during development and for security changes, and each
 package release could probably be considered a bif project.  A single,
 centralized database, with email-based communication seems to work ok
 for that project. It will take some thought to determine whether
@@ -156,15 +156,15 @@ to the quality of the documentation.
 
 =item Universally Unique Identifiers
 
-Necessary for exchanging updates between systems that have their own
+Necessary for exchanging changes between systems that have their own
 requirements for locally unique identifiers.
 
 =back
 
 =head1 Assumptions
 
-We assume that there are relatively few project updates in comparison
-to task and issue updates.
+We assume that there are relatively few project changes in comparison
+to task and issue changes.
 
 =head1 Data Model
 
@@ -179,59 +179,59 @@ projects.hub_id).
 There are sometimes tables for many-to-many relationships, such as an
 issue having a different status for each project.
 
-=head2 Updates
+=head2 Changes
 
-A Bif update can actually be composed of many operations in the
-database, but everything relates to a single row in the C<updates>
-table. The updates table has an integer primary key which is used for
+A Bif change can actually be composed of many operations in the
+database, but everything relates to a single row in the C<changes>
+table. The changes table has an integer primary key which is used for
 local operations and foreign key targets. It also has a 40 character
 Universally Unique ID (UUID).
 
-There is a table for "updates" that represent changes, but that table
+There is a table for "changes" that represent changes, but that table
 only contains generic items such as timestamps, author details, and a
 message.
 
-The UUIDs of updates (same for UUIDs of topics) are SHA1 hashes
-calculated from the content of the update (or topic). This provides a
+The UUIDs of changes (same for UUIDs of topics) are SHA1 hashes
+calculated from the content of the change (or topic). This provides a
 builtin checksum mechanism that is useful during synchronisation to
 indicate a full and accurate transfer, and potentially simplifies
-signing updates in the future. The main purposes of the UUID however is
-for looking up local IDs when inserting updates with foreign key
+signing changes in the future. The main purposes of the UUID however is
+for looking up local IDs when inserting changes with foreign key
 requirements.
 
 =head2 Deltas
 
 There are tables for $THINGS_deltas, which relate changes to $THINGS
-with a particular update.
+with a particular change.
 
 
 Operations happen like this:
 
 =over
 
-=item * create a row in the updates table that identifies the author,
+=item * create a row in the changes table that identifies the author,
 time, timezone, message
 
 =item * add the changes in the *_deltas tables for each topic
 
-=item * Updates are "resolved" by inserting a row into
-func_merge_updates that calculates the updates.uuid SHA1 hash. If
-updates.uuid is already set (i.e. it was passed in from another
+=item * Changes are "resolved" by inserting a row into
+func_merge_changes that calculates the changes.uuid SHA1 hash. If
+changes.uuid is already set (i.e. it was passed in from another
 repository) then it must match otherwise an error is raised. In this
 way we ensure a reliable copy of the data.
 
 =back
 
-Updates are immutable, and they can't be easily deleted from
-everywhere. For the moment at least. Possibly thinking about updates to
-an update...
+Changes are immutable, and they can't be easily deleted from
+everywhere. For the moment at least. Possibly thinking about changes to
+an change...
 
 =head2 Merging Deltas
 
-One of the actions that takes place when an update is resolved is the
+One of the actions that takes place when an change is resolved is the
 merging of any received deltas to set the current value of the user's
 project, task or issue status. The merge is very simple: the latest
-result according to the update timestamp wins.
+result according to the change timestamp wins.
 
 =head2 Meta Data
 
@@ -242,24 +242,24 @@ are the basis on which synchronisation occurs.
 =head3 Hub Meta Data
 
 In each repository we track the related hub_delta, hub_repo_deltas,
-project_deltas and *_status_deltas in the "hub_related_updates" table.
+project_deltas and *_status_deltas in the "hub_related_changes" table.
 
 =begin graph-easy
 
     graph { flow: north; }
-    [ hub\nupdates ] --> [ hub\nrelated\nupdates ]
-    [ hub\nlocation\nupdates ] --> [ hub\nrelated\nupdates ]
-    [ project\nupdates ] --> [ hub\nrelated\nupdates ]
-    [ project\nstatus\nupdates ] --> [ hub\nrelated\nupdates ]
-    [ task\nstatus\nupdates ] --> [ hub\nrelated\nupdates ]
-    [ issue\nstatus\nupdates ] --> [ hub\nrelated\nupdates ]
+    [ hub\nchanges ] --> [ hub\nrelated\nchanges ]
+    [ hub\nlocation\nchanges ] --> [ hub\nrelated\nchanges ]
+    [ project\nchanges ] --> [ hub\nrelated\nchanges ]
+    [ project\nstatus\nchanges ] --> [ hub\nrelated\nchanges ]
+    [ task\nstatus\nchanges ] --> [ hub\nrelated\nchanges ]
+    [ issue\nstatus\nchanges ] --> [ hub\nrelated\nchanges ]
 
 =end graph-easy
 
                      +---------++---------+
                      |  task   ||   hub   |
-                     | status  || updates |
-                     | updates ||         |
+                     | status  || changes |
+                     | changes ||         |
                      +---------++---------+
                        |          |
                        |          |
@@ -267,12 +267,12 @@ project_deltas and *_status_deltas in the "hub_related_updates" table.
     +----------+     +--------------------+     +---------+
     |   hub    |     |                    |     |  issue  |
     | location |     |                    |     | status  |
-    | updates  | --> |        hub         | <-- | updates |
+    | changes  | --> |        hub         | <-- | changes |
     +----------+     |      related       |     +---------+
-    +----------+     |      updates       |     +---------+
+    +----------+     |      changes       |     +---------+
     | project  |     |                    |     | project |
-    | updates  |     |                    |     | status  |
-    |          | --> |                    | <-- | updates |
+    | changes  |     |                    |     | status  |
+    |          | --> |                    | <-- | changes |
     +----------+     +--------------------+     +---------+
 
 These are tracked not just for the local repository, but also for
@@ -283,9 +283,9 @@ remote repositories (hubs).
 When a local user pulls a hub all project-only details are imported. 
 Initially this so that the local user can see what projects are
 available on the hub. Therefore, for each hub we track the related
-project_deltas and *_status_deltas in the "hub_related_updates" table.
+project_deltas and *_status_deltas in the "hub_related_changes" table.
 
-Current state of topics, table for updates to topics, tables to track
+Current state of topics, table for changes to topics, tables to track
 meta data (Merkle trees).
 
 There is a Merkle tree associated with every project/hub combination,
@@ -296,9 +296,9 @@ representing all of the changes contained therein.
 Bif does not implement a single distributed database, at least not in
 the sense where all nodes need to agree in almost-real-time on what the
 "current" or "latest" values for all objects are.  What bif does is
-simbly exchange a certain set of updates to a certain set of nodes on
+simbly exchange a certain set of changes to a certain set of nodes on
 demand. The state of a particular node is the result of the subset of
-updates it has, and it doesn't care what the other nodes are doing.
+changes it has, and it doesn't care what the other nodes are doing.
 This works because the users do not need a real-time global view of all
 projects in an organisation, in the same way they don't need real-time
 copies of all emails not addressed to them.
@@ -323,7 +323,7 @@ single CamelCase string element.
 Sometimes instead of a status reply a counter-instruction is sent, and
 sometimes multiple instructions are sent without waiting for a reply:
 
-    ["NEW","update",{"mtime":14153122121,"message":"Hello"]
+    ["NEW","change",{"mtime":14153122121,"message":"Hello"]
     ["NEW","project",{"mtime":14153122121,"title":"todo"]
     ["NEW","project_status",{"mtime":14153122121,"title":"run"]
     ["UPDATE","project",{"status_uuid":"11eb3ba88ae0f"]
@@ -336,36 +336,36 @@ commands until the client sends a QUIT message:
 =head2 Hub Registration
 
 When a local user pulls a hub all project-only details are imported
-from the "hub_related_updates" table.  Initially this so that the local
+from the "hub_related_changes" table.  Initially this so that the local
 user can see what projects are available on the hub.
 
 =begin graph-easy
 
     graph { flow: west; }
 
-    [ hub ] -- hub_related_updates --> [ local ]
+    [ hub ] -- hub_related_changes --> [ local ]
 
 =end graph-easy
 
-    +-------+  hub_related_updates   +-----+
+    +-------+  hub_related_changes   +-----+
     | local | <--------------------- | hub |
     +-------+                        +-----+
 
 =head2 Project Export
 
 The first part of a project export (push) is a local operation. The
-local project-only updates are added to hub_related_updates. The next
+local project-only changes are added to hub_related_changes. The next
 time a hub sync happens the details will be transferred across.
 
 =begin graph-easy
 
     graph { flow: east; }
 
-    [ local ] <-- hub_related_updates --> [ hub ]
+    [ local ] <-- hub_related_changes --> [ hub ]
 
 =end graph-easy
 
-    +-------+  hub_related_updates    +-----+
+    +-------+  hub_related_changes    +-----+
     | local | <---------------------> | hub |
     +-------+                         +-----+
 
@@ -374,17 +374,17 @@ meaning the project can be referenced on the hub, but is not fully
 available there.  This is useful for inter-hub collaboration as we
 shall see later.
 
-The second part of an export is to update the project to set its hub_id
+The second part of an export is to change the project to set its hub_id
 values.
 
 The third part of an export is the synchronisation of the
-project_related_updates on both sides. However given that the hub
+project_related_changes on both sides. However given that the hub
 doesn't have anyting in there yet this is effectively a one-way copy.
 
 =head2 Project Import
 
-We already have project-only updates for $PROJECT in the database. We
-may also have issue updates related to $PROJECT locally.
+We already have project-only changes for $PROJECT in the database. We
+may also have issue changes related to $PROJECT locally.
 
 Basically just copies everything relating to a project from one
 repository to another.
@@ -392,32 +392,32 @@ repository to another.
 =head2 Synchronisation
 
 A sync operation with a hub happens in two steps. First of all the
-hub-related updates (which are actually project meta-data) are
-exchanged, then the project-related updates (which are actually task
+hub-related changes (which are actually project meta-data) are
+exchanged, then the project-related changes (which are actually task
 and issue data) are exchanged.
 
-=head3 Hub Related Updates
+=head3 Hub Related Changes
 
-Syncing hub-related updates is relatively easy. The
-hub_related_updates_merkle table from each end is recursively compared
+Syncing hub-related changes is relatively easy. The
+hub_related_changes_merkle table from each end is recursively compared
 top down - need to check) to discover the differences, from which a set
-of updates is stored in a temporary table. The updates are then
+of changes is stored in a temporary table. The changes are then
 tranferred to the other end in the order they were created in the
 database.
 
-=head3 Project Related Updates
+=head3 Project Related Changes
 
-Syncing project-related updates starts out the same way as hub-related
-update synchronisation.  The project_related_updates_merkle table from
+Syncing project-related changes starts out the same way as hub-related
+change synchronisation.  The project_related_changes_merkle table from
 each end is recursively compared top down to discover the differences.
 
-However, the set of updates which are stored at each end to be
+However, the set of changes which are stored at each end to be
 transferred cannot be directly inferred from the merkle tree because
 the client is only synchronising the projects which it has locally
 (i.e. have been imported). The challenge is how to do that when an
 issue exists in two projects but only one is local
 
-The updates are then tranferred to the other end in the order they were
+The changes are then tranferred to the other end in the order they were
 created in the database.
 
 =head1 Application Architecture
@@ -499,13 +499,13 @@ the insert with a C<SELECT RAISE(IGNORE)> statement.
 =head2 Transport & Synchronisation
 
 Bif uses ssh to run the L<bifsync> program on remote hosts when
-exchanging updates with a hub, or else calls L<bifsync> directly when
-exchanging updates with a local repository. Regardless, it ends up
+exchanging changes with a hub, or else calls L<bifsync> directly when
+exchanging changes with a local repository. Regardless, it ends up
 being L<Bif::Client> that is talking to L<Bif::Server>, although most
 of the functionality is in the parent L<Bif::Role::Sync> class.
 
 Client/Server is a bit of a misnomer, as the protocol is actually about
-exchanging updates equally, and not particularly about a user needing a
+exchanging changes equally, and not particularly about a user needing a
 resource like HTTP verbs imply.
 
 =head1 Author

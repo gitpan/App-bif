@@ -1,51 +1,51 @@
 =head1 NAME
 
-bif-doc-func-update-task - update a task topic
+bif-doc-func-change-task - change a task topic
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
     #!sqlite
     BEGIN;
 
-    INSERT INTO updates(...);
+    INSERT INTO changes(...);
 
-    INSERT INTO func_update_task(
-        update_id,  -- integer NOT NULL DEFAULT (currval('updates')),
+    INSERT INTO func_change_task(
+        change_id,  -- integer NOT NULL DEFAULT (currval('changes')),
         id,         -- integer NOT NULL DEFAULT (nextval('topics')),
         status_id,  -- integer
         title       -- varchar
     ) VALUES (...);
 
-    INSERT INTO func_merge_updates DEFAULT VALUES;
+    INSERT INTO func_merge_changes DEFAULT VALUES;
 
     COMMIT;
 
 =head1 DESCRIPTION
 
-func_update_task() adds a task update to an in-progress update, by
-inserting a row into L<task_deltas|bif-doc-table-task-updates>. As it
+func_change_task() adds a task change to an in-progress change, by
+inserting a row into L<task_deltas|bif-doc-table-task-changes>. As it
 just passes the values straight through this function is possibly a
 candidate for deletion.
 
 =head1 AFFECTED TABLES
 
-A successful call to func_update_task directly affects the following
+A successful call to func_change_task directly affects the following
 tables:
 
 =over
 
-=item * L<task_deltas|bif-doc-table-task-updates>
+=item * L<task_deltas|bif-doc-table-task-changes>
 
 =back
 
 =head1 SEE ALSO
 
-L<bif-doc-table-updates>, L<bif-doc-table-tasks>,
-L<bif-doc-func-merge-updates>
+L<bif-doc-table-changes>, L<bif-doc-table-tasks>,
+L<bif-doc-func-merge-changes>
 
 =head1 AUTHOR
 

@@ -22,7 +22,7 @@ run_in_tempdir {
     my $u =
       bif( qw/update issue/, $t->{id}, qw/closed --title title --message m4/ );
 
-    isa_ok $u, 'Bif::OK::UpdateIssue';
+    isa_ok $u, 'Bif::OK::ChangeIssue';
 };
 
 done_testing();

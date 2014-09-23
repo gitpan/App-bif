@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::show';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -20,8 +20,8 @@ sub run {
             'pl.name',            'pl.title',
             'e.name AS provider', 't.ctime',
             't.ctimetz',          't.mtime',
-            't.mtimetz',          'u.author',
-            'u.email',            'u.message',
+            't.mtimetz',          'c.author',
+            'c.email',            'c.message',
         ],
         from       => 'plans pl',
         inner_join => 'topics t',
@@ -30,8 +30,8 @@ sub run {
         on         => 'p.id = pl.provider_id',
         inner_join => 'entities e',
         on         => 'e.id = p.id',
-        inner_join => 'updates u',
-        on         => 'u.id = t.first_update_id',
+        inner_join => 'changes c',
+        on         => 'c.id = t.first_change_id',
         where      => { 'pl.id' => $self->{id} },
     );
 
@@ -70,7 +70,8 @@ sub run {
 
     $self->start_pager;
     print $self->render_table( 'l  l',
-        $self->header( $bold . 'Plan', $bold . $ref->{title} ), \@data );
+        $self->header( $bold . 'Plan', $bold . $ref->{title} ),
+        \@data, 1 );
     $self->end_pager;
 
     return $self->ok( 'ShowPlan', \@data );
@@ -85,7 +86,7 @@ bifhub-show-plan - display a plan's current status
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

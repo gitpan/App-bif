@@ -1,6 +1,8 @@
 CREATE TABLE func_new_entity(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
+    contact_id INTEGER,
+    default_contact_method_id INTEGER,
     name VARCHAR NOT NULL
 );
 
@@ -13,30 +15,40 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
+        NEW.contact_id,
+        NEW.default_contact_method_id,
         NEW.name
     );
 
     INSERT INTO entities(
         id,
+        contact_id,
+        default_contact_method_id,
         name
     )
     VALUES(
         NEW.id,
+        COALESCE(NEW.contact_id,-1),
+        COALESCE(NEW.default_contact_method_id,-1),
         NEW.name
     );
 
     INSERT INTO
         entity_deltas(
-            update_id,
+            change_id,
             entity_id,
+            contact_id,
+            default_contact_method_id,
             new,
             name
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
+        NEW.contact_id,
+        NEW.default_contact_method_id,
         1,
         NEW.name
     );

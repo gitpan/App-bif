@@ -9,25 +9,24 @@ use App::bif::pull::identity;
 use Log::Any '$log';
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $opts = shift;
     my $self = __PACKAGE__->new($opts);
-
     $self->{directory} = path( $self->{directory} );
+    $self->{directory}->parent->mkpath;
+    $self->{directory} = $self->{directory}->realpath;
 
     return $self->err( 'DirExists', 'directory exists: ' . $self->{directory} )
       if -e $self->{directory};
-
-    $self->{directory}->parent->mkpath;
-    $self->{directory} = $self->{directory}->realpath;
 
     my $user_repo = $self->find_user_repo;
 
     if ( !-e $user_repo ) {
         App::bif::init::repo::run(
             {
+                %$opts,
                 directory => $user_repo,
                 config    => 1,
             },
@@ -50,7 +49,9 @@ sub run {
         sub {
             App::bif::pull::identity::run(
                 {
-                    @_, location => $user_repo,
+                    @_,
+                    location => $user_repo,
+                    self     => 1,
                 }
             );
             App::bif::new::hub::run(
@@ -76,7 +77,7 @@ bif-init-hub - create a new local hub repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

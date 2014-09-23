@@ -1,5 +1,5 @@
 CREATE TABLE func_new_plan(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     provider_id INTEGER NOT NULL,
     name VARCHAR NOT NULL,
@@ -15,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         NEW.provider_id,
         NEW.name,
@@ -38,14 +38,14 @@ BEGIN
 
     INSERT INTO
         plan_deltas(
-            update_id,
+            change_id,
             plan_id,
             name,
             new,
             title
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         NEW.name,
         NEW.title,

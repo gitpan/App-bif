@@ -1,6 +1,7 @@
 CREATE TABLE func_new_identity(
-    update_id INTEGER NOT NULL,
-    id INTEGER NOT NULL DEFAULT (nextval('topics'))
+    change_id INTEGER NOT NULL,
+    id INTEGER NOT NULL DEFAULT (nextval('topics')),
+    shortname VARCHAR
 );
 
 
@@ -12,40 +13,45 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_id,
+        NEW.change_id,
+        NEW.shortname,
         NEW.id
     );
 
     INSERT INTO identities(
-        id
+        id,
+        shortname
     )
     VALUES(
-        NEW.id
+        NEW.id,
+        NEW.shortname
     );
 
     INSERT INTO
         identity_deltas(
-            update_id,
+            change_id,
             identity_id,
+            shortname,
             new
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
+        NEW.shortname,
         1
     );
 
     /*
-        Set updates.identity_id to this identity to trigger an entry in
-        updates_pending.terms for identity_uuid.
+        Set changes.identity_id to this identity to trigger an entry in
+        changes_pending.terms for identity_uuid.
     */
 
     UPDATE
-        updates
+        changes
     SET
         identity_id = NEW.id
     WHERE
-        id = NEW.update_id AND identity_id = -1
+        id = NEW.change_id AND identity_id = -1
     ;
 
     SELECT RAISE(IGNORE);

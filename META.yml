@@ -44,7 +44,7 @@ requires:
   Coro: '0'
   Coro::Handle: '0'
   DBD::SQLite: '1.42'
-  DBIx::ThinSQL: v0.0.26
+  DBIx::ThinSQL: v0.0.28
   DBIx::ThinSQL::SQLite: v0.0.10
   Digest::SHA: '0'
   File::HomeDir: '0'
@@ -72,4 +72,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.0_27
+version: 0.1.0_28

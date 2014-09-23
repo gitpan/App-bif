@@ -1,5 +1,5 @@
 CREATE TABLE func_import_task_status_delta(
-    update_uuid VARCHAR(40) NOT NULL,
+    change_uuid VARCHAR(40) NOT NULL,
     task_status_uuid VARCHAR(40) NOT NULL,
     status VARCHAR(40),
     rank INTEGER,
@@ -15,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_uuid,
+        NEW.change_uuid,
         NEW.task_status_uuid,
         NEW.status,
         NEW.rank,
@@ -23,14 +23,14 @@ BEGIN
     );
 
     INSERT INTO
-        func_update_task_status(
-            update_id,
+        func_change_task_status(
+            change_id,
             status,
             rank,
             def
         )
     SELECT
-        u.id,
+        c.id,
         task_status.id,
         NEW.status,
         NEW.rank,
@@ -38,9 +38,9 @@ BEGIN
     FROM
         topics AS task_status
     INNER JOIN
-        updates u
+        changes c
     ON
-        u.uuid = NEW.update_uuid
+        c.uuid = NEW.change_uuid
     WHERE
         task_status.uuid = NEW.task_status_uuid
     ;

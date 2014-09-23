@@ -5,7 +5,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -95,40 +95,40 @@ sub uuid2id {
     );
 }
 
-sub get_update {
+sub get_change {
     my $self = shift;
     my $token = shift || return;
 
     if ( $token =~ m/^(\d+)\.(\d+)$/ ) {
         my $id        = $1;
-        my $update_id = $2;
+        my $change_id = $2;
         my $data      = $self->xhashref(
             select => [
                 'topics.id',
                 'topics.kind',
                 'topics.uuid',
-                'updates.id AS update_id',
+                'changes.id AS change_id',
                 qv(undef)->as('project_issue_id'),
                 qv(undef)->as('project_id'),
             ],
             from       => 'topics',
-            inner_join => 'updates',
-            on         => { 'updates.id' => $update_id },
+            inner_join => 'changes',
+            on         => { 'changes.id' => $change_id },
             where =>
               [ 'topics.id = ', bv($id), ' AND topics.kind != ', qv('issue') ],
             union_all_select => [
                 'topics.id',
                 'topics.kind',
                 'topics.uuid',
-                'updates.id AS update_id',
+                'changes.id AS change_id',
                 'project_issues.id AS project_issue_id',
                 'project_issues.project_id',
             ],
             from       => 'project_issues',
             inner_join => 'topics',
             on         => 'topics.id = project_issues.issue_id',
-            inner_join => 'updates',
-            on         => { 'updates.id' => $update_id },
+            inner_join => 'changes',
+            on         => { 'changes.id' => $change_id },
             where      => { 'project_issues.id' => $id },
         );
         return $data;
@@ -159,7 +159,7 @@ sub get_projects {
             select => [
                 't.id',     't.kind',
                 't.uuid',   'p.parent_id',
-                'p.path',   't.first_update_id',
+                'p.path',   't.first_change_id',
                 'p.hub_id', 'p.local',
                 'h.name AS hub_name',
             ],
@@ -179,7 +179,7 @@ sub get_projects {
         select => [
             't.id',     't.kind',
             't.uuid',   'p.parent_id',
-            'p.path',   't.first_update_id',
+            'p.path',   't.first_change_id',
             'p.hub_id', 'p.local',
             'h.name AS hub_name',
         ],
@@ -275,11 +275,11 @@ sub get_hub_repos {
     );
 }
 
-sub get_max_update_id {
+sub get_max_change_id {
     my $self = shift;
     my $uid  = $self->xval(
-        select => ['MAX(u.id)'],
-        from   => 'updates u',
+        select => ['MAX(c.id)'],
+        from   => 'changes c',
     );
 
     return $uid;
@@ -333,7 +333,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -363,16 +363,16 @@ parts are separated for performance reasons.
 Returns the (possibly multiple) integer ID(s) matching a topic
 C<$UUID>.
 
-=item get_update( "$ID.$UPDATE_ID" ) -> HashRef
+=item get_change( "$ID.$UPDATE_ID" ) -> HashRef
 
-Looks up the update identified by C<$ID.$UPDATE_ID> and returns undef
+Looks up the change identified by C<$ID.$UPDATE_ID> and returns undef
 or a hash reference containg the following keys:
 
 =over
 
 =item * id - the topic ID
 
-=item * update_id - the ID of the update
+=item * change_id - the ID of the change
 
 =item * kind - the type of the topic
 
@@ -380,7 +380,7 @@ or a hash reference containg the following keys:
 
 =back
 
-If the update relates to an issue then the following keys will also
+If the change relates to an issue then the following keys will also
 contain valid values:
 
 =over
@@ -405,7 +405,7 @@ keys:
 
 =item * id - the topic ID
 
-=item * first_update_id - the update_id that created the topic
+=item * first_change_id - the change_id that created the topic
 
 =item * kind - the type of the topic
 
@@ -452,9 +452,9 @@ identified by C<$name>, each with the following keys:
 Returns C<undef> if C<$name> (a name, an ID, or a location) is not
 found.
 
-=item get_max_update_id
+=item get_max_change_id
 
-Returns the maximum update ID in the database.
+Returns the maximum change ID in the database.
 
 =item check_fks
 

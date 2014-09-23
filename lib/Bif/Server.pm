@@ -8,7 +8,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 with 'Bif::Role::Sync';
 
@@ -27,13 +27,13 @@ has wh => ( is => 'rw' );
 
 has json => ( is => 'rw', default => sub { JSON->new->utf8 } );
 
-has updates_tosend => ( is => 'rw', default => 0, );
+has changes_tosend => ( is => 'rw', default => 0, );
 
-has updates_torecv => ( is => 'rw', default => 0, );
+has changes_torecv => ( is => 'rw', default => 0, );
 
-has updates_sent => ( is => 'rw', default => 0, );
+has changes_sent => ( is => 'rw', default => 0, );
 
-has updates_recv => ( is => 'rw', default => 0, );
+has changes_recv => ( is => 'rw', default => 0, );
 
 has on_update => (
     is      => 'rw',
@@ -66,8 +66,8 @@ my %METHODS = (
         projects => 'sync_projects',
     },
     TRANSFER => {
-        hub_updates             => 'real_transfer_hub_updates',
-        project_related_updates => 'real_transfer_project_related_updates',
+        hub_changes             => 'real_transfer_hub_changes',
+        project_related_changes => 'real_transfer_project_related_changes',
     },
     QUIT => {},
 );

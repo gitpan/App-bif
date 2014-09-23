@@ -7,7 +7,7 @@ use DBIx::ThinSQL qw/bv/;
 use IO::Prompt::Tiny qw/prompt/;
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self   = __PACKAGE__->new(shift);
@@ -34,6 +34,10 @@ sub run {
     $self->{name} ||= prompt( $spacer . 'Name:', $name )
       || return $self->err( 'NameRequired', 'name is required' );
 
+    my $short = join( '', $self->{name} =~ m/(\b\w)/g );
+    $self->{shortname} ||= prompt( $spacer . 'Short Name:', $short )
+      || return $self->err( 'NameRequired', 'shortname is required' );
+
     $self->{method} ||= prompt( $spacer . 'Contact Method:', 'email' )
       || return $self->err( 'MethodRequired', 'method is required' );
 
@@ -41,7 +45,7 @@ sub run {
       prompt( $spacer . 'Contact ' . ucfirst( $self->{method} ) . ':', $email )
       || return $self->err( 'ValueRequired', 'value is required' );
 
-    $self->{message} ||= '';
+    $self->{message} ||= "New identity for $self->{name}";
 
     $db->txn(
         sub {
@@ -50,26 +54,24 @@ sub run {
             my $uid;
 
             if ( $self->{self} ) {
-                $uid = $db->nextval('updates');
+                $uid = $db->nextval('changes');
                 $db->xdo(
-                    insert_into => 'updates',
+                    insert_into => 'changes',
                     values      => {
                         id          => $uid,
                         identity_id => $id,
-                        author      => $self->{name},
-                        email       => $self->{value},
-                        local       => 1,
+                        message     => $self->{message},
                     },
                 );
             }
             else {
-                $uid = $self->new_update( message => $self->{message} );
+                $uid = $self->new_change( message => $self->{message} );
             }
 
             $db->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $id,
                     kind      => 'identity',
                 },
@@ -79,7 +81,7 @@ sub run {
                 insert_into => 'func_new_entity',
                 values      => {
                     id        => $id,
-                    update_id => $uid,
+                    change_id => $uid,
                     name      => $self->{name},
                 },
             );
@@ -88,14 +90,15 @@ sub run {
                 insert_into => 'func_new_identity',
                 values      => {
                     id        => $id,
-                    update_id => $uid,
+                    change_id => $uid,
+                    shortname => $self->{shortname},
                 },
             );
 
             $db->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $ecmid,
                     kind      => 'entity_contact_method',
                 },
@@ -104,7 +107,7 @@ sub run {
             $db->xdo(
                 insert_into => 'func_new_entity_contact_method',
                 values      => {
-                    update_id => $uid,
+                    change_id => $uid,
                     id        => $ecmid,
                     entity_id => $id,
                     method    => $self->{method},
@@ -113,9 +116,9 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'func_update_entity',
+                insert_into => 'func_change_entity',
                 values      => {
-                    update_id                 => $uid,
+                    change_id                 => $uid,
                     id                        => $id,
                     contact_id                => $id,
                     default_contact_method_id => $ecmid,
@@ -123,17 +126,17 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $uid,
+                    change_id         => $uid,
                     new               => 1,
-                    action_format     => "new identity %s ($self->{name})",
+                    action_format     => "new identity (%s) $self->{name}",
                     action_topic_id_1 => $id,
                 },
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
@@ -151,7 +154,7 @@ sub run {
 
             # For test scripts
             $self->{id}        = $id;
-            $self->{update_id} = $uid;
+            $self->{change_id} = $uid;
         }
     );
 
@@ -167,7 +170,7 @@ bif-new-identity - create a new identity in the repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -201,7 +204,11 @@ The creation message, set to "Created" by default.
 
 =item --self
 
-Register this identity as "myself" to be used for future updates.
+Register this identity as "myself" to be used for future changes.
+
+=item --shortname, -s
+
+The shortname (initials) to be shown in some outputs
 
 =back
 

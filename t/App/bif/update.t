@@ -15,15 +15,15 @@ run_in_tempdir {
 
     my $p = bif(qw/ new project todo --message m1 title /);
     my $u = bif(qw/update todo --message m2/);
-    isa_ok $u, 'Bif::OK::UpdateProject';
+    isa_ok $u, 'Bif::OK::ChangeProject';
 
     my $t = bif(qw/new task todo title --message m3/);
     $u = bif( qw/update/, $t->{id}, qw/--message m4/ );
-    isa_ok $u, 'Bif::OK::UpdateTask';
+    isa_ok $u, 'Bif::OK::ChangeTask';
 
     my $i = bif(qw/new issue todo title --message m5/);
     $u = bif( qw/update/, $i->{id}, qw/--message m6/ );
-    isa_ok $u, 'Bif::OK::UpdateIssue';
+    isa_ok $u, 'Bif::OK::ChangeIssue';
 };
 
 done_testing();

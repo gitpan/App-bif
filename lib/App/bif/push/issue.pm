@@ -4,7 +4,7 @@ use warnings;
 use feature 'state';
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -87,7 +87,7 @@ sub run {
 
                 $self->{message} ||= $self->prompt_edit;
 
-                my $rid = $db->nextval('updates');
+                my $rid = $db->nextval('changes');
 
                 my $src = $db->xval(
                     select => "p.path || COALESCE('\@' || h.name, '') AS path",
@@ -105,8 +105,8 @@ sub run {
                     where     => { 'p.id' => $pinfo->{id}, },
                 );
 
-                my $uid = $self->new_update(
-                    parent_id => $info->{first_update_id},
+                my $uid = $self->new_change(
+                    parent_id => $info->{first_change_id},
                     message   => "[ forked: $src -> $dest ]\n\n"
                       . $self->{message},
                     action => 'push issue',
@@ -122,24 +122,24 @@ sub run {
                 );
 
                 $db->xdo(
-                    insert_into => 'func_update_issue',
+                    insert_into => 'func_change_issue',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $info->{id},
                         project_id => $pinfo->{id},
                         status_id  => $status_id,
                     },
                 );
 
-                $self->{update_id} = $uid;
+                $self->{change_id} = $uid;
 
                 $db->xdo(
-                    insert_into => 'func_merge_updates',
+                    insert_into => 'func_merge_changes',
                     values      => { merge => 1 },
                 );
 
                 printf( "Issue pushed: %d.%d\n",
-                    $self->{id}, $self->{update_id} );
+                    $self->{id}, $self->{change_id} );
             }
         }
     );
@@ -156,7 +156,7 @@ bif-push-issue - push an issue to another project
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

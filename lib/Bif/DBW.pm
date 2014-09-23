@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -62,7 +62,7 @@ sub connect {
 package Bif::DBW::db;
 our @ISA = ('Bif::DB::db');
 
-use DBIx::ThinSQL qw/qv/;
+use DBIx::ThinSQL qw/case qv sq/;
 
 sub deploy {
     my $db = shift;
@@ -112,7 +112,7 @@ Bif::DBW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -129,7 +129,7 @@ Bif::DBW - read-write helper methods for a bif database
         my ($old,$new) = $dbw->deploy;
 
         $dbw->xdo(
-            insert_into => 'updates',
+            insert_into => 'changes',
             values      => $hashref,
         );
     });

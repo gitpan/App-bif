@@ -1,5 +1,5 @@
 CREATE TABLE func_new_task(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     status_id INTEGER NOT NULL,
     title VARCHAR(1024) NOT NULL DEFAULT ''
@@ -18,20 +18,20 @@ BEGIN
         NEW.id,
         NEW.status_id,
         NEW.title,
-        NEW.update_id
+        NEW.change_id
     );
 
     INSERT INTO tasks(
         id,
         status_id,
         title,
-        update_id
+        change_id
     )
     VALUES(
         NEW.id,
         NEW.status_id,
         NEW.title,
-        NEW.update_id
+        NEW.change_id
     );
 
     INSERT INTO
@@ -40,14 +40,14 @@ BEGIN
             task_id,
             new,
             title,
-            update_id
+            change_id
         )
     VALUES(
         NEW.status_id,
         NEW.id,
         1,
         NEW.title,
-        NEW.update_id
+        NEW.change_id
     );
 
     SELECT RAISE(IGNORE);

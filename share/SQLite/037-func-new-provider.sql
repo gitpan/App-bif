@@ -1,5 +1,5 @@
 CREATE TABLE func_new_provider(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics'))
 );
 
@@ -12,7 +12,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id
     );
 
@@ -25,12 +25,12 @@ BEGIN
 
     INSERT INTO
         provider_deltas(
-            update_id,
+            change_id,
             provider_id,
             new
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         1
     );

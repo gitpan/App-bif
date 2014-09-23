@@ -1,5 +1,5 @@
 CREATE TABLE func_new_entity_contact_method(
-    update_id INTEGER NOT NULL,
+    change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     entity_id INTEGER NOT NULL,
     method VARCHAR NOT NULL,
@@ -15,7 +15,7 @@ FOR EACH ROW
 BEGIN
 
     SELECT debug(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         NEW.entity_id,
         NEW.method,
@@ -38,14 +38,14 @@ BEGIN
 
     INSERT INTO
         entity_contact_method_deltas(
-            update_id,
+            change_id,
             entity_contact_method_id,
             new,
             method,
             mvalue
         )
     VALUES(
-        NEW.update_id,
+        NEW.change_id,
         NEW.id,
         1,
         NEW.method,

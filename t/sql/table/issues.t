@@ -54,7 +54,7 @@ run_in_tempdir {
               'new project inserted issue_status needinfo';
 
             my $id        = $db->nextval('topics');
-            my $update_id = $db->nextval('updates');
+            my $change_id = $db->nextval('changes');
             my $mtime     = time;
             my $mtimetz   = int( Time::Piece->new->tzoffset );
 
@@ -63,7 +63,7 @@ run_in_tempdir {
                 values      => {
                     project_id => $pid,
                     id         => $id,
-                    update_id  => $update_id,
+                    change_id  => $change_id,
                     mtime      => $mtime,
                     mtimetz    => $mtimetz,
                     author     => 'x',
@@ -85,9 +85,9 @@ run_in_tempdir {
               [ $sha1_hex, 'issue', 'title' ], 'sha match';
 
             is_deeply $db->selectrow_arrayref(
-                'select uuid,title from updates where id=?',
-                undef, $update_id ),
-              [ $sha1_hex, 'title' ], 'update sha match';
+                'select uuid,title from changes where id=?',
+                undef, $change_id ),
+              [ $sha1_hex, 'title' ], 'change sha match';
 
             is_deeply $db->selectrow_arrayref(
                 'select status_id from project_issues
@@ -100,7 +100,7 @@ run_in_tempdir {
                 'select issue_id,status_id
                  from issue_deltas
                  where id=?',
-                undef, $update_id
+                undef, $change_id
               ),
               [ $id, $status_id ], 'issue_deltas';
 
@@ -141,14 +141,14 @@ run_in_tempdir {
 
 =cut
     my $child_id        = $db->nextval('topics');
-    my $child_update_id = $db->nextval('updates');
+    my $child_change_id = $db->nextval('changes');
 
     ok $db->xdo(
         insert_into => 'func_new_issue',
         values      => {
             project_id => $pid,
             id         => $child_id,
-            update_id  => $child_update_id,
+            change_id  => $child_change_id,
             author     => 'y',
             email      => 'y',
             parent_id  => $id,
@@ -170,25 +170,25 @@ run_in_tempdir {
         'select project_id,parent_id,name
                  from project_deltas
                  where id=?',
-        undef, $child_update_id
+        undef, $child_change_id
       ),
       [ $child_id, $id, 'y' ], 'issue_deltas';
 
 =cut
 
-            $update_id = $db->nextval('updates');
+            $change_id = $db->nextval('changes');
             ok $db->xdo(
-                insert_into => 'func_update_issue',
+                insert_into => 'func_change_issue',
                 values      => {
                     id        => $id,
-                    update_id => $update_id,
+                    change_id => $change_id,
                     mtime     => $mtime + 3,
                     author    => 'y',
                     email     => 'y',
                     title     => 'newtitle',
                 },
               ),
-              'update issue title';
+              'change issue title';
 
             is_deeply $db->selectrow_arrayref(
                 'select title
@@ -196,64 +196,64 @@ run_in_tempdir {
          where id=?',
                 undef, $id
               ),
-              ['newtitle'], 'issue title update';
+              ['newtitle'], 'issue title change';
 
-            $update_id = $db->nextval('updates');
+            $change_id = $db->nextval('changes');
 
             ok $db->xdo(
-                insert_into => 'func_update_issue',
+                insert_into => 'func_change_issue',
                 values      => {
                     id        => $id,
-                    update_id => $update_id,
+                    change_id => $change_id,
                     mtime     => $mtime + 4,
                     author    => 'y',
                     email     => 'y',
                     status_id => $needinfo_status_id,
                 },
               ),
-              'update issue status';
+              'change issue status';
 
             is_deeply $db->selectrow_arrayref(
                 'select
             project_issues.status_id,
-            project_issues.update_id,
+            project_issues.change_id,
             issue_deltas.status_id
          from issue_deltas
          inner join project_issues
          on project_issues.issue_id = issue_deltas.issue_id
          where issue_deltas.id=?',
-                undef, $update_id
+                undef, $change_id
               ),
-              [ $needinfo_status_id, $update_id, $needinfo_status_id ],
+              [ $needinfo_status_id, $change_id, $needinfo_status_id ],
               'issue_deltas';
 
-            my $new_update_id = $db->nextval('updates');
+            my $new_change_id = $db->nextval('changes');
 
             ok $db->xdo(
-                insert_into => 'func_update_issue',
+                insert_into => 'func_change_issue',
                 values      => {
                     id        => $id,
-                    update_id => $new_update_id,
+                    change_id => $new_change_id,
                     mtime     => $mtime + 2,
                     author    => 'y',
                     email     => 'y',
                     status_id => $status_id,
                 },
               ),
-              'update issue status';
+              'change issue status';
 
             is_deeply $db->selectrow_arrayref(
                 'select
             project_issues.status_id,
-            project_issues.update_id,
+            project_issues.change_id,
             issue_deltas.status_id
          from issue_deltas
          inner join project_issues
          on project_issues.issue_id = issue_deltas.issue_id
          where issue_deltas.id=?',
-                undef, $new_update_id
+                undef, $new_change_id
               ),
-              [ $needinfo_status_id, $update_id, $status_id ],
+              [ $needinfo_status_id, $change_id, $status_id ],
               'out of order issue_deltas';
         }
     );

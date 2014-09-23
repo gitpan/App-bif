@@ -7,7 +7,7 @@ use parent 'App::bif::Context';
 use Text::FormatTable;
 use Time::Duration qw/ago/;
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run_by_time {
     my $self = shift;
@@ -15,36 +15,52 @@ sub run_by_time {
     my $db   = $self->db;
     my ( $dark, $reset, $bold ) = $self->colours(qw/dark reset bold/);
 
-    state $have_thinsql = DBIx::ThinSQL->import(qw/concat qv case/);
+    state $have_thinsql = DBIx::ThinSQL->import(qw/concat qv case sq/);
 
-    my $latest = $db->xval(
-        select => 'bif.update_id',
-        from   => 'bifkv bif',
-        where  => { 'bif.key' => 'last_sync' },
-    );
+    my $join = $self->{full} ? 'left_join' : 'inner_join';
 
     my $sth = $db->xprepare(
+        with => 'b',
+        as   => sq(
+            select => [ 'b.change_id AS start', 'b.change_id2 AS stop' ],
+            from   => 'bifkv b',
+            where => { 'b.key' => 'last_sync' },
+        ),
         select => [
             concat(
                 case (
-                    when => [ 'NOT u.local AND u.id > ', qv($latest) ],
+                    when => 'b.start',
                     then => qv($bold),
                     else => qv(''),
                 ),
-                q{strftime('%H:%M:%S',u.mtime,'unixepoch','localtime')},
+                q{strftime('%H:%M:%S',c.mtime,'unixepoch','localtime')},
                 qv('  '),
-                'u.action',
+                'c.action',
             ),
-            '"u" || u.id',
-            q{strftime('%Y-%m-%d',u.mtime,'unixepoch','localtime') AS mdate},
-            'u.local',
-            qq{$now - strftime('%s', u.mtime, 'unixepoch')},
-            'COALESCE(u.author,e.name) AS author',
+            '"c" || c.id',
+            q{strftime('%Y-%m-%d',c.mtime,'unixepoch','localtime') AS mdate},
+            qq{$now - strftime('%s', c.mtime, 'unixepoch')},
+            'COALESCE(c.author,i.shortname,e.name) AS author',
+            "COALESCE(p.path || COALESCE('\@' || h.name,''),'') AS project",
         ],
-        from       => 'updates u',
+        from       => 'changes c',
+        inner_join => 'change_deltas cd',
+        on         => 'cd.change_id = c.id',
         inner_join => 'entities e',
-        on         => 'e.id = u.identity_id',
-        order_by   => [ 'u.mtime DESC', 'u.id DESC' ],
+        on         => 'e.id = c.identity_id',
+        inner_join => 'identities i',
+        on         => 'i.id = c.identity_id',
+        left_join  => 'b',
+        on         => 'c.id BETWEEN b.start+1 AND b.stop',
+        left_join  => 'tasks t',
+        on         => 't.id = cd.action_topic_id_1',
+        left_join  => 'task_status ts',
+        on         => 'ts.id = t.status_id',
+        $join      => 'projects p',
+        on         => 'p.id = ts.project_id OR p.id = cd.action_topic_id_1',
+        left_join  => 'hubs h',
+        on         => 'h.id = p.hub_id',
+        order_by   => [ 'c.mtime DESC', 'c.id DESC' ],
     );
 
     $sth->execute;
@@ -57,31 +73,22 @@ sub run_by_time {
     );
 
     my $mdate = '';
-    my $table = Text::FormatTable->new(' l  l  r ');
+    my $table = Text::FormatTable->new(' l  l  l  r ');
 
     while ( my $n = $sth->arrayref ) {
         if ( $n->[2] ne $mdate ) {
-            if ( $mdate ne '' ) {
-                print $table->render . "\n";
-                $table = Text::FormatTable->new(' l  l  r ');
-
-            }
+            $table->rule(' ') if $mdate;
             $mdate = $n->[2];
-            $table->head( $dark . $n->[2] . ' (' . ago( $n->[4], 1 ) . ')',
-                , 'Author', 'UID' . $reset );
-
-            if ($dark) {
-                $table->rule( $dark . '–' . $reset );
-            }
-            else {
-                $table->rule('-');
-            }
-        }
-
-        if ( $n->[5] ) {
+            $table->head(
+                $dark . $n->[2] . ' (' . uc( ago( $n->[3], 1 ) ) . ')',
+                , 'PROJECT', 'AUTHOR', 'CID' . $reset );
 
         }
-        $table->row( $n->[0], $n->[5], $n->[1] . $reset );
+
+        if ( $n->[4] ) {
+
+        }
+        $table->row( $n->[0], $n->[5], $n->[4], $n->[1] . $reset );
     }
 
     print $table->render;
@@ -118,7 +125,7 @@ bif-log-repo - review the history of the current repository
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -132,6 +139,10 @@ repository.
 =head1 ARGUMENTS & OPTIONS
 
 =over
+
+=item --full, -f
+
+Include all actions (not just project-related) in the output.
 
 =item --order uid | time
 

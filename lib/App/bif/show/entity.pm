@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::show';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -25,9 +25,9 @@ sub run {
             't.ctimetz',
             't.mtime',
             't.mtimetz',
-            'u.author',
-            'u.email',
-            'u.message',
+            'c.author',
+            'c.email',
+            'c.message',
             'e.local',
             'h.name AS hub_name',
             'hr.location AS hub_location'
@@ -35,8 +35,8 @@ sub run {
         from       => 'entities e',
         inner_join => 'topics t',
         on         => 't.id = e.id',
-        inner_join => 'updates u',
-        on         => 'u.id = t.first_update_id',
+        inner_join => 'changes c',
+        on         => 'c.id = t.first_change_id',
         inner_join => 'entities c',
         on         => 'c.id = e.contact_id',
         inner_join => 'hubs h',
@@ -88,8 +88,8 @@ sub run {
     ) for @methods;
 
     $self->start_pager;
-    print $self->render_table( 'l  l',
-        $self->header( 'Entity', $ref->{name} ), \@data );
+    print $self->render_table( 'l  l', $self->header( 'Entity', $ref->{name} ),
+        \@data, 1 );
     $self->end_pager;
 
     return $self->ok( 'ShowEntity', \@data );
@@ -104,7 +104,7 @@ bif-show-entity - display a entity's current status
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 

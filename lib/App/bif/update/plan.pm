@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'App::bif::Context';
 
-our $VERSION = '0.1.0_27';
+our $VERSION = '0.1.0_28';
 
 sub run {
     my $self = __PACKAGE__->new(shift);
@@ -12,11 +12,11 @@ sub run {
 
     if ( $self->{reply} ) {
         my $uinfo =
-          $self->get_update( $self->{reply}, $info->{first_update_id} );
+          $self->get_change( $self->{reply}, $info->{first_change_id} );
         $self->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_update_id};
+        $self->{parent_uid} = $info->{first_change_id};
     }
 
     $self->{message} ||= $self->prompt_edit( opts => $self );
@@ -63,16 +63,16 @@ sub run {
 
     $db->txn(
         sub {
-            my $uid = $self->new_update(
+            my $uid = $self->new_change(
                 message   => $self->{message},
                 parent_id => $self->{parent_uid},
             );
 
             foreach my $host_id (@add) {
                 $db->xdo(
-                    insert_into => 'func_update_plan',
+                    insert_into => 'func_change_plan',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $info->{id},
                         add_remove => 1,
                         host_id    => $host_id,
@@ -82,9 +82,9 @@ sub run {
 
             foreach my $host_id (@remove) {
                 $db->xdo(
-                    insert_into => 'func_update_plan',
+                    insert_into => 'func_change_plan',
                     values      => {
-                        update_id  => $uid,
+                        change_id  => $uid,
                         id         => $info->{id},
                         add_remove => 0,
                         host_id    => $host_id,
@@ -93,9 +93,9 @@ sub run {
             }
 
             $db->xdo(
-                insert_into => 'update_deltas',
+                insert_into => 'change_deltas',
                 values      => {
-                    update_id         => $uid,
+                    change_id         => $uid,
                     new               => 1,
                     action_format     => "update plan %s",
                     action_topic_id_1 => $info->{id},
@@ -103,15 +103,15 @@ sub run {
             );
 
             $db->xdo(
-                insert_into => 'func_merge_updates',
+                insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            print "Plan updated: $self->{id}.$uid\n";
+            print "Plan changed: $self->{id}.$uid\n";
         }
     );
 
-    return $self->ok('UpdatePlan');
+    return $self->ok('ChangePlan');
 }
 
 1;
@@ -123,7 +123,7 @@ bif-update-plan - update or comment an plan
 
 =head1 VERSION
 
-0.1.0_27 (2014-09-10)
+0.1.0_28 (2014-09-23)
 
 =head1 SYNOPSIS
 
@@ -154,7 +154,7 @@ multiple times.
 
 =item --message, -m
 
-The message describing this update in detail.
+The message describing this change in detail.
 
 =back
 
