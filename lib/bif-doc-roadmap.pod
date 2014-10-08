@@ -1,4 +1,6 @@
 
+=for bif-doc #devintro bif-doc-roadmap - where development is focused
+
 =head1 Development Roadmap
 
 The next few releases of bif aim to make some progress on the

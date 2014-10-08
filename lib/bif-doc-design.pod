@@ -1,3 +1,6 @@
+
+=for bif-doc #devintro bif-doc-design - how and why bif does what it does
+
 =head1 Bif Design
 
 This document attempts to describe why and how the Bif project
@@ -5,7 +8,7 @@ management tool does what it does.
 
 =head1 Version
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 Background
 
@@ -426,7 +429,7 @@ Bif is a Perl wrapper around an SQLite database, structured as follows:
 
 =over
 
-=item App::bif::Context
+=item App::bif
 
 A utility module responsible for finding the F<.bif> repository and
 setting up debug, pagers, formatting tables, etc.
@@ -471,7 +474,7 @@ appropriate L<App::bif::*> module.
 
 =item * The L<App::bif::sub::command> module C<run> method is called.
 
-=item * Sub-command classes use functions from L<App::bif::Context> to
+=item * Sub-command classes use functions from L<App::bif> to
 discover the location of the repository, the user configuration, access
 the database, render output, generate errors and so on.
 

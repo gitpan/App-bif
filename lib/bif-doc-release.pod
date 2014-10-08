@@ -1,0 +1,35 @@
+
+=head1 Latest Bif Releases
+
+See L<bif-doc-changelog> for the changes that have occured in each
+release.
+
+=head2 Stable
+
+Stable releases are for use in production and come with fully
+implemented features and complete matching documentation. There has not
+yet been a stable release.
+
+=head2 Development
+
+Development releases are for early adopters and for testing purposes
+prior to upgrading a stable installation.
+
+=over
+
+=item * L<bif-0.1.0_28.tar.gz|http://bifax.org/bif/download/bif-0.1.0_28.tar.gz> (sha1: 3694b00f07371bdb05d35f059dbabb5367838ccf)
+
+
+
+The latest source archive for building from scratch on UNIX-style
+systems.
+
+=item * L<bif-0.1.0_28.zip|http://bifax.org/bif/download/bif-0.1.0_28.zip> (sha1: 85896bca759607b41f28294e8cd9c246e4a3d18e)
+
+
+
+The latest source archive for building from scratch on Windows-style
+systems.
+
+=back
+

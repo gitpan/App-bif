@@ -1,4 +1,10 @@
 
+=begin comment
+
+##intro## bif-doc-changelog - what has changed each release
+
+=end comment
+
 =head1 Bif Changelog
 
 Bif release numbering follows the L<http://semver.org> versioning

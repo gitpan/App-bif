@@ -9,7 +9,7 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/ log repo junk/) }, 'OptArgs::Usage';
 
-    isa_ok exception { bif(qw/ log repo/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ log repo/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

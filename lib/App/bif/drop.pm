@@ -1,20 +1,23 @@
 package App::bif::drop;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 1;
 __END__
 
 =head1 NAME
 
+=for bif-doc #delete
+
 bif-drop - delete a topic or topic change
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

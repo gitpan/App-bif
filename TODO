@@ -1,3 +1,5 @@
+- per repo bifkv last_sync values
+
 - Store tree information for issue push history to be shown by
   bif-show-issue?
     

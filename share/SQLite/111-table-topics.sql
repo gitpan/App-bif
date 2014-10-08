@@ -1,5 +1,5 @@
 CREATE TABLE topics (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     uuid char(40) NOT NULL UNIQUE,
     first_change_id INTEGER NOT NULL,
     last_change_id INTEGER NOT NULL,

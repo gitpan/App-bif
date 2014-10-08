@@ -98,7 +98,7 @@ run_in_tempdir {
                 like $@, qr/not unique/, 'duplicate failed';
 
                 ok $db->xdo(
-                    insert_into => 'func_change_project_status',
+                    insert_into => 'func_update_project_status',
                     values      => {
                         id      => $id,
                         author  => 'x',

@@ -7,7 +7,8 @@ use Test::More;
 
 run_in_tempdir {
 
-    isa_ok exception { bif(qw/ new project todo/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ new project todo/) },
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

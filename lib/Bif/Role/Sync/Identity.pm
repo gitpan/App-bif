@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw/qv sq/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 my %import_functions = (
     CHANGESET => {},
@@ -109,6 +109,8 @@ sub real_transfer_identity_changes {
     my $tmp  = $self->temp_table;
 
     my $send = async {
+        select $App::bif::pager->fh if $App::bif::pager;
+
         my $total = $self->db->xval(
             select => 'COALESCE(sum(t.ucount), 0)',
             from   => "$tmp t",
@@ -188,3 +190,10 @@ sub real_export_identity {
 }
 
 1;
+
+=head1 NAME
+
+=for bif-doc #perl
+
+Bif::Role::Sync::Identity - synchronisation role for identities
+

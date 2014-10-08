@@ -1,18 +1,18 @@
 package App::bif::show::identity;
 use strict;
 use warnings;
-use parent 'App::bif::show';
+use Bif::Mo;
 use DBIx::ThinSQL qw/sum case coalesce concat qv/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
 
-    $self->{id} = $self->uuid2id( $self->{id} );
-
-    $self->init;
+    $opts->{id} = $self->uuid2id( $opts->{id} );
 
     my @data;
 
@@ -35,10 +35,10 @@ sub run {
         on         => 'c.id = t.first_change_id',
         inner_join => 'entities ct',
         on         => 'ct.id = e.contact_id',
-        where      => { 'i.id' => $self->{id} },
+        where      => { 'i.id' => $opts->{id} },
     );
 
-    return $self->err( 'IdentityNotFound', "identity not found: $self->{id}" )
+    return $self->err( 'IdentityNotFound', "identity not found: $opts->{id}" )
       unless $ref;
 
     my ($bold) = $self->colours('bold');
@@ -56,7 +56,7 @@ sub run {
         from       => 'entities e',
         inner_join => 'entity_contact_methods ecm',
         on         => 'ecm.entity_id = e.id',
-        where      => { 'e.id' => $self->{id} },
+        where      => { 'e.id' => $opts->{id} },
         order_by   => [qw/ ecm.method ecm.mvalue /],
     );
 
@@ -79,10 +79,8 @@ sub run {
     );
 
     $self->start_pager;
-    print $self->render_table( 'l  l',
-        $self->header( 'Identity', $ref->{name} ),
+    print $self->render_table( 'l  l', [ $bold . 'Identity', $ref->{name} ],
         \@data, 1 );
-    $self->end_pager;
 
     return $self->ok( 'ShowIdentity', \@data );
 }
@@ -92,11 +90,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show-identity - display a identity's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -104,7 +104,7 @@ bif-show-identity - display a identity's current status
 
 =head1 DESCRIPTION
 
-The C<bif show identity> command displays the characteristics of an
+The B<bif-show-identity> command displays the characteristics of an
 identity.
 
 =head1 ARGUMENTS & OPTIONS

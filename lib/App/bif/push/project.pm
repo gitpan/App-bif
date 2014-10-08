@@ -1,36 +1,34 @@
 package App::bif::push::project;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
+use Bif::Mo;
 use Coro;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
     my $self = shift;
-    $self->{no_pager}++;    # causes problems with something in Coro?
-    $self = __PACKAGE__->new($self);
-
-    # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
-    my $db = $self->dbw;
+    my $opts = $self->opts;
 
     my @pinfo;
-    foreach my $path ( @{ $self->{path} } ) {
+    foreach my $path ( @{ $opts->{path} } ) {
         push( @pinfo, $self->get_project($path) );
     }
 
-    my @locations = $db->get_hub_repos( $self->{hub} );
-    $self->err( 'HubNotFound', 'hub not found: %s', $self->{hub} )
+    # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
+    my $dbw       = $self->dbw;
+    my @locations = $dbw->get_hub_repos( $opts->{hub} );
+    $self->err( 'HubNotFound', 'hub not found: %s', $opts->{hub} )
       unless @locations;
 
     my $hub = $locations[0];
 
     my @new_pinfo;
     foreach my $pinfo (@pinfo) {
-        my $exists =
-          eval { $self->get_project("$pinfo->{path}\@$hub->{name}") };
+        my $exists = eval { $self->get_project("$hub->{name}/$pinfo->{path}") };
 
         if ($exists) {
             if ( $exists->{uuid} eq $pinfo->{uuid} ) {
@@ -55,10 +53,10 @@ sub run {
 
     my $client = Bif::Client->new(
         name          => $hub->{name},
-        db            => $db,
+        db            => $dbw,
         location      => $hub->{location},
-        debug         => $self->{debug},
-        debug_bifsync => $self->{debug_bifsync},
+        debug         => $opts->{debug},
+        debug_bifsync => $opts->{debug_bifsync},
         on_update     => sub {
             $self->lprint("$hub->{name}: $_[0]");
         },
@@ -69,8 +67,10 @@ sub run {
     );
 
     my $coro = async {
+        select $App::bif::pager->fh if $opts->{debug};
+
         eval {
-            $db->txn(
+            $dbw->txn(
                 sub {
                     foreach my $pinfo (@pinfo) {
                         my $uid = $self->new_change(
@@ -78,7 +78,7 @@ sub run {
                             message   => "Imported $pinfo->{path}",
                         );
 
-                        $db->xdo(
+                        $dbw->xdo(
                             insert_into => 'change_deltas',
                             values      => {
                                 change_id     => $uid,
@@ -89,7 +89,7 @@ sub run {
                         );
 
                         # TODO make this a trigger somehow?
-                        $db->xdo(
+                        $dbw->xdo(
                             insert_into => 'hub_deltas',
                             values      => {
                                 change_id  => $uid,
@@ -99,19 +99,19 @@ sub run {
                         );
 
                         my $msg = "[ push: $hub->{location} ($hub->{name}) ]";
-                        if ( $self->{message} ) {
-                            $msg .= "\n\n$self->{message}\n";
+                        if ( $opts->{message} ) {
+                            $msg .= "\n\n$opts->{message}\n";
                         }
 
-                        $self->{change_id} = $self->new_change(
+                        $opts->{change_id} = $self->new_change(
                             parent_id => $pinfo->{first_change_id},
                             message   => $msg,
                         );
 
-                        $db->xdo(
+                        $dbw->xdo(
                             insert_into => 'change_deltas',
                             values      => {
-                                change_id     => $self->{change_id},
+                                change_id     => $opts->{change_id},
                                 new           => 1,
                                 action_format => "push project $pinfo->{path} "
                                   . "(%s) $hub->{name}",
@@ -119,16 +119,16 @@ sub run {
                             },
                         );
 
-                        $db->xdo(
-                            insert_into => 'func_change_project',
+                        $dbw->xdo(
+                            insert_into => 'func_update_project',
                             values      => {
                                 id        => $pinfo->{id},
-                                change_id => $self->{change_id},
+                                change_id => $opts->{change_id},
                                 hub_uuid  => $hub->{uuid},
                             },
                         );
 
-                        $db->xdo(
+                        $dbw->xdo(
                             insert_into => 'func_merge_changes',
                             values      => { merge => 1 },
                         );
@@ -137,14 +137,14 @@ sub run {
                     my $status = $client->sync_hub( $hub->{id} );
 
                     if ( $status ne 'RepoSync' ) {
-                        $db->rollback;
+                        $dbw->rollback;
                         $error = "unexpected status received: $status";
                         return;
                     }
 
                     $status = $client->transfer_hub_changes;
                     if ( $status ne 'TransferHubChanges' ) {
-                        $db->rollback;
+                        $dbw->rollback;
                         $error = "unexpected status received: $status";
                         return;
                     }
@@ -152,7 +152,7 @@ sub run {
                     $status = $client->sync_projects;
 
                     unless ( $status eq 'ProjectSync' ) {
-                        $db->rollback;
+                        $dbw->rollback;
                         $error = "unexpected status received: $status";
                         return;
                     }
@@ -160,7 +160,7 @@ sub run {
                     $status = $client->transfer_project_related_changes;
 
                     if ( $status ne 'TransferProjectRelatedChanges' ) {
-                        $db->rollback;
+                        $dbw->rollback;
                         $error = "unexpected status received: $status";
                         return;
                     }
@@ -181,7 +181,7 @@ sub run {
     };
 
     if ( $cv->recv ) {
-        print "Project(s) exported: @{ $self->{path} }\n";
+        print "Project(s) exported: @{ $opts->{path} }\n";
         return $self->ok('PushProject');
     }
     return $self->err( 'Unknown', $error );
@@ -192,11 +192,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #sync
+
 bif-push-project -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -204,7 +206,7 @@ bif-push-project -  export a project to a remote hub
 
 =head1 DESCRIPTION
 
-The C<bif push project> command exports one or more projects to a hub.
+The B<bif-push-project> command exports one or more projects to a hub.
 
 =head1 ARGUMENTS & OPTIONS
 

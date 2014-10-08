@@ -1,42 +1,44 @@
 package App::bif::new::project;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use IO::Prompt::Tiny qw/prompt/;
 use DBIx::ThinSQL qw/ qv sq/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub dup {
     my $self = shift;
-    my $db   = $self->dbw;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
 
-    my $path      = $self->{path};
-    my $dup_pinfo = $self->get_project( $self->{dup} );
+    my $path      = $opts->{path};
+    my $dup_pinfo = $self->get_project( $opts->{dup} );
 
-    $self->{title} ||= $db->xval(
+    $opts->{title} ||= $dbw->xval(
         select => 'p.title',
         from   => 'projects p',
         where  => { 'p.id' => $dup_pinfo->{id} },
     );
 
-    my $src = $db->xval(
-        select    => "p.name || COALESCE('\@' || h.name,'')",
+    my $src = $dbw->xval(
+        select    => 'p.fullpath',
         from      => 'projects p',
         left_join => 'hubs h',
         on        => 'h.id = p.hub_id',
         where     => { 'p.id' => $dup_pinfo->{id} },
     );
 
-    $self->{message} ||=
+    $opts->{message} ||=
       $self->prompt_edit( txt => "[ dup: $src ]\n", opts => $self );
 
-    $db->txn(
+    $dbw->txn(
         sub {
-            my $id = $db->nextval('topics');
-            my $uid = $self->new_change( message => $self->{message}, );
+            my $id = $dbw->nextval('topics');
+            my $uid = $self->new_change( message => $opts->{message}, );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     change_id => $uid,
@@ -45,18 +47,18 @@ sub dup {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_project',
                 values      => {
                     change_id => $uid,
                     id        => $id,
-                    parent_id => $self->{parent_id},
-                    name      => $self->{path},
-                    title     => $self->{title},
+                    parent_id => $opts->{parent_id},
+                    name      => $opts->{path},
+                    title     => $opts->{title},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 update => 'projects',
                 set    => {
                     local  => 1,
@@ -66,7 +68,7 @@ sub dup {
             );
 
             if ( $dup_pinfo->{hub_id} ) {
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'hub_deltas',
                     values      => {
                         change_id  => $uid,
@@ -75,16 +77,16 @@ sub dup {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into =>
-                      [ 'func_change_project', qw/id change_id hub_uuid/ ],
+                      [ 'func_update_project', qw/id change_id hub_uuid/ ],
                     select => [ $id, $uid, 't.uuid' ],
                     from   => 'topics t',
                     where => { 't.id' => $dup_pinfo->{hub_id} },
                 );
             }
 
-            my @status = $db->xhashrefs(
+            my @status = $dbw->xhashrefs(
                 select    => [ 'ps.status', 'ps.rank', 'p.id AS current_id' ],
                 from      => 'project_status ps',
                 left_join => 'projects p',
@@ -95,9 +97,9 @@ sub dup {
 
             my $status_id;
             foreach my $status (@status) {
-                my $sid = $db->nextval('topics');
+                my $sid = $dbw->nextval('topics');
                 $status_id = $sid if $status->{current_id};
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
                         change_id => $uid,
@@ -106,7 +108,7 @@ sub dup {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_project_status',
                     values      => {
                         change_id  => $uid,
@@ -118,7 +120,7 @@ sub dup {
                 );
             }
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'project_deltas',
                 values      => {
                     change_id  => $uid,
@@ -127,7 +129,7 @@ sub dup {
                 },
             );
 
-            @status = $db->xhashrefs(
+            @status = $dbw->xhashrefs(
                 select => [ 'ist.status', 'ist.rank', 'ist.def' ],
                 from   => 'issue_status ist',
                 where    => { 'ist.project_id' => $dup_pinfo->{id} },
@@ -135,8 +137,8 @@ sub dup {
             );
 
             foreach my $status (@status) {
-                my $sid = $db->nextval('topics');
-                $db->xdo(
+                my $sid = $dbw->nextval('topics');
+                $dbw->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
                         change_id => $uid,
@@ -145,7 +147,7 @@ sub dup {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_issue_status',
                     values      => {
                         change_id  => $uid,
@@ -158,7 +160,7 @@ sub dup {
                 );
             }
 
-            @status = $db->xhashrefs(
+            @status = $dbw->xhashrefs(
                 select => [ 'ts.status', 'ts.rank', 'ts.def' ],
                 from   => 'task_status ts',
                 where    => { 'ts.project_id' => $dup_pinfo->{id} },
@@ -166,8 +168,8 @@ sub dup {
             );
 
             foreach my $status (@status) {
-                my $sid = $db->nextval('topics');
-                $db->xdo(
+                my $sid = $dbw->nextval('topics');
+                $dbw->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
                         change_id => $uid,
@@ -176,7 +178,7 @@ sub dup {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_task_status',
                     values      => {
                         change_id  => $uid,
@@ -189,26 +191,26 @@ sub dup {
                 );
             }
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id     => $uid,
                     new           => 1,
-                    action_format => "dup project (%s) $self->{path} "
+                    action_format => "dup project (%s) $opts->{path} "
                       . "from (%s) $dup_pinfo->{path}",
                     action_topic_id_1 => $id,
                     action_topic_id_1 => $dup_pinfo->{id},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
             # For test scripts
-            $self->{id}        = $id;
-            $self->{change_id} = $uid;
+            $opts->{id}        = $id;
+            $opts->{change_id} = $uid;
         }
     );
 
@@ -217,61 +219,62 @@ sub dup {
 }
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
 
-    $self->{path} ||= prompt( 'Path:', '' )
+    $opts->{path} ||= prompt( 'Path:', '' )
       || return $self->err( 'ProjectPathRequired', 'project path is required' );
 
-    my $path = $self->{path};
+    my $path = $opts->{path};
 
     return $self->err( 'ProjectExists',
-        'project already exists: ' . $self->{path} )
+        'project already exists: ' . $opts->{path} )
       if eval {
-        grep { !defined $_->{hub_name} } $self->get_project( $self->{path} );
+        grep { !defined $_->{hub_name} } $self->get_project( $opts->{path} );
       };
 
-    if ( $self->{path} =~ m/\// ) {
+    if ( $opts->{path} =~ m/\// ) {
         my @parts = split( '/', $path );
-        $self->{path} = pop @parts;
+        $opts->{path} = pop @parts;
 
         my $parent_path = join( '/', @parts );
 
         my $parent_pinfo = eval { $self->get_project($parent_path) }
           || return $self->err( 'ParentProjectNotFound',
             'parent project not found: ' . $parent_path );
-        $self->{parent_id} = $parent_pinfo->{id};
+        $opts->{parent_id} = $parent_pinfo->{id};
     }
 
     my $where;
-    if ( $self->{status} ) {
+    if ( $opts->{status} ) {
         return $self->err( 'InvalidStatus',
-            'unknown status: ' . $self->{status} )
-          unless $db->xarrayref(
+            'unknown status: ' . $opts->{status} )
+          unless $dbw->xarrayref(
             select => 'count(*)',
             from   => 'default_status',
             where  => {
                 kind   => 'project',
-                status => $self->{status},
+                status => $opts->{status},
             }
           );
     }
 
-    return dup($self) if $self->{dup};
+    return dup($self) if $opts->{dup};
 
-    $self->{title} ||= prompt( 'Title:', '' )
+    $opts->{title} ||= prompt( 'Title:', '' )
       || return $self->err( 'ProjectNameRequired',
         'project title is required' );
 
-    $self->{message} ||= $self->prompt_edit( opts => $self );
-    $self->{lang} ||= 'en';
+    $opts->{message} ||= $self->prompt_edit( opts => $self );
+    $opts->{lang} ||= 'en';
 
-    $db->txn(
+    $dbw->txn(
         sub {
-            my $id = $db->nextval('topics');
-            my $uid = $self->new_change( message => $self->{message}, );
+            my $id = $dbw->nextval('topics');
+            my $uid = $self->new_change( message => $opts->{message}, );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     change_id => $uid,
@@ -280,18 +283,18 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_project',
                 values      => {
                     change_id => $uid,
                     id        => $id,
-                    parent_id => $self->{parent_id},
-                    name      => $self->{path},
-                    title     => $self->{title},
+                    parent_id => $opts->{parent_id},
+                    name      => $opts->{path},
+                    title     => $opts->{title},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 update => 'projects',
                 set    => {
                     local => 1,
@@ -299,7 +302,7 @@ sub run {
                 where => { id => $id },
             );
 
-            my @status = $db->xhashrefs(
+            my @status = $dbw->xhashrefs(
                 select   => [ qw/status rank/, ],
                 from     => 'default_status',
                 where    => { kind => 'project' },
@@ -307,8 +310,8 @@ sub run {
             );
 
             foreach my $status (@status) {
-                my $sid = $db->nextval('topics');
-                $db->xdo(
+                my $sid = $dbw->nextval('topics');
+                $dbw->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
                         change_id => $uid,
@@ -317,7 +320,7 @@ sub run {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_project_status',
                     values      => {
                         change_id  => $uid,
@@ -329,7 +332,7 @@ sub run {
                 );
             }
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into =>
                   [ 'project_deltas', qw/change_id project_id status_id/, ],
                 select     => [ qv($uid), qv($id), 'project_status.id', ],
@@ -341,10 +344,10 @@ sub run {
                 },
                 where => do {
 
-                    if ( $self->{status} ) {
+                    if ( $opts->{status} ) {
                         {
                             'default_status.kind'   => 'project',
-                            'default_status.status' => $self->{status},
+                            'default_status.status' => $opts->{status},
                         };
                     }
                     else {
@@ -356,7 +359,7 @@ sub run {
                 },
             );
 
-            @status = $db->xhashrefs(
+            @status = $dbw->xhashrefs(
                 select   => [ qw/status rank def/, ],
                 from     => 'default_status',
                 where    => { kind => 'issue' },
@@ -364,8 +367,8 @@ sub run {
             );
 
             foreach my $status (@status) {
-                my $sid = $db->nextval('topics');
-                $db->xdo(
+                my $sid = $dbw->nextval('topics');
+                $dbw->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
                         change_id => $uid,
@@ -374,7 +377,7 @@ sub run {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_issue_status',
                     values      => {
                         change_id  => $uid,
@@ -387,7 +390,7 @@ sub run {
                 );
             }
 
-            @status = $db->xhashrefs(
+            @status = $dbw->xhashrefs(
                 select   => [ qw/status rank def/, ],
                 from     => 'default_status',
                 where    => { kind => 'task' },
@@ -395,8 +398,8 @@ sub run {
             );
 
             foreach my $status (@status) {
-                my $sid = $db->nextval('topics');
-                $db->xdo(
+                my $sid = $dbw->nextval('topics');
+                $dbw->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
                         change_id => $uid,
@@ -405,7 +408,7 @@ sub run {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_task_status',
                     values      => {
                         change_id  => $uid,
@@ -418,24 +421,24 @@ sub run {
                 );
             }
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
                     new               => 1,
-                    action_format     => "new project (%s) $self->{path}",
+                    action_format     => "new project (%s) $opts->{path}",
                     action_topic_id_1 => $id,
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
             # For test scripts
-            $self->{id}        = $id;
-            $self->{change_id} = $uid;
+            $opts->{id}        = $id;
+            $opts->{change_id} = $uid;
         }
     );
 
@@ -448,11 +451,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #create
+
 bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -460,7 +465,7 @@ bif-new-project - create a new project
 
 =head1 DESCRIPTION
 
-The C<bif new project> command creates a new project.
+The B<bif-new-project> command creates a new project.
 
 
 =head1 ARGUMENTS & OPTIONS

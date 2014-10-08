@@ -1,58 +1,60 @@
 package App::bif::update::hub;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
-    my $info = $self->get_hub( $self->{id} );
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
+    my $info = $self->get_hub( $opts->{id} );
 
-    if ( $self->{reply} ) {
+    if ( $opts->{reply} ) {
         my $uinfo =
-          $self->get_change( $self->{reply}, $info->{first_change_id} );
-        $self->{parent_uid} = $uinfo->{id};
+          $self->get_change( $opts->{reply}, $info->{first_change_id} );
+        $opts->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_change_id};
+        $opts->{parent_uid} = $info->{first_change_id};
     }
 
-    $self->{message} ||= $self->prompt_edit( opts => $self );
+    $opts->{message} ||= $self->prompt_edit( opts => $self );
 
-    $db->txn(
+    $dbw->txn(
         sub {
             my $uid = $self->new_change(
-                message   => $self->{message},
-                parent_id => $self->{parent_uid},
+                message   => $opts->{message},
+                parent_id => $opts->{parent_uid},
             );
 
-            $db->xdo(
-                insert_into => 'func_change_hub',
+            $dbw->xdo(
+                insert_into => 'func_update_hub',
                 values      => {
                     change_id => $uid,
                     id        => $info->{id},
-                    name      => $self->{name},
+                    name      => $opts->{name},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
                     new               => 1,
-                    action_format     => "update hub $self->{id} (%s)",
+                    action_format     => "update hub $opts->{id} (%s)",
                     action_topic_id_1 => $info->{id},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            print "Hub changed: $self->{id}.$uid\n";
+            print "Hub changed: $opts->{id}.$uid\n";
         }
     );
 
@@ -64,11 +66,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #modify
+
 bif-update-hub - update or comment a hub
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

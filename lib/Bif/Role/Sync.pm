@@ -7,7 +7,7 @@ use Coro;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 with qw/
   Bif::Role::Sync::Identity
@@ -52,12 +52,29 @@ sub write {
 
 sub trigger_on_update {
     my $self = shift;
-    $self->on_update->( 'changes sent: '
-          . ( $self->changes_sent // '' ) . '/'
-          . $self->changes_tosend
-          . ' received: '
-          . ( $self->changes_recv // '' ) . '/'
-          . $self->changes_torecv );
+    if ( $self->changes_tosend ) {
+        if ( $self->changes_torecv ) {
+            $self->on_update->( 'sent: '
+                  . ( $self->changes_sent // '' ) . '/'
+                  . $self->changes_tosend
+                  . ' received: '
+                  . ( $self->changes_recv // '' ) . '/'
+                  . $self->changes_torecv );
+        }
+        else {
+            $self->on_update->( 'sent: '
+                  . ( $self->changes_sent // '' ) . '/'
+                  . $self->changes_tosend );
+        }
+    }
+    elsif ( $self->changes_torecv ) {
+        $self->on_update->( 'received: '
+              . ( $self->changes_recv // '' ) . '/'
+              . $self->changes_torecv );
+    }
+    else {
+        $self->on_update->('no changes');
+    }
 }
 
 sub real_send_changesets {
@@ -196,6 +213,8 @@ sub exchange_changesets {
 
     # Kick off receiving changesets as a separate Coro thread
     my $coro = async {
+        select $App::bif::pager->fh if $App::bif::pager;
+
         $self->recv_changesets($changeset_functions);
     };
 
@@ -218,3 +237,10 @@ sub exchange_changesets {
 }
 
 1;
+
+=head1 NAME
+
+=for bif-doc #perl
+
+Bif::Role::Sync - synchronisation role
+

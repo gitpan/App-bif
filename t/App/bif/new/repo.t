@@ -7,15 +7,15 @@ use Test::Fatal;
 use Test::More;
 
 run_in_tempdir {
-    isa_ok exception { bif(qw/init repo/) }, 'OptArgs::Usage';
+    isa_ok exception { bif(qw/new repo/) }, 'OptArgs::Usage';
 
-    isa_ok bif(qw/init repo x/), 'Bif::OK::InitRepo';
+    isa_ok bif(qw/new repo x/), 'Bif::OK::NewRepo';
     ok !path('x')->child('config')->exists, 'no config file';
 
-    isa_ok bif(qw/init repo x2 --config/), 'Bif::OK::InitRepo';
+    isa_ok bif(qw/new repo x2 --config/), 'Bif::OK::NewRepo';
     ok path('x2')->child('config')->exists, '--config';
 
-    isa_ok exception { bif(qw/init repo x/) }, 'Bif::Error::DirExists';
+    isa_ok exception { bif(qw/new repo x/) }, 'Bif::Error::DirExists';
 };
 
 done_testing();

@@ -14,7 +14,7 @@ run_in_tempdir {
     isa_ok bif(qw/ show VERSION/), 'Bif::OK::ShowVersion'
       if $have_version;
 
-    isa_ok exception { bif(qw/ show todo/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ show todo/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

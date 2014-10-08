@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/qv sq/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 my $hub_functions = {
     entity_contact_method_delta => 'func_import_entity_contact_method_delta',
@@ -37,8 +37,14 @@ my $hub_functions = {
 
 sub real_import_hub {
     my $self   = shift;
+    my $uuid   = shift;
     my $result = $self->recv_changesets($hub_functions);
-    return 'RepoImported' if $result eq 'RecvChangesets';
+
+    if ( $result eq 'RecvChangesets' ) {
+        my ($ref) = $self->db->uuid2id($uuid);
+        return 'IDNotFound' unless $ref;
+        return ( 'RepoImported', $ref );
+    }
     return $result;
 }
 
@@ -135,6 +141,8 @@ sub real_transfer_hub_changes {
         $hub_functions,
     );
 
+    $self->db->xdo( delete_from => $tmp );
+
     return $r unless $r eq 'ExchangeChangesets';
     return 'TransferHubChanges';
 }
@@ -167,3 +175,10 @@ sub real_export_hub {
 }
 
 1;
+
+=head1 NAME
+
+=for bif-doc #perl
+
+Bif::Role::Sync::Repo - synchronisation role for hubs
+

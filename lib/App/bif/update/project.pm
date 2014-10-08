@@ -1,61 +1,63 @@
 package App::bif::update::project;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
-    my $info = $self->get_project( $self->{path} );
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
+    my $info = $self->get_project( $opts->{path} );
 
     my ( $status_ids, $invalid );
-    if ( $self->{status} ) {
+    if ( $opts->{status} ) {
 
         ( $status_ids, $invalid ) =
-          $db->status_ids( $info->{id}, 'project', $self->{status} );
+          $dbw->status_ids( $info->{id}, 'project', $opts->{status} );
 
         return $self->err( 'InvalidStatus',
             'unknown status(s): ' . join( ', ', @$invalid ) )
           if @$invalid;
     }
 
-    if ( $self->{reply} ) {
+    if ( $opts->{reply} ) {
         my $uinfo =
-          $self->get_change( $self->{reply}, $info->{first_change_id} );
-        $self->{parent_uid} = $uinfo->{id};
+          $self->get_change( $opts->{reply}, $info->{first_change_id} );
+        $opts->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_change_id};
+        $opts->{parent_uid} = $info->{first_change_id};
     }
 
-    $self->{message} ||= $self->prompt_edit( opts => $self );
+    $opts->{message} ||= $self->prompt_edit( opts => $self );
 
-    my $path = $db->xval(
+    my $path = $dbw->xval(
         select => 'p.path',
         from   => 'projects p',
         where  => { id => $info->{id} },
     );
 
-    $db->txn(
+    $dbw->txn(
         sub {
             my $uid = $self->new_change(
-                message   => $self->{message},
-                parent_id => $self->{parent_uid},
+                message   => $opts->{message},
+                parent_id => $opts->{parent_uid},
             );
 
-            $db->xdo(
-                insert_into => 'func_change_project',
+            $dbw->xdo(
+                insert_into => 'func_update_project',
                 values      => {
                     id        => $info->{id},
                     change_id => $uid,
-                    $self->{title} ? ( title     => $self->{title} )   : (),
+                    $opts->{title} ? ( title     => $opts->{title} )   : (),
                     $status_ids    ? ( status_id => $status_ids->[0] ) : (),
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
@@ -65,20 +67,20 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            $self->{change_id} = $uid;
+            $opts->{change_id} = $uid;
         }
     );
 
-    print "Project changed: $path.$self->{change_id}\n";
+    print "Project changed: $path.$opts->{change_id}\n";
 
     # For testing
-    $self->{id}     = $info->{id};
-    $self->{status} = $status_ids;
+    $opts->{id}     = $info->{id};
+    $opts->{status} = $status_ids;
     return $self->ok('ChangeProject');
 }
 
@@ -87,11 +89,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #modify
+
 bif-update-project - update a project
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

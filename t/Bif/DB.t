@@ -1,6 +1,7 @@
 use strict;
 use warnings;
 use lib 't/lib';
+use App::bif::init;
 use Bif::DB;
 use Bif::DBW;
 use Test::Bif;
@@ -8,13 +9,13 @@ use Test::More skip_all => 'identity changes broke everything';
 
 run_in_tempdir {
 
-    my $dbw = Bif::DBW->connect('dbi:SQLite:dbname=db.sqlite3');
+    my $init = App::bif::init->new( opts => {}, );
+    $init->run;
+    my $dbw = $init->dbw;
 
     my ( $hub, $change, $project, $ps, $ts, $is, $task, $issue );
     $dbw->txn(
         sub {
-            $dbw->deploy;
-
             $hub = new_test_hub( $dbw, 1 );
 
             $dbw->xdo(
@@ -31,7 +32,7 @@ run_in_tempdir {
             $task = new_test_task( $dbw, $ts );
             $issue = new_test_issue( $dbw, $is );
             $dbw->xdo(
-                insert_into => 'func_change_project',
+                insert_into => 'func_update_project',
                 values      => {
                     id        => $project->{id},
                     change_id => $change->{id},

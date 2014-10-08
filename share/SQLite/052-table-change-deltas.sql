@@ -1,5 +1,5 @@
 CREATE TABLE change_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL UNIQUE,
     new INTEGER,
     action_format VARCHAR NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE change_deltas (
         ON DELETE CASCADE,
     FOREIGN KEY(action_topic_id_2) REFERENCES topics(id)
         ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     change_deltas_ai_1

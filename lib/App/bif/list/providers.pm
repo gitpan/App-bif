@@ -1,13 +1,15 @@
 package App::bif::list::providers;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use Term::ANSIColor 'color';
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self  = __PACKAGE__->new(shift);
+    my $self  = shift;
+    my $opts  = $self->opts;
     my $db    = $self->db;
     my $dark  = color('dark');
     my $reset = color('reset');
@@ -51,8 +53,6 @@ sub run {
     print $self->render_table( ' l  l  l  r  r ',
         [ 'Type', 'Name', 'Contact (Method)', 'Plans', 'Hosts' ], $data );
 
-    $self->end_pager;
-
     return $self->ok('ListProviders');
 }
 
@@ -61,24 +61,26 @@ __END__
 
 =head1 NAME
 
-bifhub-list-providers - list providers present in repository
+=for bif-doc #hubadmin
+
+bif-list-providers - list providers present in repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
-    bifhub list providers
+    bif list providers
 
 =head1 DESCRIPTION
 
-The C<bifhub list providers> command lists the providers present in the
+The B<bif-list-providers> command lists the providers present in the
 current repository.
 
 =head1 SEE ALSO
 
-L<bifhub>(1)
+L<bif>(1)
 
 =head1 AUTHOR
 

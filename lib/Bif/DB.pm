@@ -1,11 +1,12 @@
 package Bif::DB;
 use strict;
 use warnings;
+use DBD::SQLite;
 use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -23,7 +24,6 @@ sub _connected {
     {
         $dbh->do('PRAGMA reverse_unordered_selects = ON;');
 
-        use DBD::SQLite;
         $dbh->sqlite_set_authorizer(
             sub {
                 return
@@ -57,7 +57,7 @@ sub connect {
 }
 
 package Bif::DB::db;
-DBIx::ThinSQL->import(qw/ qv bv case/);
+DBIx::ThinSQL->import(qw/ qv bv case coalesce/);
 
 our @ISA = ('DBIx::ThinSQL::db');
 
@@ -66,12 +66,11 @@ sub uuid2id {
     my $uuid = shift || return;
 
     if ( length($uuid) == 40 ) {
-        return $self->xarrayrefs(
-            select => case (
-                when => 'pi.id',
-                then => 'pi.id',
-                else => 't.id',
-              )->as('id'),
+
+        # In this case we know we will only get one match back
+
+        return $self->xarrayref(
+            select    => [ coalesce( 'pi.id', 't.id' )->as('id'), 't.uuid', ],
             from      => 'topics t',
             left_join => 'project_issues pi',
             on        => 'pi.issue_id = t.id',
@@ -82,16 +81,20 @@ sub uuid2id {
         );
     }
 
+    # In this case we could get multiple issue ID back, so we group on
+    # the issue_id
+
     return $self->xarrayrefs(
-        select_distinct => case (
-            when => 'pi.id',
-            then => 'pi.id',
-            else => 't.id',
-          )->as('id'),
+        select_distinct => [
+            coalesce( 'pi.id', 't.id' )->as('id'),
+            't.uuid AS uuid',
+            'COUNT(t.uuid)',
+        ],
         from      => 'topics t',
         left_join => 'project_issues pi',
         on        => 'pi.issue_id = t.id',
         where     => [ 't.uuid LIKE ', qv( $uuid . '%' ) ],
+        group_by  => [ 'COALESCE(pi.id,t.id)', qw/t.uuid/ ],
     );
 }
 
@@ -329,11 +332,13 @@ our @ISA = ('DBIx::ThinSQL::st');
 
 =head1 NAME
 
+=for bif-doc #perl
+
 Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

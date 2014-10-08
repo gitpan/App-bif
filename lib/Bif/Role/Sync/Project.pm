@@ -5,7 +5,7 @@ use DBIx::ThinSQL qw/qv sq/;
 use Log::Any '$log';
 use Role::Basic;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 my $project_functions = {
     entity_contact_method_delta => 'func_import_entity_contact_method_delta',
@@ -143,6 +143,8 @@ sub real_transfer_project_related_changes {
         $project_functions,
     );
 
+    $self->db->xdo( delete_from => $tmp );
+
     return $r unless $r eq 'ExchangeChangesets';
     return 'TransferProjectRelatedChanges';
 }
@@ -175,3 +177,10 @@ sub real_export_project {
 }
 
 1;
+
+=head1 NAME
+
+=for bif-doc #perl
+
+Bif::Role::Sync::Project - synchronisation role for projects
+

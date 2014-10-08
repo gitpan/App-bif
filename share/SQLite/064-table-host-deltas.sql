@@ -1,12 +1,12 @@
 CREATE TABLE host_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     host_id INTEGER NOT NULL,
     name VARCHAR,
     new INTEGER,
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
     FOREIGN KEY(host_id) REFERENCES hosts(id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     host_deltas_ai_1

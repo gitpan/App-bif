@@ -1,10 +1,14 @@
 #!perl
 use strict;
 use warnings;
-use OptArgs qw/dispatch/;
+use OptArgs qw/class_optargs/;
 
-push( @ARGV, '--user-repo' );
-eval { dispatch(qw/run App::bif/) };
+unshift( @ARGV, '--user-repo' );
+
+eval {
+    my ( $class, $opts ) = OptArgs::class_optargs('App::bif');
+    $class->new( opts => $opts )->run;
+};
 
 if ($@) {
     print STDERR $@;
@@ -23,7 +27,7 @@ bifu - run bif commands in your user repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

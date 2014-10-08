@@ -8,7 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-my $VERSION = '0.1.0_28';
+my $VERSION = '0.1.2';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -21,7 +21,7 @@ repository 'git://bifax.org/bif.git/';
 version $VERSION;
 perl_version '5.010';
 
-readme_from 'README.pod';
+readme_from 'lib/bif-doc-about.pod';
 
 install_share 'share';
 install_script 'bin/bif';
@@ -58,11 +58,14 @@ WriteAll;
 
     mkdir $tbin;
 
+    # Setup test bif
+
     $tbif->spew_utf8(<<EOF);
 #!$^X
 use strict;
 use lib "$lib";
-use OptArgs qw/dispatch/;
+use App::bif::OptArgs;
+use OptArgs qw/class_optargs/;
 
 # Make sure that any subcommands that call bifsync locally find the
 # local testing version in t/bifsync
@@ -70,7 +73,9 @@ use OptArgs qw/dispatch/;
 
 \$main::BIF_SHARE_DIR = "$share";
 
-dispatch(qw/run App::bif/);
+my ( \$class, \$opts ) = class_optargs('App::bif');
+\$class->new( opts => \$opts )->run;
+
 __END__
 EOF
     chmod 0755, $tbif or warn "chmod: $!";
@@ -79,11 +84,14 @@ EOF
     $pod =~ s/.*__END__//sm;
     $tbif->append_utf8($pod);
 
+    # Setup test bifu
+
     $tbifu->spew_utf8(<<EOF);
 #!$^X
 use strict;
 use lib "$lib";
-use OptArgs qw/dispatch/;
+use App::bif::OptArgs;
+use OptArgs qw/class_optargs/;
 
 # Make sure that any subcommands that call bifsync locally find the
 # local testing version in t/bifsync
@@ -92,7 +100,10 @@ use OptArgs qw/dispatch/;
 \$main::BIF_SHARE_DIR = "$share";
 
 push(\@ARGV, '--user-repo');
-dispatch(qw/run App::bif/);
+
+my ( \$class, \$opts ) = class_optargs('App::bif');
+\$class->new( opts => \$opts )->run;
+
 __END__
 EOF
     chmod 0755, $tbifu or warn "chmod: $!";
@@ -101,13 +112,17 @@ EOF
     $pod =~ s/.*__END__//sm;
     $tbif->append_utf8($pod);
 
+    # Setup test bifsync
+
     $tbifsync->spew_utf8(<<EOF);
 #!$^X
 use strict;
 use lib "$lib";
-use OptArgs qw/dispatch/;
+use OptArgs qw/class_optargs/;
 
-dispatch(qw/run App::bifsync/);
+my ( \$class, \$opts ) = OptArgs::class_optargs('App::bifsync');
+\$class->new( opts => \$opts )->run;
+
 __END__
 EOF
     chmod 0755, $tbifsync or warn "chmod: $!";
@@ -115,27 +130,6 @@ EOF
     $pod = $bifsync->slurp_utf8;
     $pod =~ s/.*__END__//sm;
     $tbifsync->append_utf8($pod);
-
-    $tbifhub->spew_utf8(<<EOF);
-#!$^X
-use strict;
-use lib "$lib";
-use OptArgs qw/dispatch/;
-
-# Make sure that any subcommands that call bifsync locally find the
-# local testing version in t/bifsync
-\$ENV{PATH} = "$tbin" .':'.\$ENV{PATH};
-
-\$main::BIF_SHARE_DIR = "$share";
-
-dispatch(qw/run App::bif/);
-__END__
-EOF
-    chmod 0755, $tbifhub or warn "chmod: $!";
-
-    $pod = $bifhub->slurp_utf8;
-    $pod =~ s/.*__END__//sm;
-    $tbifhub->append_utf8($pod);
 }
 
 # Setup App::bif::Build if we are a developer
@@ -143,8 +137,6 @@ exit unless -d '.git';
 
 my $commit = qx/git rev-parse HEAD/;
 chomp $commit;
-my $branch .= qx/git rev-parse --abbrev-ref HEAD/;
-chomp $branch;
 
 my $t    = gmtime;
 my $when = $t->ymd . ' ' . $t->hms;
@@ -155,7 +147,6 @@ HIDDENuse strict;
 HIDDENuse warnings;
 HIDDEN\$App::bif::Build::VERSION = '$VERSION';
 HIDDEN\$App::bif::Build::COMMIT = '$commit';
-HIDDEN\$App::bif::Build::BRANCH = '$branch';
 HIDDEN\$App::bif::Build::DATE = '$when';
 HIDDEN\$App::bif::Build::FILE = __FILE__;
 HIDDEN1;
@@ -167,7 +158,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_28 (2014-09-23)
+HIDDEN0.1.0_28 (2014-10-08)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN
@@ -192,11 +183,6 @@ HIDDENWhen this version of App-bif was built and installed the variables
 HIDDENwere set as follows:
 HIDDEN
 HIDDEN=over
-HIDDEN
-HIDDEN=item \$App::bif::Build::BRANCH = "$branch"
-HIDDEN
-HIDDENThe Git branch name which was current when the App-bif distribution was
-HIDDENcreated.
 HIDDEN
 HIDDEN=item \$App::bif::Build::COMMIT = "$commit"
 HIDDEN

@@ -1,28 +1,12 @@
-#!perl
-use strict;
-use warnings;
-use OptArgs qw/dispatch/;
-
-eval { dispatch(qw/run App::bif/) };
-
-if ($@) {
-    print STDERR $@;
-    exit 1;
-}
-
-1;
-
-__END__
-
-=encoding utf-8
-
 =head1 NAME
 
-bifhub - bif hub management tool
+=for bif-doc #hubadmin
+
+bif-doc-hub - how to manage remote hub repositories
 
 =head1 VERSION
 
-0.1.0_19 (2014-09-23)
+0.1.0_19 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -76,7 +60,8 @@ provider as all communication takes place via ssh.
 The first action for working with remote bif hubs is to create a
 management repository locally, using the C<bifhub init> command:
 
-    #!sh
+=for bifcode #!sh
+
     bifhub init my.org
 
 The first argument to the C<init> command is the name of your hub.  The
@@ -89,34 +74,39 @@ web url.
 The second step is to register a hub provider, in order to see their
 hosts and/or availabe plans.
 
-    #!sh
+=for bifcode #!sh
+
     bifhub pull provider bifhub.com
 
 Listing the offers (plans) and locations (hosts) is possible with the
 appropriate C<list> command:
 
-    #!sh
+=for bifcode #!sh
+
     bifhub list hosts
 
     bifhub list plans
 
 =head2 Signing up for a plan
 
-    #!sh
+=for bifcode #!sh
+
     bifhub signup my.org bifhub.com:plan2
 
 This will do a check with the provider to ensure that the name has not
 been already taken. If successful you should be able to see the
 invoice:
 
-    #!sh
+=for bifcode #!sh
+
     bifhub list invoices
 
 =head2 Pushing a hub to remote hosts
 
 The hub does not go live until you push it up to a particular host.
 
-    #!sh
+=for bifcode #!sh
+
     bifhub push hub my.org HOSTS...
 
 =head2 Team communication
@@ -134,25 +124,29 @@ the hub:
     To access the hub send us your identity from a local bif
     repository:
 
-        #!sh
+=for bifcode #!sh
+
         bif init
         bif push identity 1 your.org@zrh.bifhub.com
 
     Once we have enabled the permissions you can register the hub:
 
-        #!sh
+=for bifcode #!sh
+
         bif pull hub your.org@zrh.bifhub.com
 
     And then import the "devel" project to work on straight away.
         
-        #!sh
+=for bifcode #!sh
+
         bif pull project devel
 
         # bif new issue/task etc...
 
     Don't forget to sync regularly.
 
-        #!sh
+=for bifcode #!sh
+
         bif sync
 
     Thanks,
@@ -164,14 +158,16 @@ You may want to change your hub name, or the provider may change their
 plans, or add to their list of hosts, and so on.  The C<sync> command
 is used to exchange these updates.
 
-    #!sh
+=for bifcode #!sh
+
     bifhub sync
 
 =head2 Managing the hub
 
 You can at any time confirm the hub and its status:
 
-    #!sh
+=for bifcode #!sh
+
     bifhub list hubs
 
     bifhub show hub ID

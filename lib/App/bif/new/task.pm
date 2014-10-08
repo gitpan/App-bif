@@ -1,22 +1,24 @@
 package App::bif::new::task;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
 
-    $self->{title} ||= prompt( 'Title:', '' )
+    $opts->{title} ||= prompt( 'Title:', '' )
       || return $self->err( 'TitleRequired', 'title is required' );
 
-    if ( !$self->{path} ) {
+    if ( !$opts->{path} ) {
 
-        my @paths = $db->xarrayrefs(
-            select    => [ "p.path || COALESCE('\@' || h.name,'') AS path", ],
+        my @paths = $dbw->xarrayrefs(
+            select    => 'p.fullpath',
             from      => 'projects p',
             left_join => 'hubs h',
             on        => 'h.id = p.hub_id',
@@ -27,42 +29,42 @@ sub run {
             return $self->err( 'NoProjectInRepo', 'task needs a project' );
         }
         elsif ( 1 == @paths ) {
-            $self->{path} = $paths[0]->[0];
+            $opts->{path} = $paths[0]->[0];
         }
         else {
-            $self->{path} = prompt( 'Project:', $paths[0]->[0] )
+            $opts->{path} = prompt( 'Project:', $paths[0]->[0] )
               || return $self->err( 'ProjectRequired', 'project is required' );
         }
     }
 
-    my $pinfo = $self->get_project( $self->{path} );
+    my $pinfo = $self->get_project( $opts->{path} );
 
-    if ( $self->{status} ) {
+    if ( $opts->{status} ) {
         my ( $status_ids, $invalid ) =
-          $db->status_ids( $pinfo->{id}, 'task', $self->{status} );
+          $dbw->status_ids( $pinfo->{id}, 'task', $opts->{status} );
 
         return $self->err( 'InvalidStatus',
             'unknown status: ' . join( ', ', @$invalid ) )
           if @$invalid;
 
-        $self->{status_id} = $status_ids->[0];
+        $opts->{status_id} = $status_ids->[0];
     }
     else {
-        $self->{status_id} = $db->xval(
+        $opts->{status_id} = $dbw->xval(
             select => 'id',
             from   => 'task_status',
             where  => { project_id => $pinfo->{id}, def => 1 },
         );
     }
 
-    $self->{message} ||= $self->prompt_edit( opts => $self );
+    $opts->{message} ||= $self->prompt_edit( opts => $self );
 
-    $db->txn(
+    $dbw->txn(
         sub {
-            my $id = $db->nextval('topics');
-            my $uid = $self->new_change( message => $self->{message}, );
+            my $id = $dbw->nextval('topics');
+            my $uid = $self->new_change( message => $opts->{message}, );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     change_id => $uid,
@@ -71,17 +73,17 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_task',
                 values      => {
                     id        => $id,
                     change_id => $uid,
-                    status_id => $self->{status_id},
-                    title     => $self->{title},
+                    status_id => $opts->{status_id},
+                    title     => $opts->{title},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
@@ -91,7 +93,7 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
@@ -99,8 +101,8 @@ sub run {
             printf( "Task created: %d\n", $id );
 
             # For test scripts
-            $self->{id}        = $id;
-            $self->{change_id} = $uid;
+            $opts->{id}        = $id;
+            $opts->{change_id} = $uid;
         }
     );
 
@@ -112,11 +114,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #create
+
 bif-new-task - add a new task to a project
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

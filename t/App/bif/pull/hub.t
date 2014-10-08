@@ -10,12 +10,12 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/pull hub/) }, 'OptArgs::Usage';
 
-    isa_ok exception { bif(qw/pull hub hub/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/pull hub hub/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
     isa_ok exception { bif(qw/pull hub hub/) }, 'Bif::Error::HubNotFound';
 
-    bif(qw/init hub hub/);
+    bif(qw/init hub/);
     isa_ok bif(qw/pull hub hub/), 'Bif::OK::PullHub';
 
     isa_ok exception { bif(qw/pull hub hub/) }, 'Bif::Error::RepoExists';
@@ -23,7 +23,7 @@ run_in_tempdir {
 
 run_in_tempdir {
     bif(qw/init/);
-    bif(qw/init hub hub/);
+    bif(qw/init hub/);
 
     bif2(qw/init/);
 
@@ -58,7 +58,7 @@ run_in_tempdir {
     my $list = bif(qw/list hubs/);
     isa_ok $list, 'Bif::OK::ListHubs';    # TODO need to do better than this
 
-    isa_ok bif(qw/show project todo@hub/), 'Bif::OK::ShowProject';
+    isa_ok bif(qw{show project hub/todo}), 'Bif::OK::ShowProject';
 
     $ref = bif( qw/sql --noprint/,
         "select id from topics where uuid='$tinfo->{uuid}'" );

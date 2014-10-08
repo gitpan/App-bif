@@ -1,13 +1,12 @@
+=for bif-doc #intro bif-doc-intro - a quick hands-on introduction
+
 =head1 Introduction To Bif
 
-Bif is a project management tool with a command-line interface. It
-helps you track tasks, issues and bugs using a local database,
-exchanging changes with remote databases on demand.  This introduction
-to bif is based on situations typically encountered by software
-developers; It is assumed that you are comfortable working with command
-line programs and your operating system shell (e.g. bash).
-
-This document is based on bif version 0.1.0_28 (2014-09-23).
+This is an introduction to bif is based on project situations typically
+encountered by software developers. It is assumed that you are
+comfortable working with command line programs and your operating
+system shell (e.g. bash). This document is based on bif version
+0.1.0_28 (2014-10-08).
 
 =begin comment
 
@@ -16,7 +15,8 @@ This document is based on bif version 0.1.0_28 (2014-09-23).
     Some bif actions require your name and email address. Run the following
     command before doing anything else to set them up:
 
-        #!sh
+=for bifcode #!sh
+
         bif new id my@email.address My Name
 
 =end comment
@@ -25,43 +25,50 @@ This document is based on bif version 0.1.0_28 (2014-09-23).
 
 A repository must be initialized before you can create any topics:
 
-    #!sh
+=for bifcode #!sh
+
     bif init
 
-The first time you run this you will be asked for your email address
-and name.
+The very first time that B<bif-init> runs it also prompt the user for
+various identity details and creates the user repository F<.bifu>,
+before continuing with the original action.
 
 =head1 Create, List And Modify Topics
 
 Create a project, identified by a name and a title. You will also be
 prompted to add an initial change message.
 
-    #!sh
+=for bifcode #!sh
+
     bif new project todo Things to do
 
 Create some tasks and issues. Use the C<--message|-m> option to prevent
 your $EDITOR from being invoked.
 
-    #!sh
+=for bifcode #!sh
+
     bif new task Take out the rubbish
     bif new issue I need more spare time -m "meh!"
 
 Retrieve the lists of things you have created:
 
-    #!sh
+=for bifcode #!sh
+
     bif list projects
     bif list topics
 
 Change the status of some things using the C<change> command, but first
 you might want to know which status types are valid:
 
-    #!sh
+=for bifcode #!sh
+
     bif list task-status
     bif update 16 closed
 
 View the history of changes to a particular topic:
 
-    #!
+=for bifcode #!sh
+
     bif log 16
 
 Not giving an ID argument to C<log> will display the entire history of
@@ -69,13 +76,15 @@ the repository.
 
 =head1 Share An Issue Between Two Projects
 
-    #!sh
+=for bifcode #!sh
+
     bif new project other Someone elses problem
     bif push 17 other
 
 But recognise that their status can be individually modified:
 
-    #!sh
+=for bifcode #!sh
+
     bif update 45 closed
 
 So how do we see all the current statuses of an issue?
@@ -89,13 +98,15 @@ version but are also continuing to work on your development branch.
 Rather than having to push each issue separately from the old project
 to the new we can just fork the old one.
 
-    #!sh
+=for bifcode #!sh
+
     bif new project v2 --fork devel
 
 And notice that the new project has exactly the same issues as the
 original:
 
-    #!sh
+=for bifcode #!sh
+
     bif list topics
 
 =head1 Collaborating With Others
@@ -103,20 +114,23 @@ original:
 Need to import the project details from an organisation's hub
 somewhere.
 
-    #!sh
+=for bifcode #!sh
+
     bif pull hub organisation@hub.com
 
 Then, most likely, someone else already created the project, and you
 just want to work on it too:
 
-    #!sh
+=for bifcode #!sh
+
     bif import todo organisation
     bif list projects
 
 Then to exchange changes you make and get changes others have made,
 just call C<sync>:
 
-    #!sh
+=for bifcode #!sh
+
     bif sync
 
 =head1 See Also

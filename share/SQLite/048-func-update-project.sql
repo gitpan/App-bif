@@ -1,4 +1,4 @@
-CREATE TABLE func_change_project(
+CREATE TABLE func_update_project(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     name VARCHAR(40),
@@ -11,13 +11,13 @@ CREATE TABLE func_change_project(
 );
 
 CREATE TRIGGER
-    func_change_project_bi_1
+    func_update_project_bi_1
 BEFORE INSERT ON
-    func_change_project
+    func_update_project
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER func_change_project_bi_1',
+        'TRIGGER func_update_project_bi_1',
         NEW.id,
         NEW.change_id,
         NEW.parent_id,

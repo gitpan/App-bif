@@ -27,7 +27,7 @@ BEGIN
     );
 
     INSERT INTO
-        func_change_project(
+        func_update_project(
             change_id,
             id,
             parent_id,

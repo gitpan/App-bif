@@ -1,22 +1,24 @@
 package App::bif::new::identity;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use Config::Tiny;
 use DBIx::ThinSQL qw/bv/;
 use IO::Prompt::Tiny qw/prompt/;
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self   = __PACKAGE__->new(shift);
-    my $db     = $self->dbw;
+    my $self   = shift;
+    my $opts   = $self->opts;
+    my $dbw    = $self->dbw;
     my $name   = '';
     my $email  = '';
     my $spacer = '';
 
-    if ( $self->{self} ) {
+    if ( $opts->{self} ) {
         print "Creating \"self\" identity:\n";
 
         my $git_conf_file = path( File::HomeDir->my_home, '.gitconfig' );
@@ -31,44 +33,44 @@ sub run {
         $spacer = '  ';
     }
 
-    $self->{name} ||= prompt( $spacer . 'Name:', $name )
+    $opts->{name} ||= prompt( $spacer . 'Name:', $name )
       || return $self->err( 'NameRequired', 'name is required' );
 
-    my $short = join( '', $self->{name} =~ m/(\b\w)/g );
-    $self->{shortname} ||= prompt( $spacer . 'Short Name:', $short )
+    my $short = join( '', $opts->{name} =~ m/(\b\w)/g );
+    $opts->{shortname} ||= prompt( $spacer . 'Short Name:', $short )
       || return $self->err( 'NameRequired', 'shortname is required' );
 
-    $self->{method} ||= prompt( $spacer . 'Contact Method:', 'email' )
+    $opts->{method} ||= prompt( $spacer . 'Contact Method:', 'email' )
       || return $self->err( 'MethodRequired', 'method is required' );
 
-    $self->{value} ||=
-      prompt( $spacer . 'Contact ' . ucfirst( $self->{method} ) . ':', $email )
+    $opts->{value} ||=
+      prompt( $spacer . 'Contact ' . ucfirst( $opts->{method} ) . ':', $email )
       || return $self->err( 'ValueRequired', 'value is required' );
 
-    $self->{message} ||= "New identity for $self->{name}";
+    $opts->{message} ||= "New identity for $opts->{name}";
 
-    $db->txn(
+    $dbw->txn(
         sub {
-            my $id    = $db->nextval('topics');
-            my $ecmid = $db->nextval('topics');
+            my $id    = $dbw->nextval('topics');
+            my $ecmid = $dbw->nextval('topics');
             my $uid;
 
-            if ( $self->{self} ) {
-                $uid = $db->nextval('changes');
-                $db->xdo(
+            if ( $opts->{self} ) {
+                $uid = $dbw->nextval('changes');
+                $dbw->xdo(
                     insert_into => 'changes',
                     values      => {
                         id          => $uid,
                         identity_id => $id,
-                        message     => $self->{message},
+                        message     => $opts->{message},
                     },
                 );
             }
             else {
-                $uid = $self->new_change( message => $self->{message} );
+                $uid = $self->new_change( message => $opts->{message} );
             }
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     change_id => $uid,
@@ -77,25 +79,25 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_entity',
                 values      => {
                     id        => $id,
                     change_id => $uid,
-                    name      => $self->{name},
+                    name      => $opts->{name},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_identity',
                 values      => {
                     id        => $id,
                     change_id => $uid,
-                    shortname => $self->{shortname},
+                    shortname => $opts->{shortname},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     change_id => $uid,
@@ -104,19 +106,19 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_entity_contact_method',
                 values      => {
                     change_id => $uid,
                     id        => $ecmid,
                     entity_id => $id,
-                    method    => $self->{method},
-                    mvalue    => bv( $self->{value}, DBI::SQL_VARCHAR ),
+                    method    => $opts->{method},
+                    mvalue    => bv( $opts->{value}, DBI::SQL_VARCHAR ),
                 },
             );
 
-            $db->xdo(
-                insert_into => 'func_change_entity',
+            $dbw->xdo(
+                insert_into => 'func_update_entity',
                 values      => {
                     change_id                 => $uid,
                     id                        => $id,
@@ -125,23 +127,23 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
                     new               => 1,
-                    action_format     => "new identity (%s) $self->{name}",
+                    action_format     => "new identity (%s) $opts->{name}",
                     action_topic_id_1 => $id,
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            if ( $self->{self} ) {
-                $db->xdo(
+            if ( $opts->{self} ) {
+                $dbw->xdo(
                     insert_into => 'bifkv',
                     values      => {
                         key         => 'self',
@@ -153,8 +155,8 @@ sub run {
             printf( "Identity created: %d\n", $id );
 
             # For test scripts
-            $self->{id}        = $id;
-            $self->{change_id} = $uid;
+            $opts->{id}        = $id;
+            $opts->{change_id} = $uid;
         }
     );
 
@@ -166,11 +168,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #create
+
 bif-new-identity - create a new identity in the repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -178,7 +182,7 @@ bif-new-identity - create a new identity in the repository
 
 =head1 DESCRIPTION
 
-The C<bif new identity> command creates a new object in the repository
+The B<bif-new-identity> command creates a new object in the repository
 representing an individual.
 
 =head1 ARGUMENTS & OPTIONS

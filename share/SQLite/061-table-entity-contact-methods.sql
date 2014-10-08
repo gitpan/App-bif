@@ -1,5 +1,5 @@
 CREATE TABLE entity_contact_methods (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     entity_id INTEGER NOT NULL,
     method VARCHAR NOT NULL,
     mvalue VARCHAR NOT NULL,

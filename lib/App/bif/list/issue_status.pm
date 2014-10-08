@@ -1,15 +1,17 @@
 package App::bif::list::issue_status;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
 
-    my $pinfo = $self->get_project( $self->{path} );
+    my $pinfo = $self->get_project( $opts->{path} );
 
     DBIx::ThinSQL->import(qw/ qv case /);
 
@@ -33,8 +35,6 @@ sub run {
     print $self->render_table( ' l  l  l  r  l ',
         [ 'ID', 'State', 'Status', 'Rank', 'Default' ], $data );
 
-    $self->end_pager;
-
     return $data;
 }
 
@@ -43,11 +43,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #list
+
 bif-list-issue-status - list valid issue status/status values
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

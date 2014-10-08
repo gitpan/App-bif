@@ -1,35 +1,35 @@
 package App::bif::pull::identity;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
+use Bif::Mo;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $opts = shift;
-    $opts->{no_pager}++;    # causes problems with something in Coro?
-    $|++;
-
-    my $self = __PACKAGE__->new($opts);
+    my $self = shift;
+    my $opts = $self->opts;
     my $cv   = AE::cv;
     my $dbw  = $self->dbw;
+
+    $opts->{message} ||= "Importing identity from $opts->{location}";
+
+    $|++;
+
     my $error;
-
-    $self->{message} ||= "Importing identity from $self->{location}";
-
     my $client = Bif::Client->new(
-        name          => $self->{location},
+        name          => $opts->{location},
         db            => $dbw,
-        location      => $self->{location},
-        debug         => $self->{debug},
-        debug_bifsync => $self->{debug_bifsync},
+        location      => $opts->{location},
+        debug         => $opts->{debug},
+        debug_bifsync => $opts->{debug_bifsync},
         on_update     => sub {
-            $self->lprint("$self->{location}: $_[0]");
+            $self->lprint("Importing identity ($opts->{location}): $_[0]");
         },
         on_error => sub {
             $error = shift;
@@ -38,20 +38,21 @@ sub run {
     );
 
     my $coro = async {
+        select $App::bif::pager->fh if $opts->{debug};
+
         eval {
             $dbw->txn(
                 sub {
                     my $uid = $dbw->nextval('changes');
 
-                    if ( !$self->{self} ) {
+                    if ( !$opts->{self} ) {
                         $self->new_change(
                             id      => $uid,
-                            message => $self->{message},
+                            message => $opts->{message},
                         );
                     }
 
                     $|++;
-                    print "Importing identity from $self->{location}\n";
                     my $status = $client->bootstrap_identity;
 
                     unless ( $status eq 'IdentityImported' ) {
@@ -60,10 +61,10 @@ sub run {
                         return;
                     }
 
-                    if ( $self->{self} ) {
+                    if ( $opts->{self} ) {
                         $self->new_change(
                             id      => $uid,
-                            message => $self->{message},
+                            message => $opts->{message},
                         );
                     }
 
@@ -117,11 +118,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #sync
+
 bif-pull-identity - import an identity from a repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

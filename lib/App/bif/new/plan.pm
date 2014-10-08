@@ -1,27 +1,29 @@
 package App::bif::new::plan;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use DBIx::ThinSQL qw/bv/;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
 
-    $self->{name} ||= prompt( 'Name:', '' )
+    $opts->{name} ||= prompt( 'Name:', '' )
       || return $self->err( 'NameRequired', 'name is required' );
 
-    $self->{title} ||= prompt( 'Title:', '' )
+    $opts->{title} ||= prompt( 'Title:', '' )
       || return $self->err( 'TitleRequired', 'title is required' );
 
-    $self->{message} ||= "New plan $self->{name}";
+    $opts->{message} ||= "New plan $opts->{name}";
 
     my $provider;
-    if ( $self->{name} =~ s/(.*?):(.*)/$2/ ) {
-        $provider = $db->xhashref(
+    if ( $opts->{name} =~ s/(.*?):(.*)/$2/ ) {
+        $provider = $dbw->xhashref(
             select     => [qw/p.id e.name/],
             from       => 'providers p',
             inner_join => 'entities e',
@@ -33,7 +35,7 @@ sub run {
           unless $provider;
     }
     else {
-        my @providers = $db->xhashrefs(
+        my @providers = $dbw->xhashrefs(
             select     => [qw/p.id e.name/],
             from       => 'providers p',
             inner_join => 'entities e',
@@ -49,12 +51,12 @@ sub run {
         $provider = $providers[0];
     }
 
-    $db->txn(
+    $dbw->txn(
         sub {
-            my $uid = $self->new_change( message => $self->{message}, );
-            my $id = $db->nextval('topics');
+            my $uid = $self->new_change( message => $opts->{message}, );
+            my $id = $dbw->nextval('topics');
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     id        => $id,
@@ -63,37 +65,37 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_plan',
                 values      => {
                     id          => $id,
                     change_id   => $uid,
                     provider_id => $provider->{id},
-                    name        => $self->{name},
-                    title       => $self->{title},
+                    name        => $opts->{name},
+                    title       => $opts->{title},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
                     new               => 1,
-                    action_format     => "new plan (%s) $self->{name}",
+                    action_format     => "new plan (%s) $opts->{name}",
                     action_topic_id_1 => $id,
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            printf( "Plan created: %s:%s\n", $provider->{name}, $self->{name} );
+            printf( "Plan created: %s:%s\n", $provider->{name}, $opts->{name} );
 
             # For test scripts
-            $self->{id}        = $id;
-            $self->{change_id} = $uid;
+            $opts->{id}        = $id;
+            $opts->{change_id} = $uid;
         }
     );
 
@@ -105,19 +107,21 @@ __END__
 
 =head1 NAME
 
-bifhub-new-plan - create a new plan in the repository
+=for bif-doc #hubadmin
+
+bif-new-plan - create a new plan in the repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
-    bifhub new plan [NAME] [METHOD] [VALUE] [OPTIONS...]
+    bif new plan [NAME] [METHOD] [VALUE] [OPTIONS...]
 
 =head1 DESCRIPTION
 
-The C<bifhub new plan> command creates a new plan of bif hub hosting.
+The B<bif-new-plan> command creates a new plan of bif hub hosting.
 
 =head1 ARGUMENTS & OPTIONS
 
@@ -135,7 +139,7 @@ The creation message, set to "" by default.
 
 =head1 SEE ALSO
 
-L<bifhub>(1)
+L<bif>(1)
 
 =head1 AUTHOR
 

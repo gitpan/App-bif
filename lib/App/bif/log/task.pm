@@ -2,14 +2,16 @@ package App::bif::log::task;
 use strict;
 use warnings;
 use feature 'state';
-use parent 'App::bif::log';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::log';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
-    my $info = $self->get_topic( $self->{id}, 'task' );
+    my $info = $self->get_topic( $opts->{id}, 'task' );
 
     state $have_dbix = DBIx::ThinSQL->import(qw/ qv concat coalesce/);
 
@@ -27,8 +29,7 @@ sub run {
             'COALESCE(changes.email,ecm.mvalue) AS email',
             'task_status.status',
             'task_status.status',
-            concat( 'projects.path',
-                coalesce( concat( qv('@'), 'h.name' ), qv('') ) )->as('path'),
+            'projects.fullpath AS path',
             'projects.title AS project_title',
             'changes_tree.depth',
             'changes.message',
@@ -61,11 +62,9 @@ sub run {
 
     $self->start_pager;
 
-    $self->init;
     $self->log_item( $sth->hashref, 'task' );
     $self->log_comment($_) for $sth->hashrefs;
 
-    $self->end_pager;
     return $self->ok('LogTask');
 }
 
@@ -74,11 +73,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #history
+
 bif-log-task - review a task history
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -86,7 +87,7 @@ bif-log-task - review a task history
 
 =head1 DESCRIPTION
 
-The C<bif log task> command displays a task history.
+The B<bif-log-task> command displays a task history.
 
 =head1 ARGUMENTS & OPTIONS
 

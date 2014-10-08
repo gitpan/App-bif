@@ -1,14 +1,16 @@
 package App::bif::show::entity;
 use strict;
 use warnings;
-use parent 'App::bif::show';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
-    $self->{id} = $self->uuid2id( $self->{id} );
+    $opts->{id} = $self->uuid2id( $opts->{id} );
 
     my @data;
 
@@ -43,13 +45,12 @@ sub run {
         on         => 'h.id = e.hub_id',
         inner_join => 'hub_repos hr',
         on         => 'hr.id = h.default_repo_id',
-        where      => { 'e.id' => $self->{id} },
+        where      => { 'e.id' => $opts->{id} },
     );
 
-    return $self->err( 'EntityNotFound', "entity not found: $self->{id}" )
+    return $self->err( 'EntityNotFound', "entity not found: $opts->{id}" )
       unless $ref;
 
-    $self->init;
     my ($bold) = $self->colours('bold');
 
     push(
@@ -72,7 +73,7 @@ sub run {
         from       => 'entities e',
         inner_join => 'entity_contact_methods ecm',
         on         => 'ecm.entity_id = e.id',
-        where      => { 'e.id' => $self->{id} },
+        where      => { 'e.id' => $opts->{id} },
         order_by   => [qw/ ecm.method ecm.mvalue /],
     );
 
@@ -88,9 +89,8 @@ sub run {
     ) for @methods;
 
     $self->start_pager;
-    print $self->render_table( 'l  l', $self->header( 'Entity', $ref->{name} ),
+    print $self->render_table( 'l  l', [ $bold . 'Entity', $ref->{name} ],
         \@data, 1 );
-    $self->end_pager;
 
     return $self->ok( 'ShowEntity', \@data );
 }
@@ -100,11 +100,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show-entity - display a entity's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -112,7 +114,7 @@ bif-show-entity - display a entity's current status
 
 =head1 DESCRIPTION
 
-The C<bif show entity> command displays the characteristics of an
+The B<bif-show-entity> command displays the characteristics of an
 entity.
 
 =head1 ARGUMENTS & OPTIONS

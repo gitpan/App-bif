@@ -1,5 +1,5 @@
 CREATE TABLE hub_repo_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     hub_id INTEGER,
     hub_repo_id INTEGER NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE hub_repo_deltas (
     FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE
     FOREIGN KEY(hub_repo_id) REFERENCES hub_repos(id)
         ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     hub_repo_deltas_ai_1
@@ -25,6 +25,7 @@ BEGIN
         NEW.change_id,
         NEW.hub_id,
         NEW.hub_repo_id,
+        NEW.new,
         NEW.location
     );
 

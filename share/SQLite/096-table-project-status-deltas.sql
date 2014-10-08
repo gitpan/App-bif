@@ -1,5 +1,5 @@
 CREATE TABLE project_status_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     project_status_id INTEGER NOT NULL,
     new INTEGER,
@@ -9,7 +9,7 @@ CREATE TABLE project_status_deltas (
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE
     FOREIGN KEY(project_status_id) REFERENCES project_status(id)
         ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     project_status_deltas_ai_1

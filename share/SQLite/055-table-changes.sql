@@ -1,5 +1,5 @@
 CREATE TABLE changes (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     delta_id INTEGER NOT NULL DEFAULT (nextval('deltas')),
     uuid char(40) NOT NULL DEFAULT '',
     parent_id INTEGER,

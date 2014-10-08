@@ -1,0 +1,216 @@
+=for bif-doc #intro bif-doc-about - README file and main web page
+
+=head1 About bif
+
+Bif is a distributed bug tracker with a command-line interface. It
+helps you manage tasks and issues using a local database, exchanging
+updates with remote databases on demand.  The tool has several features
+of interest to distributed project teams:
+
+=over
+
+=item Offline Operation
+
+Many bif actions work offline; you can create and update tasks and
+issues while disconnected from the network.
+
+=item Inter-project Cooperation
+
+Bif issues (and tasks) can be linked with (or copied to) multiple
+projects, mirroring the inter-project relationships that exist in the
+real world.
+
+=back
+
+This flexibility comes with minimal additional complexity; bif commands
+are designed for consistency and ease of use.
+
+Bif should eventually run on any system that supports Perl and SQLite,
+but at present tests are only successful on Linux and BSD systems.
+
+=head2 Who is bif for?
+
+Bif is typically useful for software development teams and other
+distributed project organisations.  Bif could work for you if the
+following statements resonate:
+
+=over
+
+=item * You are comfortable working in a command-line environment
+
+=item * Your team is spread across different locations
+
+=item * Your projects have external dependencies
+
+=back
+
+Bif (or other user interfaces based on bif) may also be suitable for
+companies with business-to-business relationships and within
+multinational organisations.
+
+=head2 What problems does bif attempt to address?
+
+In addition to the generic problems facing every project organisation,
+bif aims to answer the following specific challenges:
+
+=over
+
+=item The high costs of context switching
+
+It takes a certain amount of effort to get your mind fully into a good
+edit/compile/test cycle. Switching contexts to record your progress in
+a browser is a painful and inefficient way to break up your day. You
+would be better off going for a walk.
+
+=item When your network connectivity is unreliable
+
+It is a difficult task to maintain communication and status tracking
+within a distributed project when the data network is an uncertain, or
+expensive resource.  If developers can check in code, but can't update
+the bug tracker because they are travelling, productivity drops. When
+you cannot always link your project data with internal systems (e.g.
+billing) then other business functions can suffer.
+
+=item When your success depends on factors outside the project
+organisation
+
+Projects can experience time and cost difficulties when they have
+external dependencies. Keeping track of the status in someone else's
+issue tracking system is a thankless, manual process. If you can't find
+the resources to do so then the lack of coordination leads to
+duplication of effort, delays, or important issues falling through the
+cracks.
+
+=back
+
+=head1 Software Status
+
+Although functional, bif is still under active development.
+Documentation and tests are incomplete, and the database schema changes
+regularly.  B<DO NOT USE BIF FOR REAL DATA!> We are actively seeking
+contributors. See below for how you can help.
+
+=head1 Community Organisation
+
+Bif is community supported software, and the community expects (and
+should offer) respectful communication with all of its members.
+
+=over
+
+=item Website:
+
+L<http://bifax.org/bif/>
+
+=item Code Repository:
+
+git://bifax.org/bif.git/
+
+=item Issue Tracker:
+
+Doesn't exit yet.
+
+=item Mailing List:
+
+Subscribe via L<http://www.freelists.org/list/bif-devel> and then send
+mail to <bif-devel@freelists.org>.
+
+=back
+
+=head1 Installing
+
+As a Perl wrapper around an SQLite database, bif depends on several
+packages from the Comprehensive Perl Archive Network
+(L<CPAN|http://cpan.org>). Bif and its dependencies can be easily
+installed system-wide with the C<cpan> tool which is a standard part of
+Perl.
+
+=for bifcode #!sh
+
+    sudo cpan App::bif
+
+Note that some of the dependencies require a C compiler to build.
+
+Alternatively you might find the right pre-compiled binary for your
+system at L<http://bifax.org/bif/download/>.
+
+=head1 Documentation
+
+The main entry point for reference documentation is the L<bif
+manual|bif>. After installation you should be able to access it by
+running C<man bif> or C<perldoc bif>.  You can also browse the
+documentation table of contents at L<http://bifax.org/bif/doc/>.
+
+=head1 Contributing
+
+You do not have to be a developer to contribute to bif! It is arguable
+that many key aspects of successful open source projects have more to
+do with the community and non-development contributions than technical
+skills.  Help would be appreciated for practically anything:
+
+=over
+
+=item * Editing the reference documentation
+
+=item * User-interface consistency checks
+
+=item * Website design
+
+=item * Blogging & advocacy
+
+=item * Translation - no framework in place yet though
+
+=item * Operating system distribution integrators
+
+=item * Perl / SQLite test writers (many tests needed!)
+
+=item * Software architect? The overall design could use a big dose of
+third-party analysis.
+
+=item * Security Analyst? Feel like starting a bif-doc-security
+document or otherwise letting us know which vectors are most vulnerable?
+I find it important to put some effort in here before bif becomes (if
+ever) widely used.
+
+=item * Big-picture thinker? How could the bif model of
+information distribution be applied to address books, slow-changing
+datasets (e.g. country lists, currencies), business transactions, etc.
+
+=item * Financial sponsorship would also be more than welcome.
+
+=back
+
+What long-term project members lose relatively quickly are those fresh
+eyes and first impressions that easily identify missing, broken and
+unexplained things. Therefore feedback from first-time users, both
+positive and negative, is extremely valuable.  Please get in touch!
+
+=head1 Development
+
+For those comfortable with git, development takes place on the "dev"
+branch of the git repository, with communication via the development
+mailing list.
+
+=for bifcode #!sh
+
+    git clone git://bifax.org/bif.git --branch dev
+    cd bif
+
+See the L<bif-doc-dev> document for information on how to hack on bif.
+
+=head1 License
+
+Bif is free software: you can redistribute it and/or modify it under
+the terms of the GNU General Public License as published by the Free
+Software Foundation, either version 3 of the License, or (at your
+option) any later version.
+
+This program, and all material accompanying it, is distributed in the
+hope that it will be useful, but WITHOUT ANY WARRANTY; without even the
+implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the GNU General Public License for more details.
+
+=head1 Credits
+
+Bif was started by Mark Lawrence <nomad@null.net>. Other contributions
+are listed in L<bif-doc-changelog>.
+

@@ -1,1460 +1,289 @@
 package App::bif;
 use strict;
 use warnings;
-use File::Basename;
-use OptArgs ':all';
+use feature 'state';
+use utf8;    # for render_table
+use Bif::Mo;
+use Carp ();
+use Config::Tiny;
+use File::HomeDir;
+use Log::Any qw/$log/;
+use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+our $pager;
 
-$OptArgs::COLOUR = 1;
-$OptArgs::SORT   = 1;
+has db => (
+    is      => 'ro',
+    default => \&_build_db,
+);
 
-arg command => (
-    isa      => 'SubCmd',
-    required => 1,
-    comment  => '',
-    fallback => {
-        name    => 'alias',
-        isa     => 'ArrayRef',
-        comment => 'run a command alias',
-        greedy  => 1,
-        hidden  => 1,
+has dbw => (
+    is      => 'ro',
+    default => \&_build_dbw,
+);
+
+has _colours => (
+    is      => 'ro',
+    default => {},
+);
+
+has config => (
+    is      => 'ro',
+    default => {},
+);
+
+has no_pager => (
+    is      => 'rw',
+    default => sub {
+        my $self = shift;
+        return ( !-t STDOUT ) || $self->opts->{no_pager};
     },
 );
 
-opt help => (
-    isa     => 'Bool',
-    alias   => 'h',
-    ishelp  => 1,
-    comment => 'print a full usage message and exit',
+has now => (
+    is      => 'ro',
+    default => sub { time },
 );
 
-opt debug => (
-    isa     => 'Bool',
-    alias   => 'D',
-    comment => 'turn on debugging',
-    hidden  => 1,
-);
-
-opt no_pager => (
-    isa     => 'Bool',
-    comment => 'do not page output',
-    hidden  => 1,
-);
-
-opt no_color => (
-    isa     => 'Bool',
-    comment => 'do not colorize output',
-    hidden  => 1,
-);
-
-opt user_repo => (
-    isa     => 'Bool',
-    alias   => 'c',
-    comment => 'use the user repository',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif init
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => 'init',
-    comment => 'initialize a new repository',
-);
-
-arg item => (
-    isa     => 'SubCmd',
-    comment => '',
-);
-
-opt debug_bifsync => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif init hub
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/init hub/],
-    comment => 'initialize a new local hub repository',
-);
-
-arg directory => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'location of hub repository',
-);
-
-opt message => (
-    isa     => 'Str',
-    alias   => 'm',
-    comment => 'Comment',
-);
-
-# ------------------------------------------------------------------------
-# bif init repo
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/init repo/],
-    comment => 'initialize a new repository',
-);
-
-arg directory => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'location of repository',
-);
-
-opt config => (
-    isa     => 'Bool',
-    comment => 'Create a default repo config file',
-);
-
-# ------------------------------------------------------------------------
-# bif new
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new/],
-    comment => 'create a new topic',
-);
-
-arg item => (
-    isa      => 'SubCmd',
-    required => 1,
-    comment  => '',
-);
-
-opt author => (
-    isa     => 'Str',
-    comment => 'Author',
-    hidden  => 1,
-);
-
-opt email => (
-    isa     => 'Str',
-    comment => 'Email',
-    hidden  => 1,
-);
-
-opt lang => (
-    isa     => 'Str',
-    comment => 'Lang',
-    hidden  => 1,
-);
-
-opt locale => (
-    isa     => 'Str',
-    comment => 'Locale',
-    hidden  => 1,
-);
-
-opt status => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'State',
-);
-
-opt message => (
-    isa     => 'Str',
-    alias   => 'm',
-    comment => 'Comment',
-);
-
-# ------------------------------------------------------------------------
-# bif new entity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new entity/],
-    comment => 'create a new entity',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'The name of the entity',
-);
-
-arg method => (
-    isa     => 'Str',
-    comment => 'The contact type (email, phone, etc)',
-);
-
-arg value => (
-    isa     => 'Str',
-    comment => 'The contact value',
-);
-
-# ------------------------------------------------------------------------
-# new host
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new host/],
-    comment => 'create a new provider host',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'name of the host in format [PROVIDER:]NAME',
-);
-
-# ------------------------------------------------------------------------
-# new hub
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new hub/],
-    comment => 'create a new hub',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'name of your organisation\'s hub',
-);
-
-arg locations => (
-    isa     => 'ArrayRef',
-    default => [],
-    greedy  => 1,
-    comment => 'hub locations',
-);
-
-opt default => (
-    isa     => 'Bool',
-    comment => 'mark hub as local/default',
-);
-
-# ------------------------------------------------------------------------
-# bif new identity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new identity/],
-    comment => 'create a new identity',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'The name of the identity',
-);
-
-arg method => (
-    isa     => 'Str',
-    comment => 'The contact type (email, phone, etc)',
-);
-
-arg value => (
-    isa     => 'Str',
-    comment => 'The contact value',
-);
-
-opt self => (
-    isa     => 'Bool',
-    comment => 'Create a "self" identity',
-);
-
-opt shortname => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'identity initials or short name',
-);
-
-# ------------------------------------------------------------------------
-# bif new issue
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new issue/],
-    comment => 'define a problem to be solved',
-);
-
-arg title => (
-    isa     => 'Str',
-    comment => 'summary of the issue description',
-    greedy  => 1,
-);
-
-opt path => (
-    isa     => 'Str',
-    alias   => 'p',
-    comment => 'path of the containing project',
-);
-
-opt status => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'Initial status for the task',
-);
-
-# ------------------------------------------------------------------------
-# bif new project
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new project/],
-    comment => 'create a new project',
-);
-
-arg path => (
-    isa     => 'Str',
-    comment => 'The path of the project',
-);
-
-arg title => (
-    isa     => 'Str',
-    comment => 'A short description of the project',
-    greedy  => 1,
-);
-
-opt phase => (
-    isa     => 'Str',
-    alias   => 'p',
-    comment => 'Initial project phase (use instead of --status)',
-);
-
-opt dup => (
-    isa     => 'Str',
-    alias   => 'd',
-    comment => 'project path to duplicate',
-);
-
-opt issues => (
-    isa     => 'Str',
-    alias   => 'i',
-    default => '',
-    comment => 'fork, copy or move issues on --dup',
-);
-
-opt tasks => (
-    isa     => 'Str',
-    alias   => 't',
-    default => '',
-    comment => 'copy or move tasks on --dup',
-);
-
-# ------------------------------------------------------------------------
-# new plan
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new plan/],
-    hidden  => 1,
-    comment => 'create a new plan',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'name of the plan in format [PROVIDER:]NAME',
-);
-
-arg title => (
-    isa     => 'Str',
-    greedy  => 1,
-    comment => 'title of the plan',
-);
-
-# ------------------------------------------------------------------------
-# new provider
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new provider/],
-    hidden  => 1,
-    comment => 'create a new provider',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'name of the provider',
-);
-
-arg method => (
-    isa     => 'Str',
-    comment => 'The contact type (email, phone, etc)',
-);
-
-arg value => (
-    isa     => 'Str',
-    comment => 'The contact value',
-);
-
-# ------------------------------------------------------------------------
-# bif new task
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new task/],
-    comment => 'define an item of work',
-);
-
-arg title => (
-    isa     => 'Str',
-    comment => 'summary of the task description',
-    greedy  => 1,
-);
-
-opt path => (
-    isa     => 'Str',
-    alias   => 'p',
-    comment => 'path of the containing project',
-);
-
-opt status => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'Initial status for the task',
-);
-
-# ------------------------------------------------------------------------
-# bif list
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list/],
-    comment => 'list topics in the repository',
-);
-
-arg items => (
-    isa      => 'SubCmd',
-    comment  => '',
+has opts => (
+    is       => 'ro',
     required => 1,
 );
 
-# ------------------------------------------------------------------------
-# bif list entities
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list entities/],
-    comment => 'list entities (contacts)',
+has repo => (
+    is      => 'rw',            # needed by init
+    default => \&_build_repo,
 );
 
-# ------------------------------------------------------------------------
-# list hosts
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list hosts/],
-    comment => 'list provider host locations',
-);
-
-# ------------------------------------------------------------------------
-# list hubs
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list hubs/],
-    comment => 'list hubs and their locations',
-);
-
-# ------------------------------------------------------------------------
-# bif list identities
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list identities/],
-    comment => 'list identities (contacts)',
-);
-
-# ------------------------------------------------------------------------
-# bif list issue-status
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list task-status/],
-    comment => 'list valid status for tasks',
-);
-
-arg path => (
-    isa      => 'Str',
-    comment  => 'the path of a project',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif list issues
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list issues/],
-    comment => 'list issues grouped by project',
-);
-
-opt status => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'limit issues to a specific status',
-);
-
-opt project_status => (
-    isa     => 'Str',
-    alias   => 'P',
-    comment => 'limit projects by a particular project status',
-);
-
-# ------------------------------------------------------------------------
-# list plans
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list plans/],
-    comment => 'list provider commercial offerings',
-);
-
-# ------------------------------------------------------------------------
-# bif list project-topic
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list topics/],
-    comment => 'list tasks and issues grouped by project',
-);
-
-opt status => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'limit topics to a specific status',
-);
-
-opt project_status => (
-    isa     => 'Str',
-    alias   => 'P',
-    comment => 'limit projects by a particular project status',
-);
-
-# ------------------------------------------------------------------------
-# bif list project-status
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list project-status/],
-    comment => 'list valid status for projects',
-);
-
-arg path => (
-    isa      => 'Str',
-    comment  => 'the path of a project',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif list projects
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list projects/],
-    comment => 'list projects with topic counts and progress',
-);
-
-arg status => (
-    isa     => 'ArrayRef',
-    greedy  => 1,
-    comment => 'limit the list by status type(s)',
-);
-
-opt hub => (
-    isa     => 'Str',
-    alias   => 'H',
-    comment => 'Limit the list to projects located at HUB',
-);
-
-opt local => (
-    isa     => 'Bool',
-    alias   => 'l',
-    comment => 'limit the list to projects that synchronise.',
-);
-
-# ------------------------------------------------------------------------
-# list providers
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list providers/],
-    comment => 'list registered providers',
-);
-
-# ------------------------------------------------------------------------
-# bif list tasks
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list tasks/],
-    comment => 'list tasks grouped by project',
-);
-
-opt status => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'limit tasks to a specific status',
-);
-
-opt project_status => (
-    isa     => 'Str',
-    alias   => 'P',
-    comment => 'limit projects by a particular project status',
-);
-
-# ------------------------------------------------------------------------
-# bif list task-status
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/list issue-status/],
-    comment => 'list valid status for issues',
-);
-
-arg path => (
-    isa      => 'Str',
-    comment  => 'the path of a project',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif show
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show/],
-    comment => "display a topic's current status",
-);
-
-arg item => (
-    isa      => 'SubCmd',
-    comment  => '',
-    required => 1,
-    fallback => {
-        name    => 'id',
-        isa     => 'Str',
-        comment => 'topic ID or project PATH',
+has term_width => (
+    is      => 'ro',
+    default => sub {
+        my $width;
+        if ( $^O eq 'MSWin32' ) {
+            require Term::Size::Win32;
+            $width = ( Term::Size::Win32::chars(*STDOUT) )[0] || 80;
+        }
+        else {
+            require Term::Size::Perl;
+            $width = ( Term::Size::Perl::chars(*STDOUT) )[0] || 80;
+        }
+        $log->debugf( 'bif: terminal width %d', $width );
+        return $width;
     },
 );
 
-opt uuid => (
-    isa     => 'Bool',
-    alias   => 'U',
-    comment => 'treat ID as a UUID',
-);
-
-opt full => (
-    isa     => 'Bool',
-    comment => 'display a more verbose current status',
-    alias   => 'f',
-);
-
-# ------------------------------------------------------------------------
-# bif show entity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show entity/],
-    comment => 'display full entity characteristics',
-);
-
-arg id => (
-    isa      => 'Int',
-    comment  => 'entity ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif show identity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show identity/],
-    comment => 'display full identity characteristics',
-);
-
-arg id => (
-    isa      => 'Int',
-    comment  => 'identity ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif show hub
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show hub/],
-    comment => 'summarize the current status of a hub',
-);
-
-arg name => (
-    isa      => 'Str',
-    comment  => 'hub name',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif show issue
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show issue/],
-    comment => 'summarize the current status of a issue',
-);
-
-arg id => (
-    isa      => 'Int',
-    comment  => 'issue ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# show plan
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show plan/],
-    comment => 'show a provider plan',
-);
-
-arg id => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'ID of provider plan',
-);
-
-# ------------------------------------------------------------------------
-# bif show project
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show project/],
-    comment => 'display current project status',
-);
-
-arg path => (
-    isa      => 'Str',
-    comment  => 'a project PATH',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif show task
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show task/],
-    comment => 'summarize the current status of a task',
-);
-
-arg id => (
-    isa      => 'Int',
-    comment  => 'task ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif show change
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/show change/],
-    comment => 'show an update as YAML',
-);
-
-arg uid => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'the change cID',
-);
-
-# ------------------------------------------------------------------------
-# bif log
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log/],
-    comment => 'view comments and status history',
-);
-
-arg item => (
-    isa      => 'SubCmd',
-    comment  => '',
-    fallback => {
-        name    => 'id',
-        isa     => 'Str',
-        comment => 'topic ID or project PATH',
+has term_height => (
+    is      => 'ro',
+    default => sub {
+        my $height;
+        if ( $^O eq 'MSWin32' ) {
+            require Term::Size::Win32;
+            $height = ( Term::Size::Win32::chars(*STDOUT) )[1] || 40;
+        }
+        else {
+            require Term::Size::Perl;
+            $height = ( Term::Size::Perl::chars(*STDOUT) )[1] || 40;
+        }
+        $log->debugf( 'bif: terminal height %d', $height );
+        return $height;
     },
 );
 
-opt uuid => (
-    isa     => 'Bool',
-    alias   => 'U',
-    comment => 'treat arguments as if they are a UUIDs',
+has user_repo => (
+    is      => 'ro',
+    default => \&_build_user_repo,
 );
 
-# ------------------------------------------------------------------------
-# bif log identity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log identity/],
-    comment => 'review history of an identity',
-);
-
-arg id => (
-    isa      => 'Str',
-    comment  => 'identity ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif log entity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log entity/],
-    comment => 'review history of an entity',
-);
-
-arg id => (
-    isa      => 'Str',
-    comment  => 'entity ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif log hub
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log hub/],
-    comment => 'review history of a hub',
-);
-
-arg name => (
-    isa      => 'Str',
-    comment  => 'hub name',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif log issue
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log issue/],
-    comment => 'review history of an issue',
-);
-
-arg id => (
-    isa      => 'Str',
-    comment  => 'issue ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif log project
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log project/],
-    comment => 'review history of a project',
-);
-
-arg path => (
-    isa      => 'Str',
-    comment  => 'project PATH or ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif log task
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log task/],
-    comment => 'review history of a task',
-);
-
-arg id => (
-    isa      => 'Str',
-    comment  => 'task ID',
-    required => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif log repo
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log repo/],
-    comment => 'review history of current repository',
-);
-
-opt full => (
-    isa     => 'Bool',
-    alias   => 'f',
-    comment => 'include all actions',
-);
-
-opt order => (
-    isa     => 'Str',
-    alias   => 'o',
-    default => 'time',
-    comment => 'the field to order changes by [time|uid]'
-);
-
-# ------------------------------------------------------------------------
-# bif update
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update/],
-    comment => 'comment on or modify a topic',
-);
-
-arg id => (
-    isa      => 'SubCmd',
-    required => 1,
-    comment  => 'topic ID or project PATH',
-    fallback => {
-        name    => 'id',
-        isa     => 'Str',
-        comment => 'topic ID or project PATH',
-    },
-);
-
-opt uuid => (
-    isa     => 'Bool',
-    alias   => 'U',
-    comment => 'treat ID as a UUID',
-);
-
-opt author => (
-    isa     => 'Str',
-    comment => 'Author',
-    hidden  => 1,
-);
-
-opt lang => (
-    isa     => 'Str',
-    comment => 'Lang',
-    hidden  => 1,
-);
-
-opt locale => (
-    isa     => 'Str',
-    comment => 'Locale',
-    hidden  => 1,
-);
-
-opt message => (
-    isa     => 'Str',
-    comment => 'Comment',
-    alias   => 'm',
-);
-
-opt reply => (
-    isa     => 'Str',
-    comment => 'reply to a change cID',
-    alias   => 'r',
-);
-
-# ------------------------------------------------------------------------
-# bif update identity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update identity/],
-    comment => 'update an identity',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'identity ID',
-);
-
-opt shortname => (
-    isa     => 'Str',
-    alias   => 's',
-    comment => 'identity initials or short name',
-);
-
-# ------------------------------------------------------------------------
-# bif update entity
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update entity/],
-    comment => 'update an entity',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'entity ID',
-);
-
-# ------------------------------------------------------------------------
-# bif update hub
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update hub/],
-    comment => 'update a hub',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'hub ID',
-);
-
-# ------------------------------------------------------------------------
-# bif update issue
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update issue/],
-    comment => 'update an issue',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'issue ID',
-);
-
-arg status => (
-    isa     => 'Str',
-    comment => 'topic status',
-);
-
-opt title => (
-    isa     => 'Str',
-    alias   => 't',
-    comment => 'Title',
-);
-
-# ------------------------------------------------------------------------
-# change plan
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update plan/],
-    comment => 'update a provider plan',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'plan ID',
-);
-
-opt add => (
-    isa     => 'ArrayRef',
-    alias   => 'a',
-    comment => 'hosts to add to plan',
-);
-
-opt remove => (
-    isa     => 'ArrayRef',
-    alias   => 'r',
-    comment => 'hosts to remove from plan',
-);
-
-# ------------------------------------------------------------------------
-# bif update project
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update project/],
-    comment => 'update an project',
-);
-
-arg path => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'project path',
-);
-
-arg status => (
-    isa     => 'Str',
-    comment => 'topic status',
-);
-
-opt title => (
-    isa     => 'Str',
-    alias   => 't',
-    comment => 'Title',
-);
-
-# ------------------------------------------------------------------------
-# bif update task
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update task/],
-    comment => 'update an task',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'task ID',
-);
-
-arg status => (
-    isa     => 'Str',
-    comment => 'topic status',
-);
-
-opt title => (
-    isa     => 'Str',
-    alias   => 't',
-    comment => 'Title',
-);
-
-# ------------------------------------------------------------------------
-# bif drop
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/drop/],
-    comment => 'remove an item from the database',
-    hidden  => 1,
-);
-
-arg item => (
-    isa      => 'SubCmd',
-    required => 1,
-    comment  => 'topic ID or project PATH',
-);
+has user_db => (
+    is      => 'ro',
+    default => \&_build_user_db,
+);
+
+has user_dbw => (
+    is      => 'ro',
+    default => \&_build_user_dbw,
+);
+
+sub BUILD {
+    my $self = shift;
+    my $opts = $self->opts;
+
+    # For Term::ANSIColor
+    #    $ENV{ANSI_COLORS_DISABLED} = !$is_term || $opts->{no_color};
+
+    binmode STDIN,  ':encoding(utf8)';
+    binmode STDOUT, ':encoding(utf8)';
+
+    if ( $opts->{debug} ) {
+        require Log::Any::Adapter;
+        Log::Any::Adapter->set('+App::bif::LAA');
+        $self->start_pager();
+    }
+
+    $log->debugf( 'bif: %s %s', ref $self, $opts );
+
+    return;
+}
+
+sub _build_user_repo {
+    my $self = shift;
+    my $repo = path( File::HomeDir->my_home, '.bifu' )->absolute;
+
+    $self->err( 'UserRepoNotFound',
+        'user repository not found (try "bif init -u -i")' )
+      unless -d $repo;
+
+    $log->debug( 'bif: user_repo: ' . $repo );
+
+    my $file = $repo->child('config');
+    return $repo unless $file->exists;
 
-opt force => (
-    isa     => 'Bool',
-    alias   => 'f',
-    comment => 'Do not ask for confirmation',
-);
-
-# ------------------------------------------------------------------------
-# bif drop issue
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/drop issue/],
-    comment => 'remove an issue',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'issue ID',
-);
-
-# ------------------------------------------------------------------------
-# bif drop project
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/drop project/],
-    comment => 'remove a project',
-);
-
-arg path => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'project PATH or ID',
-);
-
-# ------------------------------------------------------------------------
-# bif drop task
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/drop task/],
-    comment => 'remove a task',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'task ID',
-);
-
-# ------------------------------------------------------------------------
-# bif drop change
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/drop change/],
-    comment => 'remove a change',
-);
-
-arg uid => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'change cID',
-);
-
-# ------------------------------------------------------------------------
-# bif pull
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/pull/],
-    comment => 'import topics from elsewhere',
-);
-
-arg item => (
-    isa      => 'SubCmd',
-    comment  => '',
-    required => 1,
-);
-
-opt debug_bifsync => (
-    isa     => 'Bool',
-    alias   => 'E',
-    hidden  => 1,
-    comment => 'turn on bifsync debugging',
-);
-
-# ------------------------------------------------------------------------
-# bif pull identity
-# ------------------------------------------------------------------------
-
-subcmd(
-    cmd     => [qw/pull identity/],
-    comment => 'import an identity from a repository',
-);
-
-arg location => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'location of identity repository',
-);
-
-# For the moment just handle self identities.
-#arg identity => (
-#    isa      => 'Str',
-#    comment  => 'location of identity repository',
-#);
-
-opt self => (
-    isa     => 'Bool',
-    comment => 'register identity as "myself" after import',
-);
-
-# ------------------------------------------------------------------------
-# pull hub
-# ------------------------------------------------------------------------
-
-subcmd(
-    cmd     => [qw/pull hub/],
-    comment => 'import project list from a hub repository',
-);
-
-arg location => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'location of a remote repository',
-);
-
-# ------------------------------------------------------------------------
-# bif pull project
-# ------------------------------------------------------------------------
-
-subcmd(
-    cmd     => [qw/pull project/],
-    comment => 'import projects from a hub',
-);
-
-arg path => (
-    isa      => 'ArrayRef',
-    greedy   => 1,
-    required => 1,
-    comment  => 'path(s) of the project(s) to be imported',
-);
-
-opt debug_bifsync => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# pull provider
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/pull provider/],
-    comment => 'import plans from a provider',
-);
-
-arg location => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'management location of provider',
-);
-
-# ------------------------------------------------------------------------
-# bif push
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/push/],
-    comment => 'export topics to somewhere else',
-);
-
-arg item => (
-    isa      => 'SubCmd',
-    comment  => '',
-    required => 1,
-);
-
-opt message => (
-    isa     => 'Str',
-    comment => 'optional comment for the associated change',
-    alias   => 'm',
-);
-
-# ------------------------------------------------------------------------
-# push hub
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/push hub/],
-    comment => 'export a hub to a provider host',
-);
-
-arg name => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'name of your organisation\'s hub',
-);
-
-arg hosts => (
-    isa      => 'ArrayRef',
-    required => 1,
-    greedy   => 1,
-    comment  => 'provider host address(es)',
-);
-
-# ------------------------------------------------------------------------
-# bif push issue
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/push issue/],
-    comment => 'push an issue to another project',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'issue ID',
-);
-
-arg path => (
-    isa      => 'ArrayRef',
-    required => 1,
-    greedy   => 1,
-    comment  => 'path(s) of the destination project(s)',
-);
-
-opt err_on_exists => (
-    isa     => 'Bool',
-    comment => 'raise an error when issue exists at destination',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif push project
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/push project/],
-    comment => 'export a project to a hub',
-);
-
-arg path => (
-    isa      => 'ArrayRef',
-    required => 1,
-    greedy   => 1,
-    comment  => 'path(s) of the project(s) to be exported',
-);
-
-arg hub => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'destination hub address or alias',
-);
-
-opt debug_bifsync => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# signup
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/signup/],
-    comment => 'sign up with a hub provider',
-    hidden  => 1,
-);
-
-arg name => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'hub name',
-);
-
-arg plan => (
-    isa      => 'Str',
-    required => 1,
-    comment  => 'provider plan name',
-);
-
-opt debug_bs => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
-
-# ------------------------------------------------------------------------
-# bif sync
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/sync/],
-    comment => 'exchange changes with a hub',
-);
-
-opt path => (
-    isa     => 'ArrayRef',
-    alias   => 'p',
-    comment => 'limit sync to a particular project',
-);
+    my $config = $self->config;
+    my $conf = Config::Tiny->read( $file, 'utf8' )
+      || return $self->err( 'ConfigNotFound',
+        $file . ' ' . Config::Tiny->errstr );
+
+    # Merge in the repo config with the current context (user) config
+    while ( my ( $k1, $v1 ) = each %$conf ) {
+        if ( ref $v1 eq 'HASH' ) {
+            while ( my ( $k2, $v2 ) = each %$v1 ) {
+                if ( $k1 eq '_' ) {
+                    $config->{$k2} = $v2;
+                }
+                else {
+                    $config->{$k1}->{$k2} = $v2;
+                }
+            }
+        }
+        else {
+            $config->{$k1} = $v1;
+        }
+    }
 
-opt hub => (
-    isa     => 'ArrayRef',
-    alias   => 'H',
-    comment => 'limit sync to a particular hub',
-);
+    return $repo;
+}
 
-opt message => (
-    isa     => 'Str',
-    alias   => 'm',
-    default => '',
-    hidden  => 1,
-    comment => 'message for multiple test script changes / second ',
-);
+sub _build_repo {
+    my $self = shift;
+    $self->user_repo;    # build user repo first
 
-opt debug_bifsync => (
-    isa     => 'Bool',
-    alias   => 'E',
-    comment => 'turn on bifsync debugging',
-    hidden  => 1,
-);
+    my $repo = $self->find_repo('.bif')
+      || $self->err( 'RepoNotFound', 'directory not found: .bif' );
 
-# ------------------------------------------------------------------------
-# bif upgrade
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/upgrade/],
-    comment => 'upgrade a repository',
-    hidden  => 1,
-);
+    $log->debug( 'bif: repo: ' . $repo );
 
-arg directory => (
-    isa     => 'Str',
-    comment => 'location if this is a hub upgrade',
-);
+    my $file = $repo->child('config');
+    return $repo unless $file->exists;
 
-# ------------------------------------------------------------------------
-# bif sql
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/sql/],
-    comment => 'run an SQL command against the database',
-    hidden  => 1,
-);
+    $log->debug( 'bif: repo_conf: ' . $file );
 
-arg statement => (
-    isa     => 'Str',
-    comment => 'SQL statement text',
-    greedy  => 1,
-);
+    # Trigger user config
+    $self->user_repo;
 
-opt noprint => (
-    isa     => 'Bool',
-    comment => 'do not print output but return a data structure',
-    alias   => 'n',
-);
+    my $config = $self->config;
+    my $conf = Config::Tiny->read( $file, 'utf8' )
+      || return $self->err( 'ConfigNotFound',
+        $file . ' ' . Config::Tiny->errstr );
 
-opt write => (
-    isa     => 'Bool',
-    comment => 'run with a writeable database (default is read-only)',
-    alias   => 'w',
-);
+    # Merge in the repo config with the current context (user) config
+    while ( my ( $k1, $v1 ) = each %$conf ) {
+        if ( ref $v1 eq 'HASH' ) {
+            while ( my ( $k2, $v2 ) = each %$v1 ) {
+                if ( $k1 eq '_' ) {
+                    $config->{$k2} = $v2;
+                }
+                else {
+                    $config->{$k1}->{$k2} = $v2;
+                }
+            }
+        }
+        else {
+            $config->{$k1} = $v1;
+        }
+    }
+
+    return $repo;
+}
+
+sub _build_user_db {
+    my $self = shift;
+    my $dsn  = 'dbi:SQLite:dbname=' . $self->user_repo->child('db.sqlite3');
+
+    require Bif::DB;
+    my $db =
+      Bif::DB->connect( $dsn, undef, undef, undef, $self->opts->{debug} );
+
+    $log->debug( 'bif: user_db: ' . $dsn );
+    $log->debug( 'bif: SQLite version: ' . $db->{sqlite_version} );
+
+    return $db;
+}
+
+sub _build_user_dbw {
+    my $self = shift;
+    my $dsn  = 'dbi:SQLite:dbname=' . $self->user_repo->child('db.sqlite3');
+
+    require Bif::DBW;
+    my $dbw =
+      Bif::DBW->connect( $dsn, undef, undef, undef, $self->opts->{debug} );
+
+    $log->debug( 'bif: user_dbw: ' . $dsn );
+    $log->debug( 'bif: SQLite version: ' . $dbw->{sqlite_version} );
+
+    return $dbw;
+}
+
+sub _build_db {
+    my $self = shift;
+    my $dsn  = 'dbi:SQLite:dbname=' . $self->repo->child('db.sqlite3');
+
+    require Bif::DB;
+    my $db =
+      Bif::DB->connect( $dsn, undef, undef, undef, $self->opts->{debug} );
+
+    $log->debug( 'bif: db: ' . $dsn );
+    $log->debug( 'bif: SQLite version: ' . $db->{sqlite_version} );
+
+    return $db;
+}
+
+sub _build_dbw {
+    my $self = shift;
+    my $dsn  = 'dbi:SQLite:dbname=' . $self->repo->child('db.sqlite3');
+
+    require Bif::DBW;
+    my $dbw =
+      Bif::DBW->connect( $dsn, undef, undef, undef, $self->opts->{debug} );
+
+    $log->debug( 'bif: dbw: ' . $dsn );
+    $log->debug( 'bif: SQLite version: ' . $dbw->{sqlite_version} );
+
+    return $dbw;
+}
+
+### class methods ###
 
 # Run user defined aliases
 sub run {
-    my $opts  = shift;
-    my @cmd   = @{ delete $opts->{alias} };
+    my $self  = shift;
+    my $opts  = $self->opts;
+    my @cmd   = @{ $opts->{alias} };
     my $alias = shift @cmd;
 
-    require App::bif::Context;
-    my $ctx = App::bif::Context->new($opts);
-    $ctx->user_repo if -e $ctx->find_user_repo;
-    my $str = $ctx->{'user.alias'}->{$alias}
+    use File::HomeDir;
+    use Path::Tiny;
+
+    my $repo = path( File::HomeDir->my_home, '.bifu' );
+    die usage(qq{unknown COMMAND or ALIAS "$alias"}) unless -d $repo;
+
+    # Trigger user config
+    $self->user_repo;
+    my $str = $self->config->{'user.alias'}->{$alias}
       or die usage(qq{unknown COMMAND or ALIAS "$alias"});
 
     # Make sure these options are correctly passed through (or not)
+    delete $opts->{alias};
     $opts->{debug}     = undef if exists $opts->{debug};
     $opts->{no_pager}  = undef if exists $opts->{no_pager};
     $opts->{no_color}  = undef if exists $opts->{no_color};
@@ -1462,36 +291,754 @@ sub run {
 
     unshift( @cmd, split( ' ', $str ) );
 
-    require Log::Any;
-    Log::Any->get_logger( category => __PACKAGE__ )
-      ->debug("alias: $alias => @cmd");
-    return dispatch( 'run', 'App::bif', $opts, @cmd );
+    use OptArgs qw/class_optargs/;
+    my ( $class, $newopts ) = OptArgs::class_optargs( 'App::bif', $opts, @cmd );
+
+    return $class->new(
+        opts      => $newopts,
+        user_repo => $self->user_repo,
+    )->run;
 }
 
-1;
-__END__
+sub find_repo {
+    my $self = shift;
+    my $name = shift;
 
+    if ( $self->opts->{user_repo} ) {
+        my $repo = $self->user_repo || return;
+        return $repo;
+    }
+
+    my $root = rootdir;
+    my $try  = cwd;
+
+    until ( $try eq $root ) {
+        if ( -d ( my $repo = $try->child($name) ) ) {
+            return $repo;
+        }
+        $try = $try->parent;
+    }
+
+    return;
+}
+
+sub colours {
+    my $self = shift;
+    state $have_term_ansicolor = require Term::ANSIColor;
+
+    return map { '' } @_ if $self->opts->{no_color};
+
+    my $ref = $self->_colours;
+    map { $ref->{$_} //= Term::ANSIColor::color($_) } @_;
+    return map { $ref->{$_} } @_ if wantarray;
+    return $ref->{ $_[0] };
+}
+
+sub header {
+    my $self = shift;
+    state $reset = $self->colours(qw/reset/);
+    state $dark  = $self->colours(qw/dark/);
+
+    my ( $key, $val, $val2 ) = @_;
+    return [
+        ( $key ? $key . ':' : '' ) . $reset,
+        $val . ( defined $val2 ? $dark . ' <' . $val2 . '>' : '' ) . $reset
+    ];
+}
+
+sub ago {
+    my $self   = shift;
+    my $time   = shift || Carp::confess "TIME";
+    my $offset = shift;
+
+    state $have_posix         = require POSIX;
+    state $have_time_piece    = require Time::Piece;
+    state $have_time_duration = require Time::Duration;
+
+    use locale;
+
+    my $hours   = POSIX::floor( $offset / 60 / 60 );
+    my $minutes = ( abs($offset) - ( abs($hours) * 60 * 60 ) ) / 60;
+    my $dt      = Time::Piece->strptime( $time + $offset, '%s' );
+
+    my $local =
+      sprintf( '%s %+.2d%.2d', $dt->strftime('%a %F %R'), $hours, $minutes );
+
+    return ( Time::Duration::ago( $self->now - $time, 1 ), $local );
+}
+
+sub err {
+    my $self = shift;
+    Carp::croak('err($type, $msg, [$arg])') unless @_ >= 2;
+    my $err = shift;
+    my $msg = shift;
+
+    die $msg if eval { $msg->isa('Bif::Error') };
+    my ( $red, $reset ) = $self->colours(qw/red reset/);
+
+    $msg = $red . 'error:' . $reset . ' ' . $msg . "\n";
+
+    die Bif::Error->new( $self->opts, $err, $msg, @_ );
+}
+
+sub ok {
+    my $self = shift;
+    Carp::croak('ok($type, [$arg])') unless @_;
+    my $ok = shift;
+    return Bif::OK->new( $self->opts, $ok, @_ );
+}
+
+sub start_pager {
+    my $self  = shift;
+    my $lines = shift;
+
+    return if $pager or $self->no_pager;
+
+    if ($lines) {
+        my $term_height = $self->term_height;
+        if ( $lines <= $term_height ) {
+            $log->debug("bif: no start_pager ($lines <= $term_height)");
+            return;
+        }
+    }
+
+    local $ENV{'LESS'} = '-FXeR';
+    local $ENV{'MORE'} = '-FXer' unless $^O =~ /^MSWin/;
+
+    require App::bif::Pager;
+    $pager = App::bif::Pager->new;
+
+    $log->debugf( 'bif: start_pager (fileno: %d)', fileno( $pager->fh ) );
+
+    return $pager;
+}
+
+sub end_pager {
+    my $self = shift;
+    return unless $pager;
+
+    $log->debug('bif: end_pager');
+    $pager = undef;
+    return;
+}
+
+sub user_id {
+    my $self = shift;
+    my $id   = $self->db->xval(
+        select => 'bif.identity_id',
+        from   => 'bifkv bif',
+        where  => { 'bif.key' => 'self' },
+    );
+    return $id;
+}
+
+sub uuid2id {
+    my $self = shift;
+    my $try  = shift // Carp::croak 'uuid2id needs defined';
+    my $opts = $self->opts;
+    Carp::croak 'usage' if @_;
+
+    return $try unless exists $opts->{uuid} && $opts->{uuid};
+    my @list = $self->db->uuid2id($try);
+
+    return $self->err( 'UuidNotFound', "uuid not found: $try" )
+      unless @list;
+
+    return $self->err( 'UuidAmbiguous',
+        "ambiguious uuid: $try\n    "
+          . join( "\n    ", map { "$_->[1] -> ID:$_->[0]" } @list ) )
+      if @list > 1;
+
+    return $list[0]->[0];
+}
+
+sub get_project {
+    my $self = shift;
+    my $path = shift;
+    my $db   = $self->db;
+
+    my $hub;
+    if ( $path =~ m/(.*?)\/(.*)/ ) {
+        $hub  = $1;
+        $path = $2;
+    }
+
+    my @matches = $db->get_projects( $path, $hub );
+
+    if ( 0 == @matches ) {
+        return $self->err( 'ProjectNotFound', "project not found: $path" )
+          unless $hub;
+
+        return $self->err( 'ProjectNotFound', "project not found: $path\@$hub" )
+          if eval { $self->get_hub($hub) };
+
+        return $self->err( 'HubNotFound',
+            "hub not found: $hub (for $path\@$hub)" );
+    }
+    elsif ( 1 == @matches ) {
+        return $matches[0];
+    }
+    elsif ( not defined $matches[0]->{hub_name} ) {
+        return $matches[0];
+    }
+
+    return $self->err( 'AmbiguousPath',
+        "ambiguous path \"$path\" matches the following:\n" . '    '
+          . join( "\n    ", map { "$path\@$_->{hub_name}" } @matches ) );
+}
+
+sub get_hub {
+    my $self = shift;
+    my $name = shift;
+    my $db   = $self->db;
+
+    my ($hub) = $db->xhashref(
+        select           => [qw/h.id h.name t.kind t.uuid t.first_change_id/],
+        from             => 'hubs h',
+        inner_join       => 'topics t',
+        on               => 't.id = h.id',
+        where            => { 'h.name' => $self->uuid2id($name) },
+        union_all_select => [qw/h.id h.name t.kind t.uuid t.first_change_id/],
+        from             => 'hub_repos hr',
+        inner_join       => 'hubs h',
+        on               => 'h.id = hr.hub_id',
+        inner_join       => 'topics t',
+        on               => 't.id = h.id',
+        where            => { 'hr.location' => $name },
+    );
+
+    return $self->err( 'HubNotFound', "hub not found: $name" )
+      unless $hub;
+
+    return $hub;
+}
+
+sub render_table {
+    my $self   = shift;
+    my $format = shift;
+    my $header = shift;
+    my $data   = shift;
+    my $indent = shift || 0;
+
+    my ( $white, $dark, $reset ) = $self->colours(qw/white dark reset/);
+    require Text::FormatTable;
+
+    my $table = Text::FormatTable->new($format);
+
+    if ($header) {
+        $header->[0] = $white . $header->[0];
+        push( @$header, ( pop @$header ) . $reset );
+        $table->head(@$header);
+    }
+
+    foreach my $row (@$data) {
+        $table->row(@$row);
+    }
+
+    my $term_width = $self->term_width;
+    return $table->render($term_width) unless $indent;
+
+    my $str = $table->render( $term_width - $indent );
+
+    my $prefix = ' ' x $indent;
+    $str =~ s/^/$prefix/gm;
+    return $str;
+}
+
+sub prompt_edit {
+    my $self = shift;
+    my %args = (
+        opts           => {},
+        abort_on_empty => 1,
+        val            => '',
+        @_,
+    );
+
+    $args{txt} //= "\n";
+    $args{txt} .= " 
+# Please enter your message. Lines starting with '#'
+# are ignored. Empty content aborts.
+#
+";
+
+    foreach my $key ( sort keys %{ $args{opts} } ) {
+        next if $key =~ m/^_/;
+        next unless defined $args{opts}->{$key};
+        $args{txt} .= "#     $key: $args{opts}->{$key}\n";
+    }
+
+    require IO::Prompt::Tiny;
+    if ( IO::Prompt::Tiny::_is_interactive() ) {
+        require Proc::InvokeEditor;
+        $args{val} = Proc::InvokeEditor->edit( $args{val} || $args{txt} );
+        utf8::decode( $args{val} );
+    }
+
+    $args{val} =~ s/^#.*//gm;
+    $args{val} =~ s/^\n+//s;
+    $args{val} =~ s/\n*$/\n/s;
+
+    if ( $args{abort_on_empty} ) {
+        return $self->err( 'EmptyContent', 'aborting due to empty content.' )
+          if $args{val} =~ m/^[\s\n]*$/s;
+    }
+
+    return $args{val};
+}
+
+my $old = '';
+
+sub lprint {
+    my $self = shift;
+    my $msg  = shift;
+
+    if ( $pager or $self->opts->{debug} ) {
+        return print $msg . "\n";
+    }
+
+    local $| = 1;
+
+    my $chars = print ' ' x length($old), "\b" x length($old), $msg, "\r";
+    $old = $msg =~ m/\n/ ? '' : $msg;
+    return $chars;
+}
+
+sub get_change {
+    my $self            = shift;
+    my $token           = shift // Carp::croak('get_change needs defined');
+    my $first_change_id = shift;
+
+    return $self->err( 'ChangeNotFound', "change not found: $token" )
+      unless $token =~ m/^c(\d+)$/;
+
+    my $id = $1;
+    my $db = $self->db;
+
+    my $data = $db->xhashref(
+        select => [ 'c.id AS id', 'c.uuid AS uuid', ],
+        from   => 'changes c',
+        where => { 'c.id' => $id },
+    );
+
+    return $self->err( 'ChangeNotFound', "change not found: $token" )
+      unless $data;
+
+    if ($first_change_id) {
+        my $t = $db->xhashref(
+            select => 1,
+            from   => 'changes_tree ct',
+            where  => {
+                'ct.child'  => $id,
+                'ct.parent' => $first_change_id,
+            },
+        );
+
+        return $self->err( 'FirstChangeMismatch',
+            'first change id mismatch: c%d / c%d',
+            $first_change_id, $id )
+          unless $t;
+    }
+
+    return $data;
+}
+
+sub get_topic {
+    my $self = shift;
+
+    my $token = shift // Carp::confess('get_topic needs defined');
+    my $kind  = shift;
+    my $db    = $self->db;
+
+    state $have_qv = DBIx::ThinSQL->import(qw/ qv bv /);
+
+    if ( $token =~ m/^\d+$/ ) {
+        my $data = $db->xhashref(
+            select => [
+                't.id AS id',
+                't.kind AS kind',
+                't.uuid AS uuid',
+                't.first_change_id AS first_change_id',
+                qv(undef)->as('project_issue_id'),
+                qv(undef)->as('project_id'),
+            ],
+            from  => 'topics t',
+            where => [ 't.id = ', qv($token), ' AND t.kind != ', qv('issue') ],
+            union_all_select => [
+                't.id AS id',
+                't.kind AS kind',
+                't.uuid AS uuid',
+                't.first_change_id AS first_change_id',
+                'pi.id AS project_issue_id',
+                'pi.project_id',
+            ],
+            from       => 'project_issues pi',
+            inner_join => 'topics t',
+            on         => 't.id = pi.issue_id',
+            where      => { 'pi.id' => $token },
+            order_by   => 'project_issue_id DESC',
+            limit      => 1,
+        );
+
+        return $self->err( 'WrongKind', 'topic (%s) is not a %s: %d',
+            $data->{kind}, $kind, $token )
+          if $data && $kind && $kind ne $data->{kind};
+
+        return $data if $data;
+    }
+
+    my $pinfo = eval { $self->get_project($token) };
+    die $@ if ( $@ && $@->isa('Bif::Error::AmbiguousPath') );
+    return $pinfo if $pinfo;
+
+    $kind ||= 'topic';
+    return $self->err( 'TopicNotFound', "$kind not found: $token" );
+}
+
+sub new_change {
+    my $self = shift;
+    my %vals = @_;
+
+    my $dbw    = $self->dbw;
+    my $id     = ( delete $vals{id} ) // $dbw->nextval('changes');
+    my $author = delete $vals{author};
+    my $email  = delete $vals{email};
+
+    state $have_dbix = DBIx::ThinSQL->import(qw/ qv coalesce /);
+
+    my $res = $dbw->xdo(
+        insert_into => [ 'changes', 'id', 'identity_id', sort keys %vals ],
+        select      => [
+            qv($id), 'bif.identity_id',
+            map { qv( $vals{$_} ) } sort keys %vals
+        ],
+        from  => 'bifkv bif',
+        where => { 'bif.key' => 'self' },
+    );
+
+    return $self->err( 'NoSelfIdentity',
+        'no "self" identity ' . join( ' ', caller ) )
+      unless $res > 0;
+    return $id;
+}
+
+sub DESTROY {
+    my $self = shift;
+    Log::Any::Adapter->remove( $self->{_bif_log_any_adapter} )
+      if $self->{_bif_log_any_adapter};
+}
+
+package Bif::OK;
+use overload
+  bool     => sub { 1 },
+  '""'     => \&as_string,
+  fallback => 1;
+
+sub new {
+    my $proto = shift;
+    my $opts  = shift;
+    $opts->{_bif_ok_type} = shift || Carp::confess('missing type');
+    $opts->{_bif_ok_msg}  = shift || '';
+    $opts->{_bif_ok_msg} = sprintf( $opts->{_bif_ok_msg}, @_ ) if @_;
+
+    my $class = $proto . '::' . $opts->{_bif_ok_type};
+    {
+        no strict 'refs';
+        *{ $class . '::ISA' } = [$proto];
+    }
+
+    return bless {%$opts}, $class;
+}
+
+sub as_string {
+    my $self = shift;
+    return $self->{_bif_ok_msg} || ref $self;
+}
+
+package Bif::Error;
+use overload
+  bool     => sub { 1 },
+  fallback => 1;
+
+our @ISA = ('Bif::OK');
+
+1;
+
+__END__
 
 =head1 NAME
 
-App::bif - OptArgs dispatch module for bif.
+=for bif-doc #perl
+
+App::bif - A base class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
-  use OptArgs qw/dispatch/;
-  dispatch(qw/run App::bif/);
+    # In App/bif/command/name.pm
+    use strict;
+    use warnings;
+    use parent 'App::bif';
+
+    sub run {
+        my $self = shift;
+        my $db   = $self->db;
+        my $data = $db->xarrayref(...);
+
+        return $self->err( 'SomeFailure', 'something failed' )
+          if ( $self->{command_option} );
+
+        $self->start_pager;
+
+        print $self->render_table( ' r  l  l ',
+            [qw/ ID Title Status /], $data, );
+
+
+
+        return $self->ok('CommandName');
+    }
 
 =head1 DESCRIPTION
 
-See L<bif>(1) for details.
+B<App::bif> provides a context/configuration class for bif commands to
+inherit from.  The above synopsis is the basic template for any bif
+command. At run time the C<run> method is called.
+
+B<App::bif> sets the encoding of C<STDOUT> and C<STDIN> to utf-8 when
+it is loaded.
+
+=head1 CONSTRUCTOR
+
+=over 4
+
+=item new( opts => $opts )
+
+Initializes the common elements of all bif scripts. Requires the
+options hashref as provided by L<OptArgs> but also returns it.
+
+=over
+
+=item * Sets the package variable C<$App::bif::STDOUT_TERMINAL> to
+true if C<STDOUT> is connected to a terminal.
+
+=item * Sets the environment variable C<ANSI_COLORS_DISABLED> to
+1 if C<STDOUT> is I<not> connected to a terminal, in order to disable
+L<Term::ANSIColor> functions.
+
+=item * Starts a pager if C<--debug> is true, unless C<--no-pager> is
+also set to true or C<STDOUT> is not connected to a terminal.
+
+=item * Adds unfiltered logging via L<Log::Any::Adapter::Stdout>.
+
+=back
+
+=back
+
+
+=head1 ATTRIBUTES
+
+To be documented.
+
+=head1 METHODS
+
+=over 4
+
+=item colours( @colours ) -> @codes
+
+Calls C<color()> from L<Term::ANSIColor> on every string from
+C<@colours> and returns the results. Returns empty strings if the
+environment variable C<$ANSI_COLORS_DISABLED> is true (set by the
+C<--no-color> option).
+
+=item header( $key, $val, $val2 ) -> ArrayRef
+
+Returns a two or three element arrayref formatted as so:
+
+    ["$key:", $val, "<$val2>"]
+
+Colours are used to make the $val2 variable darker. The result is
+generally used when rendering tables by log and show commands.
+
+=item ago( $epoch, $offset ) -> $string, $timestamp
+
+Uses L<Time::Duration> to generate a human readable $string indicating
+how long ago UTC $epoch was (with $offset in +/- seconds) plus a
+regular timestamp string.
+
+=item err( $err, $message, [ @args ])
+
+Throws an exception that stringifies to C<$message> prefixed with
+"fatal: ". The exception is an object from the C<Bif::Error::$err>
+class which is used by test scripts to reliably detect the type of
+error. If C<@args> exists then C<$message> is assumed to be a format
+string to be converted with L<sprintf>.
+
+=item ok( $type, [ $arg ])
+
+Returns a C<Bif::OK::$type> object, either as a reference to C<$arg> or
+as a reference to the class name. Every App::bif::* command should
+return such an object, which can be tested for by tests.
+
+=item start_pager([ $rows ])
+
+Start a pager (less, more, etc) on STDOUT using L<IO::Pager>, provided
+that C<--no-pager> has not been used. The pager handle encoding is set
+to utf-8. If the optional C<$rows> has been given then the pager will
+only be started if L<Term::Size> reports the height of the terminal as
+being less than C<$rows>.
+
+=item end_pager
+
+Stops the pager on STDOUT if it was previously started.
+
+=item user_repo -> Path::Tiny
+
+Returns the location of the user repository directory.  Raises a
+'UserRepoNotFound' error on failure.
+
+=item user_db -> Bif::DB::db
+
+Returns a read-only handle for the SQLite database containing
+user-specific data.
+
+=item user_dbw -> Bif::DBW::db
+
+Returns a read-write handle for the SQLite database containing
+user-specific data.
+
+=item repo -> Path::Tiny
+
+Return the path to the first '.bif' directory found starting from the
+current working directory and searching upwards. Raises a
+'RepoNotFound' error on failure.
+
+=item db -> Bif::DB::db
+
+Returns a handle for the SQLite database in the current respository (as
+found by C<bif_repo>). The handle is only good for read operations -
+use C<$self->dbw> when inserting,updating or deleting from the
+database.
+
+You should manually import any L<DBIx::ThinSQL> functions you need only
+after calling C<bif_db>, in order to keep startup time short for cases
+such as when the repository is not found.
+
+=item dbw -> Bif::DBW::db
+
+Returns a handle for the SQLite database in the current respository (as
+found by C<bif_repo>). The handle is good for INSERT, UPDATE and DELETE
+operations.
+
+You should manually import any L<DBIx::ThinSQL> functions you need only
+after calling C<$self->dbw>, in order to keep startup time short for
+cases such as when the repository is not found.
+
+=item run
+
+B<App::bif> is responsible for expanding user aliases and redispatching
+to the actual command. Needs to be documented .... sorry.
+
+=item user_id -> Int
+
+Returns the topic ID for the user (self) identity.
+
+=item uuid2id( $try ) -> Int
+
+Returns C<$try> unless a C<< $self->{uuid} >> option has been set.
+Returns C<< Bif::DB->uuid2id($try) >> if the lookup succeeds or else
+raises an error.
+
+=item get_project( $path ) -> HashRef
+
+Calls C<get_project> from C<Bif::DB> and returns a single hashref.
+Raises an error if no project is found.  C<$path> is interpreted as a
+string of the form C<PROJECT[@HUB]>.
+
+=item get_hub( $name ) -> HashRef
+
+Looks up the hub where $name is either the topic ID, the hub name, or a
+hub location and returns the equivalent of C<get_topic($ID)> plus the
+hub name.
+
+=item render_table( $format, \@header, \@data, [ $indent ] ) -> Str
+
+Uses L<Text::FormatTable> to construct a table of <@data>, aligned and
+spaced according to C<$format>, preceded by a C<@header>. If C<$indent>
+is greater than zero then the entire table is indented by that number
+of spaces.
+
+=item prompt_edit( %options ) -> Str
+
+If the environment is interactive this function will invoke an editor
+and return the result. All comment lines (beginning with '#') are
+removed. TODO: describe %options.
+
+=item lprint( $msg ) -> Int
+
+If a pager is not active this method prints C<$msg> to STDOUT and
+returns the cursor to the beginning of the line.  The next call
+over-writes the previously printed text before printing the new
+C<$msg>. In this way a continually updating status can be displayed.
+
+=item get_change( $CID, [$first_change_id] ) -> HashRef
+
+Looks up the change identified by C<$CID> (of the form "c23") and
+returns a hash reference containg the following keys:
+
+=over
+
+=item * id - the change ID
+
+=item * uuid - the universally unique identifier of the change
+
+=back
+
+An ChangeNotFound error will be raised if the change does not exist. If
+C<$first_change_id> is provided then a check will be made to ensure
+that that C<$CID> is a child of <$first_change_id> with a
+FirstChangeMismatch error thrown if that is not the case.
+
+=item get_topic( $TOKEN ) -> HashRef
+
+Looks up the topic identified by C<$TOKEN> and returns undef or a hash
+reference containg the following keys:
+
+=over
+
+=item * id - the topic ID
+
+=item * first_change_id - the change_id that created the topic
+
+=item * kind - the type of the topic
+
+=item * uuid - the universally unique identifier of the topic
+
+=back
+
+If the found topic is an issue then the following keys will also
+contain valid values:
+
+=over
+
+=item * project_issue_id - the project-specific topic ID
+
+=item * project_id - the project ID matching the project_issue_id
+
+=back
+
+=item new_change( %args ) -> Int
+
+Creates a new row in the changes table according to the content of
+C<%args> (must include at least a C<message> value) and the current
+context (identity). Returns the integer ID of the change.
+
+=back
 
 =head1 SEE ALSO
 
-L<OptArgs>
+L<Bif::DB>, L<Bif::DBW>
 
 =head1 AUTHOR
 
@@ -1505,4 +1052,6 @@ This program is free software; you can redistribute it and/or modify it
 under the terms of the GNU General Public License as published by the
 Free Software Foundation; either version 3 of the License, or (at your
 option) any later version.
+
+
 

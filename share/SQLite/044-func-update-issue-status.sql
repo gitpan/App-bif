@@ -1,4 +1,4 @@
-CREATE TABLE func_change_issue_status(
+CREATE TABLE func_update_issue_status(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     status VARCHAR(40),
@@ -8,13 +8,13 @@ CREATE TABLE func_change_issue_status(
 
 -- TODO  turn into a BEFORE trigger
 CREATE TRIGGER
-    func_change_issue_status_bi_1
+    func_update_issue_status_bi_1
 BEFORE INSERT ON
-    func_change_issue_status
+    func_update_issue_status
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER func_change_issue_status_bi_1',
+        'TRIGGER func_update_issue_status_bi_1',
         NEW.id,
         NEW.change_id,
         NEW.status,

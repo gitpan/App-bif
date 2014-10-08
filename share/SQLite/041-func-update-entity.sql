@@ -1,4 +1,4 @@
-CREATE TABLE func_change_entity(
+CREATE TABLE func_update_entity(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     name VARCHAR,
@@ -7,9 +7,9 @@ CREATE TABLE func_change_entity(
 );
 
 CREATE TRIGGER
-    func_change_entity_bi_1
+    func_update_entity_bi_1
 BEFORE INSERT ON
-    func_change_entity
+    func_update_entity
 FOR EACH ROW BEGIN
 
     SELECT debug(

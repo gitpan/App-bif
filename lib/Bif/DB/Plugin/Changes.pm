@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use DBIx::ThinSQL qw/case qv/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 sub Bif::DB::db::xprepare_changeset_ext {
     my $self = shift;
@@ -593,11 +593,13 @@ sub Bif::DB::st::changeset_ext {
 
 =head1 NAME
 
+=for bif-doc #perl
+
 Bif::DB::Plugin::Changes - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

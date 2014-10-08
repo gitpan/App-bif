@@ -1,38 +1,40 @@
 package App::bif::drop::task;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
-    my $info = $self->get_topic( $self->{id}, 'task' );
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
+    my $info = $self->get_topic( $opts->{id}, 'task' );
 
-    if ( !$self->{force} ) {
+    if ( !$opts->{force} ) {
         print "Nothing dropped (missing --force, -f)\n";
         return $self->ok('DropNoForce');
     }
 
     my $uuid = substr( $info->{uuid}, 0, 8 );
 
-    $db->txn(
+    $dbw->txn(
         sub {
             $self->new_change( message => "drop task $info->{id} <$uuid>", );
 
-            my $res = $db->xdo(
+            my $res = $dbw->xdo(
                 delete_from => 'tasks',
                 where       => { id => $info->{id} },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
             if ($res) {
-                print "Dropped task: $self->{id} <$uuid>\n";
+                print "Dropped task: $opts->{id} <$uuid>\n";
             }
             else {
                 $self->err( 'NothingDropped', 'nothing dropped!' );
@@ -48,11 +50,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #delete
+
 bif-drop-task - remove an task from the repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

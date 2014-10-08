@@ -1,5 +1,5 @@
 CREATE TABLE hosts (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     provider_id INTEGER NOT NULL,
     name VARCHAR NOT NULL,
     UNIQUE(provider_id,name),

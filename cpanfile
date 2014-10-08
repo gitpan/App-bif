@@ -15,17 +15,19 @@ on 'runtime' => sub {
 
     # General
     requires 'Log::Any';
+    requires 'Time::Piece';
 
     # Bif::DB
     requires 'DBD::SQLite'   => '1.42';
-    requires 'DBIx::ThinSQL' => '0.0.28';
+    requires 'DBIx::ThinSQL' => '0.0.30';
 
     # Bif::DBW
     requires 'DBIx::ThinSQL::SQLite' => '0.0.10';
     requires 'Digest::SHA'           => 0;
+    requires 'DBIx::ThinSQL::Deploy' => '0.0.30';
 
-    # App::bif
-    requires 'OptArgs' => '0.1.14';
+    # App::bif[::OptArgs]
+    requires 'OptArgs' => '0.1.16';
 
     # App::bif::init/upgrade
     requires 'File::ShareDir' => 0;
@@ -38,17 +40,24 @@ on 'runtime' => sub {
     # App::bif::show
     requires 'Text::Autoformat' => 0;
 
-    # App::bif::Context
+    # App::bif
     requires 'Config::Tiny'       => '2.19';
     requires 'File::HomeDir'      => 0;
-    requires 'IO::Pager'          => '0.24';
+    requires 'File::Which'        => 0;
     requires 'IO::Prompt::Tiny'   => 0;
     requires 'Log::Any::Adapter'  => '0.11';
     requires 'Path::Tiny'         => '0.019';
     requires 'Proc::InvokeEditor' => 0;
     requires 'Term::ANSIColor'    => 0;
-    requires 'Term::Size'         => 0;
-    requires 'Text::FormatTable'  => 0;
+
+    if ( $^O eq 'MSWin32' ) {
+        requires 'Term::Size::Win32' => 0;
+    }
+    else {
+        requires 'Term::Size::Perl' => 0;
+    }
+
+    requires 'Text::FormatTable' => 0;
 
     # App::bifsync
     requires 'Log::Any::Plugin::Levels' => 0;
@@ -75,6 +84,7 @@ on 'test' => sub {
 on 'develop' => sub {
     requires 'App::githook_perltidy';
     requires 'Mo';
+    requires 'Module::CPANfile' => '1.1000';
     requires 'Module::Install';
     requires 'Module::Install::AuthorTests';
     requires 'Module::Install::CPANfile';

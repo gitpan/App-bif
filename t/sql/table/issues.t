@@ -178,7 +178,7 @@ run_in_tempdir {
 
             $change_id = $db->nextval('changes');
             ok $db->xdo(
-                insert_into => 'func_change_issue',
+                insert_into => 'func_update_issue',
                 values      => {
                     id        => $id,
                     change_id => $change_id,
@@ -201,7 +201,7 @@ run_in_tempdir {
             $change_id = $db->nextval('changes');
 
             ok $db->xdo(
-                insert_into => 'func_change_issue',
+                insert_into => 'func_update_issue',
                 values      => {
                     id        => $id,
                     change_id => $change_id,
@@ -230,7 +230,7 @@ run_in_tempdir {
             my $new_change_id = $db->nextval('changes');
 
             ok $db->xdo(
-                insert_into => 'func_change_issue',
+                insert_into => 'func_update_issue',
                 values      => {
                     id        => $id,
                     change_id => $new_change_id,

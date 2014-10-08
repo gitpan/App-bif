@@ -1,5 +1,5 @@
 CREATE TABLE identities (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     shortname VARCHAR,
     hash VARCHAR,
     num_changes INTEGER,

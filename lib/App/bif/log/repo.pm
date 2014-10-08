@@ -3,21 +3,23 @@ use strict;
 use warnings;
 use utf8;
 use feature 'state';
-use parent 'App::bif::Context';
+use Bif::Mo;
 use Text::FormatTable;
 use Time::Duration qw/ago/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::log';
 
 sub run_by_time {
     my $self = shift;
-    my $now  = time;
+    my $opts = $self->opts;
+    my $now  = $self->now;
     my $db   = $self->db;
     my ( $dark, $reset, $bold ) = $self->colours(qw/dark reset bold/);
 
-    state $have_thinsql = DBIx::ThinSQL->import(qw/concat qv case sq/);
+    state $have_thinsql = DBIx::ThinSQL->import(qw/concat coalesce qv case sq/);
 
-    my $join = $self->{full} ? 'left_join' : 'inner_join';
+    my $join = $opts->{full} ? 'left_join' : 'inner_join';
 
     my $sth = $db->xprepare(
         with => 'b',
@@ -27,21 +29,18 @@ sub run_by_time {
             where => { 'b.key' => 'last_sync' },
         ),
         select => [
-            concat(
-                case (
-                    when => 'b.start',
-                    then => qv($bold),
-                    else => qv(''),
-                ),
-                q{strftime('%H:%M:%S',c.mtime,'unixepoch','localtime')},
-                qv('  '),
-                'c.action',
+            case (
+                when => 'b.start',
+                then => qv('+'),
+                else => qv(' '),
             ),
+            q{strftime('%H:%M:%S',c.mtime,'unixepoch','localtime')},
             '"c" || c.id',
+            'p.fullpath AS project',
+            'COALESCE(c.author,i.shortname,e.name) AS author',
+            'c.action',
             q{strftime('%Y-%m-%d',c.mtime,'unixepoch','localtime') AS mdate},
             qq{$now - strftime('%s', c.mtime, 'unixepoch')},
-            'COALESCE(c.author,i.shortname,e.name) AS author',
-            "COALESCE(p.path || COALESCE('\@' || h.name,''),'') AS project",
         ],
         from       => 'changes c',
         inner_join => 'change_deltas cd',
@@ -73,27 +72,25 @@ sub run_by_time {
     );
 
     my $mdate = '';
-    my $table = Text::FormatTable->new(' l  l  l  r ');
+    my $table = Text::FormatTable->new('ll  l  l  l ');
 
     while ( my $n = $sth->arrayref ) {
-        if ( $n->[2] ne $mdate ) {
+        if ( $n->[6] ne $mdate ) {
             $table->rule(' ') if $mdate;
-            $mdate = $n->[2];
+            $mdate = $n->[6];
             $table->head(
-                $dark . $n->[2] . ' (' . uc( ago( $n->[3], 1 ) ) . ')',
-                , 'PROJECT', 'AUTHOR', 'CID' . $reset );
+                $dark . ' ',
+                $n->[6], 'PROJECT', 'AUTHOR',
+                'ACTION [from ' . ago( $n->[7], 1 ) . ']' . $reset,
+            );
 
         }
 
-        if ( $n->[4] ) {
-
-        }
-        $table->row( $n->[0], $n->[5], $n->[4], $n->[1] . $reset );
+        $table->row( $n->[0], $n->[1], $n->[3], $n->[4], $n->[5] );
     }
 
     print $table->render;
 
-    $self->end_pager;
     return $self->ok('LogRepoTime');
 }
 
@@ -103,17 +100,18 @@ sub run_by_uid {
 }
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
 
-    if ( $self->{order} eq 'time' ) {
+    if ( $opts->{order} eq 'time' ) {
         return run_by_time($self);
     }
-    elsif ( $self->{order} eq 'uid' ) {
+    elsif ( $opts->{order} eq 'uid' ) {
         return run_by_uid($self);
     }
 
     return $self->err( 'InvalidOrder', 'invalid order (time|uid): %s',
-        $self->{order} );
+        $opts->{order} );
 }
 
 1;
@@ -121,11 +119,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #history
+
 bif-log-repo - review the history of the current repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -133,7 +133,7 @@ bif-log-repo - review the history of the current repository
 
 =head1 DESCRIPTION
 
-The C<bif log repo> command displays the history of all actions in the
+The B<bif-log-repo> command displays the history of all actions in the
 repository.
 
 =head1 ARGUMENTS & OPTIONS

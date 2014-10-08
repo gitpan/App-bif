@@ -9,13 +9,15 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/ show hub /) }, 'OptArgs::Usage';
 
-    isa_ok exception { bif(qw/ show hub local/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ show hub local/) },
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 
     isa_ok exception { bif(qw/ show hub unknown /) }, 'Bif::Error::HubNotFound';
 
-    bifhub(qw/new hub myhub/);
+    bif(qw/init myhub/);
+    bif(qw/pull hub myhub/);
 
     isa_ok bif(qw/ show hub myhub/), 'Bif::OK::ShowHub';
 

@@ -8,9 +8,10 @@ use Test::More;
 run_in_tempdir {
 
     like exception { bif(qw/update hub/) }, qr/usage:/, 'usage';
-    isa_ok exception { bif(qw/update hub myhub/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/update hub myhub/) },
+      'Bif::Error::UserRepoNotFound';
 
-    bif(qw/init hub myhub/);
+    bif(qw/init myhub/);
     bif(qw/init/);
     bif(qw/pull hub myhub/);
 

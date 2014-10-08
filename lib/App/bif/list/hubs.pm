@@ -1,13 +1,15 @@
 package App::bif::list::hubs;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
 
     DBIx::ThinSQL->import(qw/ qv concat/);
@@ -28,18 +30,17 @@ sub run {
         on         => 'hr.id = h.default_repo_id',
         left_join  => 'projects p',
         on         => 'p.hub_id = h.id',
-        group_by   => [ 'h.id', 'hname', 'hr.location' ],
-        order_by   => 'hname',
+        group_by =>
+          [ 'h.id', 'COALESCE(h.name,"")', 'COALESCE(hr.location,"")', ],
+        order_by => 'hname',
     );
 
     return $self->ok('ListHubs') unless $data;
 
     $self->start_pager( scalar @$data );
 
-    print $self->render_table( ' l r l  l  r ',
+    print $self->render_table( ' l r  l  l  r ',
         [ 'Type', 'ID', 'Name', 'Location', 'Projects' ], $data );
-
-    $self->end_pager;
 
     return $self->ok('ListHubs');
 }
@@ -49,11 +50,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #list
+
 bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

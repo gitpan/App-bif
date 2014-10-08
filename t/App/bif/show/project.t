@@ -9,7 +9,7 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/ show project /) }, 'OptArgs::Usage';
     isa_ok exception { bif(qw/ show project todo/) },
-      'Bif::Error::RepoNotFound';
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

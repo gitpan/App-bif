@@ -2,35 +2,29 @@ package App::bif::list::topics;
 use strict;
 use warnings;
 use utf8;
-use parent 'App::bif::Context';
+use Bif::Mo;
+use DBIx::ThinSQL qw/ qv case concat coalesce sq/;
 use Time::Duration qw/concise duration/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
 
-    require Term::ANSIColor;
-    my $dark  = Term::ANSIColor::color('dark');
-    my $bold  = Term::ANSIColor::color('bold');
-    my $white = Term::ANSIColor::color('dark white');
-    my $reset = Term::ANSIColor::color('reset');
-
-    DBIx::ThinSQL->import(qw/ qv case concat coalesce sq/);
-
     my @projects = $db->xarrayrefs(
-        select =>
-          [ 'p.id', "p.path || COALESCE('\@' || h.name, '') AS path", 0 ],
-        from => 'projects p',
+        select => [ 'p.id', 'p.fullpath', 'p.hub_id' ],
+        from   => 'projects p',
         do {
 
-            if ( $self->{project_status} ) {
+            if ( $opts->{project_status} ) {
                 (
                     inner_join => 'project_status ps',
                     on         => {
                         'p.status_id' => \' ps.id',
-                        'ps.status'   => $self->{project_status},
+                        'ps.status'   => $opts->{project_status},
                     }
                 );
             }
@@ -40,17 +34,18 @@ sub run {
         },
         left_join => 'hubs h',
         on        => 'h.id = p.hub_id',
-        order_by  => [ 'p.path', 'h.name' ],
+        order_by  => [ 'p.hub_id IS NOT NULL', 'path' ],
     );
 
     return $self->ok('ListTopics') unless @projects;
 
     require Text::FormatTable;
-    my $table = Text::FormatTable->new(' l r  l  l  r ');
+
+    my $table = Text::FormatTable->new('ll l  l  l  r ');
+    my ( $white, $reset ) = $self->colours( 'dark white', 'reset' );
 
     my $i = 0;
     foreach my $project (@projects) {
-
         my $data = $db->xarrayrefs(
             with => 'b',
             as   => sq(
@@ -59,15 +54,15 @@ sub run {
                 where => { 'b.key' => 'last_sync' },
             ),
             select => [
+                case (
+                    when => 't.first_change_id > b.start',
+                    then => qv('+'),
+                    when => 'b.start',
+                    then => qv('±'),
+                    else => qv(' '),
+                  )->as('new'),
                 qv('task')->as('type'),
-                concat(
-                    case (
-                        when => 'b.start',
-                        then => qv($bold),
-                        else => qv(''),
-                    ),
-                    'tasks.id',
-                  )->as('id'),
+                'tasks.id AS id',
                 'tasks.title AS title',
                 'task_status.status',
                 "strftime('%s','now') - t.ctime",
@@ -82,8 +77,8 @@ sub run {
             where      => {
                 'task_status.project_id' => $project->[0],
                 do {
-                    if ( $self->{status} ) {
-                        ( 'task_status.status' => $self->{status} );
+                    if ( $opts->{status} ) {
+                        ( 'task_status.status' => $opts->{status} );
                     }
                     else {
                         ();
@@ -91,15 +86,15 @@ sub run {
                 },
             },
             union_all_select => [
+                case (
+                    when => 't.first_change_id > b.start',
+                    then => qv('+'),
+                    when => 'b.start',
+                    then => qv('±'),
+                    else => qv(' '),
+                  )->as('new'),
                 qv('issue')->as('type'),
-                concat(
-                    case (
-                        when => 'b.start',
-                        then => qv($bold),
-                        else => qv(''),
-                    ),
-                    'project_issues.id',
-                  )->as('id'),
+                'project_issues.id AS id',
                 'issues.title AS title',
                 'issue_status.status',
                 "strftime('%s','now') - t.ctime AS age",
@@ -116,15 +111,15 @@ sub run {
             where      => {
                 'issue_status.project_id' => $project->[0],
                 do {
-                    if ( $self->{status} ) {
-                        ( 'issue_status.status' => $self->{status} );
+                    if ( $opts->{status} ) {
+                        ( 'issue_status.status' => $opts->{status} );
                     }
                     else {
                         ();
                     }
                 },
             },
-            order_by => [ 'age ASC', 'id ASC' ],
+            order_by => [ 'age DESC', 'id ASC' ],
         );
 
         next unless $data;
@@ -135,25 +130,23 @@ sub run {
         }
 
         $table->head(
-            $white . 'TYPE',
-            'ID', uc( $project->[1] ),
+            $white . ' ',
+            'TYPE', 'ID', "TOPIC [$project->[1]]",
             'STATUS', 'AGE' . $reset
         );
         $i++;
 
         foreach (@$data) {
-            $_->[4] = concise( duration( $_->[4], 1 ) ) . $reset;
+            $_->[5] = concise( duration( $_->[5], 1 ) ) . $reset;
             $table->row(@$_);
             $project->[2]++;
             $i++;
         }
     }
 
-    $self->start_pager($i);
+    $self->start_pager;
 
-    print $table->render($App::bif::Context::term_width);
-
-    $self->end_pager;
+    print $table->render( $self->term_width );
 
     $self->ok( 'ListTopics', \@projects );
 }
@@ -163,11 +156,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #list
+
 bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

@@ -1,5 +1,5 @@
 CREATE TABLE project_status (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     project_id INTEGER NOT NULL,
     status VARCHAR(40) NOT NULL,
     rank INTEGER NOT NULL,

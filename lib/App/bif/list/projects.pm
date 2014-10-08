@@ -2,11 +2,12 @@ package App::bif::list::projects;
 use strict;
 use warnings;
 use utf8;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use DBIx::ThinSQL qw/ qv sq case coalesce concat /;
 use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub _invalid_status {
     my $self   = shift;
@@ -29,10 +30,11 @@ sub _invalid_status {
 }
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
 
-    my @invalid = _invalid_status( $db, 'project', $self->{status} );
+    my @invalid = _invalid_status( $db, 'project', $opts->{status} );
 
     if (@invalid) {
         my $pcount = $db->xval(
@@ -50,18 +52,18 @@ sub run {
 
     my $data;
 
-    if ( $self->{hub} ) {
+    if ( $opts->{hub} ) {
         require Path::Tiny;
-        my $dir = Path::Tiny::path( $self->{hub} )->absolute if -d $self->{hub};
-        $self->{hub_id} = $db->xval(
+        my $dir = Path::Tiny::path( $opts->{hub} )->absolute if -d $opts->{hub};
+        $opts->{hub_id} = $db->xval(
             select       => 'h.id',
             from         => 'hubs h',
-            where        => { 'h.name' => $self->{hub} },
+            where        => { 'h.name' => $opts->{hub} },
             union_select => 'h.id',
             from         => 'hub_repos hr',
             inner_join   => 'hubs h',
             on           => 'h.id = hr.hub_id',
-            where        => { 'hr.location' => $self->{hub} },
+            where        => { 'hr.location' => $opts->{hub} },
             union_select => 'h.id',
             from         => 'hub_repos hr',
             inner_join   => 'hubs h',
@@ -70,8 +72,8 @@ sub run {
             limit        => 1,
         );
 
-        return $self->err( 'HubNotFound', 'hub not found: ' . $self->{hub} )
-          unless $self->{hub_id};
+        return $self->err( 'HubNotFound', 'hub not found: ' . $opts->{hub} )
+          unless $opts->{hub_id};
 
         $data = _get_data($self);
 
@@ -89,45 +91,48 @@ sub run {
     # TODO do this as a sub-select?
     foreach my $i ( 0 .. $#$data ) {
         my $row = $data->[$i];
-        if ( !$row->[7] ) {
-            $row->[4] = $row->[5] = $row->[6] = '*';
-            $row->[4] = $row->[4];
-            $row->[6] = '*' . $reset;
+        if ( !$row->[8] ) {
+            $row->[5] = $row->[6] = $row->[7] = '*';
+            $row->[4] = $row->[5];
+            $row->[7] = '*' . $reset;
         }
         else {
-            if ( $row->[6] ) {
-                $row->[6] =
-                  int( 100 * $row->[6] / ( $row->[6] + $row->[5] + $row->[4] ) )
+            if ( $row->[7] ) {
+                $row->[7] =
+                  int( 100 * $row->[7] / ( $row->[7] + $row->[6] + $row->[5] ) )
                   . '%';
             }
             else {
-                $row->[6] = '0%';
+                $row->[7] = '0%';
             }
         }
 
-        $row->[7] = '';
+        $row->[8] = '';
     }
 
     $self->start_pager( scalar @$data );
 
     print $self->render_table(
-        ' l l  l  l  r r rl',
-        [ 'Type', 'Path', 'Title', 'Phase', 'Open', 'Stalled', 'Progress', '' ],
+        'll  l  l  l  r r rl',
+        [
+            ' ',     'TYPE', 'PATH',    'TITLE',
+            'PHASE', 'OPEN', 'STALLED', 'PROGRESS',
+            ''
+        ],
         $data
     );
-
-    $self->end_pager;
 
     return $self->ok('ListProjects');
 }
 
 sub _get_data {
     my $self = shift;
+    my $opts = $self->opts;
 
     return $self->db->xarrayrefs(
         select => [
             qv( color('dark') . 'project' . color('reset') )->as('type'),
-            'p.path || COALESCE("@" || h.name, "")',
+            'p.fullpath',
             'p.title',
             'project_status.status',
             'sum( coalesce( total.open, 0 ) )',
@@ -138,7 +143,7 @@ sub _get_data {
         from       => 'hub_related_projects hrp',
         inner_join => 'projects p',
         on         => do {
-            if ( $self->{local} ) {
+            if ( $opts->{local} ) {
                 {
                     'p.id'    => \'hrp.project_id',
                     'p.local' => 1,
@@ -152,10 +157,10 @@ sub _get_data {
         on         => 'h.id = p.hub_id',
         inner_join => 'project_status',
         on         => do {
-            if ( $self->{status} ) {
+            if ( $opts->{status} ) {
                 {
                     'project_status.id'     => \'p.status_id',
-                    'project_status.status' => $self->{status},
+                    'project_status.status' => $opts->{status},
                 };
             }
             else {
@@ -172,7 +177,7 @@ sub _get_data {
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
             on         => do {
-                if ( $self->{local} ) {
+                if ( $opts->{local} ) {
                     {
                         'p.id'    => \'hrp.project_id',
                         'p.local' => 1,
@@ -183,11 +188,11 @@ sub _get_data {
                 }
             },
             do {
-                if ( $self->{status} ) {
+                if ( $opts->{status} ) {
                     inner_join => 'project_status',
                       on       => {
                         'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $self->{status},
+                        'project_status.status' => $opts->{status},
                       };
                 }
                 else {
@@ -198,7 +203,7 @@ sub _get_data {
             on               => 'task_status.project_id = p.id',
             inner_join       => 'tasks',
             on               => 'tasks.status_id = task_status.id',
-            where            => { 'hrp.hub_id' => $self->{hub_id} },
+            where            => { 'hrp.hub_id' => $opts->{hub_id} },
             group_by         => 'p.id',
             union_all_select => [
                 'p.id',
@@ -209,7 +214,7 @@ sub _get_data {
             from       => 'hub_related_projects hrp',
             inner_join => 'projects p',
             on         => do {
-                if ( $self->{local} ) {
+                if ( $opts->{local} ) {
                     {
                         'p.id'    => \'hrp.project_id',
                         'p.local' => 1,
@@ -220,11 +225,11 @@ sub _get_data {
                 }
             },
             do {
-                if ( $self->{status} ) {
+                if ( $opts->{status} ) {
                     inner_join => 'project_status',
                       on       => [
                         'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $self->{status},
+                        'project_status.status' => $opts->{status},
                       ],
                       ;
                 }
@@ -236,11 +241,11 @@ sub _get_data {
             on         => 'issue_status.project_id = p.id',
             inner_join => 'project_issues',
             on         => 'project_issues.status_id = issue_status.id',
-            where      => { 'hrp.hub_id' => $self->{hub_id} },
+            where      => { 'hrp.hub_id' => $opts->{hub_id} },
             group_by   => 'p.id',
           )->as('total'),
         on       => 'p.id = total.id',
-        where    => { 'hrp.hub_id' => $self->{hub_id} },
+        where    => { 'hrp.hub_id' => $opts->{hub_id} },
         group_by => [ 'p.path', 'p.title', 'project_status.status', ],
         order_by => [qw/p.path h.name/],
     );
@@ -248,119 +253,126 @@ sub _get_data {
 
 sub _get_data2 {
     my $self = shift;
+    my $opts = $self->opts;
 
     my $reset = Term::ANSIColor::color('reset');
     my $bold  = Term::ANSIColor::color('bold');
     return $self->db->xarrayrefs(
-        with => 'b',
-        as   => sq(
-            select => [ 'b.change_id AS start', 'b.change_id2 AS stop' ],
-            from   => 'bifkv b',
-            where => { 'b.key' => 'last_sync' },
-        ),
-        select => [
-            qv('project')->as('type'),
-            concat(
-                case (
-                    when => 'b.start',
-                    then => qv($bold),
-                    else => qv(''),
-                ),
-                'p.path',
-                coalesce( concat( qv('@'), 'h.name' ), qv('') )
-              )->as('path'),
-            concat(
-                case (
-                    when => 'b.start',
-                    then => qv($bold),
-                    else => qv(''),
-                ),
-                'p.title'
-              )->as('title'),
-            'project_status.status',
-            'sum( coalesce( total.open, 0 ) )',
-            'sum( coalesce( total.stalled, 0 ) )',
-            'sum( coalesce( total.closed, 0 ) )',
-            'p.local',
-        ],
-        from       => 'projects p',
-        inner_join => 'topics t',
-        on         => 't.id = p.id',
-        left_join  => 'b',
-        on         => 't.last_change_id BETWEEN b.start AND b.stop',
-        left_join  => 'hubs h',
-        on         => 'h.id = p.hub_id',
-        inner_join => 'project_status',
-        on         => do {
-            if ( $self->{status} ) {
-                {
-                    'project_status.id'     => \'p.status_id',
-                    'project_status.status' => $self->{status},
-                };
-            }
-            else {
-                'project_status.id = p.status_id';
-            }
-        },
-        left_join => sq(
+        select => [qw/new type path title status open stalled closed local/],
+        from   => sq(
+            with => 'b',
+            as   => sq(
+                select => [ 'b.change_id AS start', 'b.change_id2 AS stop' ],
+                from   => 'bifkv b',
+                where => { 'b.key' => 'last_sync' },
+            ),
             select => [
-                'p.id',
-                "sum(task_status.status = 'open') as open",
-                "sum(task_status.status = 'stalled') as stalled",
-                "sum(task_status.status = 'closed') as closed",
+                case (
+                    when => 't.first_change_id > b.start',
+                    then => qv('+'),
+                    when => 'b.start',
+                    then => qv('±'),
+                    else => qv(' '),
+                  )->as('new'),
+                qv('project')->as('type'),
+                'p.fullpath AS path',
+                'p.title AS title',
+                'project_status.status',
+                'sum( coalesce( total.open, 0 ) ) AS open',
+                'sum( coalesce( total.stalled, 0 ) )  AS stalled',
+                'sum( coalesce( total.closed, 0 ) ) AS closed',
+                'p.local',
+                'p.hub_id',
             ],
-            from => 'projects p',
-            do {
-                if ( $self->{status} ) {
-                    inner_join => 'project_status',
-                      on       => {
+            from       => 'projects p',
+            inner_join => 'topics t',
+            on         => 't.id = p.id',
+            left_join  => 'b',
+            on         => 't.last_change_id BETWEEN b.start AND b.stop',
+            left_join  => 'hubs h',
+            on         => 'h.id = p.hub_id',
+            inner_join => 'project_status',
+            on         => do {
+                if ( $opts->{status} ) {
+                    {
                         'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $self->{status},
-                      };
+                        'project_status.status' => $opts->{status},
+                    };
                 }
                 else {
-                    ();
+                    'project_status.id = p.status_id';
                 }
             },
-            inner_join => 'task_status',
-            on         => 'task_status.project_id = p.id',
-            inner_join => 'tasks',
-            on         => 'tasks.status_id = task_status.id',
+            left_join => sq(
+                select => [
+                    'p.id',
+                    "sum(task_status.status = 'open') as open",
+                    "sum(task_status.status = 'stalled') as stalled",
+                    "sum(task_status.status = 'done') as closed",
+                ],
+                from => 'projects p',
+                do {
+                    if ( $opts->{status} ) {
+                        inner_join => 'project_status',
+                          on       => {
+                            'project_status.id'     => \'p.status_id',
+                            'project_status.status' => $opts->{status},
+                          };
+                    }
+                    else {
+                        ();
+                    }
+                },
+                inner_join => 'task_status',
+                on         => 'task_status.project_id = p.id',
+                inner_join => 'tasks',
+                on         => 'tasks.status_id = task_status.id',
+                do {
+                    if ( $opts->{local} ) {
+                        ( where => 'p.local = 1' );
+                    }
+                    else {
+                        ();
+                    }
+                },
+                group_by         => 'p.id',
+                union_all_select => [
+                    'p.id',
+                    "sum(issue_status.status = 'open') as open",
+                    "sum(issue_status.status = 'stalled') as stalled",
+                    "sum(issue_status.status = 'closed') as closed",
+                ],
+                from => 'projects p',
+                do {
+                    if ( $opts->{status} ) {
+                        inner_join => 'project_status',
+                          on       => {
+                            'project_status.id'     => \'p.status_id',
+                            'project_status.status' => $opts->{status},
+                          },
+                          ;
+                    }
+                    else {
+                        ();
+                    }
+                },
+                inner_join => 'issue_status',
+                on         => 'issue_status.project_id = p.id',
+                inner_join => 'project_issues',
+                on         => 'project_issues.status_id = issue_status.id',
+                do {
+                    if ( $opts->{local} ) {
+                        ( where => 'p.local = 1' );
+                    }
+                    else {
+                        ();
+                    }
+                },
+                group_by => 'p.id',
+              )->as('total'),
+            on => 'total.id = p.id',
             do {
-                if ( $self->{local} ) {
-                    ( where => 'p.local = 1' );
-                }
-                else {
-                    ();
-                }
-            },
-            group_by         => 'p.id',
-            union_all_select => [
-                'p.id',
-                "sum(issue_status.status = 'open') as open",
-                "sum(issue_status.status = 'stalled') as stalled",
-                "sum(issue_status.status = 'closed') as closed",
-            ],
-            from => 'projects p',
-            do {
-                if ( $self->{status} ) {
-                    inner_join => 'project_status',
-                      on       => {
-                        'project_status.id'     => \'p.status_id',
-                        'project_status.status' => $self->{status},
-                      },
-                      ;
-                }
-                else {
-                    ();
-                }
-            },
-            inner_join => 'issue_status',
-            on         => 'issue_status.project_id = p.id',
-            inner_join => 'project_issues',
-            on         => 'project_issues.status_id = issue_status.id',
-            do {
-                if ( $self->{local} ) {
+                if ( $opts->{local} ) {
                     ( where => 'p.local = 1' );
                 }
                 else {
@@ -368,18 +380,8 @@ sub _get_data2 {
                 }
             },
             group_by => 'p.id',
-          )->as('total'),
-        on => 'total.id = p.id',
-        do {
-            if ( $self->{local} ) {
-                ( where => 'p.local = 1' );
-            }
-            else {
-                ();
-            }
-        },
-        group_by => 'p.id',
-        order_by => [qw/p.path h.name/],
+            order_by => [ 'p.hub_id IS NOT NULL', qw/path/ ],
+        ),
     );
 }
 
@@ -389,11 +391,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #list
+
 bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -401,7 +405,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 DESCRIPTION
 
-The C<bif list projects> command lists all projects in the repository,
+The B<bif-list-projects> command lists all projects in the repository,
 showing counts of the open and stalled topics, and a calculated
 progress percentage.
 

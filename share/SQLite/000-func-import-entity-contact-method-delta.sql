@@ -21,7 +21,7 @@ BEGIN
     );
 
     INSERT INTO
-        func_change_entity_contact_method(
+        func_update_entity_contact_method(
             change_id,
             entity_contact_method_id,
             method,

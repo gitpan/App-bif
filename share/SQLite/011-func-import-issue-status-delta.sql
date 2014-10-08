@@ -23,7 +23,7 @@ BEGIN
     );
 
     INSERT INTO
-        func_change_issue_status(
+        func_update_issue_status(
             change_id,
             status,
             rank,

@@ -22,7 +22,7 @@ BEGIN
 
     -- TODO: hah - doesn't exist yet and obviously never tested!
     INSERT INTO
-        func_change_hub_repo(
+        func_update_hub_repo(
             change_id,
             hub_id,
             hub_repo_id,

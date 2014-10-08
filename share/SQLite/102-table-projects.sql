@@ -1,9 +1,10 @@
 CREATE TABLE projects (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     parent_id INTEGER,
     name VARCHAR(40) NOT NULL,
     title VARCHAR(1024) NOT NULL,
     path VARCHAR collate nocase,
+    fullpath VARCHAR collate nocase,
     status_id INTEGER NOT NULL DEFAULT -1,
     hub_id INTEGER,
     local INTEGER NOT NULL DEFAULT 0,
@@ -98,6 +99,36 @@ BEGIN
         topics
     WHERE
         id = OLD.id
+    ;
+
+END;
+
+CREATE TRIGGER
+    projects_au_path_1
+AFTER UPDATE OF
+    path,hub_id
+ON
+    projects
+FOR EACH ROW
+BEGIN
+    
+    UPDATE
+        projects
+    SET
+        fullpath = (
+            SELECT
+                COALESCE( h.name || '/','') || p.path
+            FROM
+                projects p
+            LEFT JOIN
+                hubs h
+            ON
+                h.id = p.hub_id
+            WHERE
+                p.id = NEW.id
+        )
+    WHERE
+        id = NEW.id
     ;
 
 END;

@@ -1,5 +1,5 @@
 CREATE TABLE hubs (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     default_repo_id INTEGER,
     name VARCHAR(128) NOT NULL UNIQUE,
     local INTEGER UNIQUE,

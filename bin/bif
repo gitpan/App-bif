@@ -1,9 +1,13 @@
 #!perl
 use strict;
 use warnings;
-use OptArgs qw/dispatch/;
+use App::bif::OptArgs;
+use OptArgs qw/class_optargs/;
 
-eval { dispatch(qw/run App::bif/) };
+eval {
+    my ( $class, $opts ) = class_optargs('App::bif');
+    $class->new( opts => $opts )->run;
+};
 
 if ($@) {
     print STDERR $@;
@@ -18,11 +22,13 @@ __END__
 
 =head1 NAME
 
-bif - distributed project management tool
+=for bif-doc #intro bif - the bif manual
+
+bif - distributed bug tracking tool
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -36,10 +42,10 @@ regularly.  B<DO NOT USE BIF FOR REAL DATA!>
 
 =head1 DESCRIPTION
 
-Bif is a project management tool with a command-line interface. It
-helps you track tasks, issues and bugs using a local database,
-exchanging updates with remote databases on demand. The tool has
-several features of interest to distributed project teams:
+Bif is a distributed bug tracker with a command-line interface. It
+helps you manage tasks and issues using a local database, exchanging
+updates with remote databases on demand.  The tool has several features
+of interest to distributed project teams:
 
 =over
 
@@ -119,11 +125,20 @@ found in L<bif-doc-design>(3) and L<bif-doc-faq>(3).
 =item Repository
 
 A bif repository is simply a configuration file and an SQLite database
-inside a directory named F<.bif>. All bif commands find the "current"
-repository by searching upwards through the file-system for such a
-directory. The database contains the history, status and relationships
-of a set of topics.  The terms repository and database are often used
+inside a directory named F<.bif>. The database contains the history,
+status and relationships of a set of topics.  All bif commands find the
+"current" repository by searching upwards through the file-system for
+such a directory. The terms repository and database are often used
 interchangeably.
+
+=item Hub
+
+A bif hub is conceptually synonymous with a project organisation. It
+consists of one or more remote repositories that act as synchronisation
+points for exchanging project activities.  A hub can be referred to by
+its globally unique name (typically an organisation's domain name)
+after it has been registered (see L<bif-pull-hub>) with the local
+repository.
 
 =item Topic
 
@@ -138,32 +153,19 @@ and multiple status values.
 
 A project is also considered a topic, but one that comes with some
 extra functionality.  The key property of a project is that it is a
-container for grouping together other topics and the status they can
-have.  Multiple projects can be managed within a repository, and can be
-defined hierarchically. Projects are identified by their path name
-(which includes the parent's path), an at symbol "@" and their hub
-name.
-
-=item Hub
-
-A bif hub is conceptually synonymous with a project organisation. It
-consists of one or more repositories that act as synchronisation points
-for exchanging project activities. Hub repositories are usually located
-on remote servers and accessed through a L<ssh>(1) tunnel. A hub can be
-referred to by its globally unique name (typically an organisation's
-domain name) after it has been registered with the local repository.
+container for grouping together tasks and issues together. Multiple
+projects can be managed within a repository.  Projects are fully
+identified by their hub name, a "/", and their pathname, although you
+can usually just specify their pathname if it is unique.
 
 =back
 
 =head2 Command Structure
 
-Bif commands are structured where possible the same way an English
-speaker describes actions - verb followed by subject. For example:
-
-    bif list topics
-    bif update issue 34
-
-The top level bif commands are as follows:
+Bif commands are structured where possible the same way the English
+language describes actions - verb followed by subject. For example
+C<bif list topics> or C<bif update issue 34>. The top level bif verbs
+are as follows:
 
     drop            remove an item from the database
     init            initialize a new repository in .bif
@@ -181,10 +183,10 @@ The top level bif commands are as follows:
 
 In addition, a couple of useful aliases are created by default:
 
-    ls    # list topics --status open --project-status run
-    lsi   # list identities
-    lsp   # list projects define plan run
-    lss   # list topics --status stalled --project-status run
+    ls              list topics --status open --project-status run
+    lsi             list identities
+    lsp             list projects define plan run
+    lss             list topics --status stalled --project-status run
 
 =head2 Global Options
 
@@ -249,7 +251,8 @@ Bif commands that make changes to a repository need to know your
 identity.  Bif stores your name and email address in a special user
 repository which will be created the first time you run L<bif-init>.
 
-    #!sh
+=for bifcode #!sh
+
     bif init
     # Initialising repository: $HOME/.bifu (v323)
     # Creating "self" identity:
@@ -302,7 +305,8 @@ identification), a title, and an initial comment.  That information can
 be given on the command line if desired, otherwise it will be prompted
 for.
 
-    #!sh
+=for bifcode #!sh
+
     bif new project
 
     # Path: [] todo
@@ -311,7 +315,8 @@ for.
 
 Projects can be nested by defining them with a parent path and a "/":
 
-    #!sh
+=for bifcode #!sh
+
     bif new project
 
     # Path: [] todo/today
@@ -337,7 +342,8 @@ a comment.  As they exist only in the context of a project they may
 also require a project path if more than one project exists in the
 repository.
 
-    #!sh
+=for bifcode #!sh
+
     bif new task
 
     # Project: [todo] todo/today
@@ -348,7 +354,8 @@ A task or an issue, like a project, is created with the default status
 for that type according to the project. An different initial status can
 be set with the C<--status> option:
 
-    #!sh
+=for bifcode #!sh
+
     bif new issue --status needinfo
 
     # Project: [todo] todo/today
@@ -457,14 +464,16 @@ signup process.
 The reason for registering with a hub is to obtain the list of projects
 hosted there.
 
-    #!sh
+=for bifcode #!sh
+
     bif pull hub my.org@provider.com
 
 By default the C<my.org> part of the provider address can be used as
 the hub name in other commands.  To view the list of projects we give
 the hub alias to the L<bif-list-projects> command:
 
-    #!sh
+=for bifcode #!sh
+
     bif list projects my.org
 
 Registering a project brings in a shallow copy - only the project and
@@ -482,7 +491,8 @@ What is useful after a L<bif-sync> call is to review what updates were
 transfered from the hub to the local repository. The L<bif-log> command
 (an alias for L<bif-log-repo> does just that.
 
-    #!sh
+=for bifcode #!sh
+
     bif log repo
 
 =head2 Scenario 3 - Project Team
@@ -542,7 +552,8 @@ A developer must also sign up and register a hub as described
 previously. They can then import an entire project into their local
 repository using the L<bif-pull-project> command.
 
-    #!sh
+=for bifcode #!sh
+
     bif pull project devel@bifax.org
 
 Importing a project is a one-time activity. Updates to a project that
@@ -568,7 +579,8 @@ project for support on a particular issue.  The L<bif-push-issue>
 command asks for (or can be given) an update message the same way that
 a L<bif-update> command does:
 
-    #!sh
+=for bifcode #!sh
+
     bif push issue 13 todo2 \
         --action fork \
         --message "also present in todo v2"
@@ -584,7 +596,8 @@ an issue is pushed somewhere it therefore gains an extra topic ID, and
 can show up in multiple times in the output of the L<bif-list-topics>
 command. The L<bif-show-issue> command reveals the details:
 
-    #!sh
+=for bifcode #!sh
+
     bif show issue 13
 
 =head3 Task Collaboration?!?
@@ -615,7 +628,8 @@ exchanged until you run the L<bif-sync> command.
 By default all topics will be synchronised to all relevant hubs, but
 you can limit that as desired.
 
-    #!sh
+=for bifcode #!sh
+
     bif sync unstable   # ignore all other projects
 
 [TODO: describe the merge algorithm for meta data]
@@ -629,7 +643,8 @@ of L<bif-pull-project> is L<bif-push-project>.  To mirror the todo
 project I<from> the local repository I<to> the bifax.org hub for
 example we would run the following:
 
-    #!sh
+=for bifcode #!sh
+
     bif push project todo bifax.org
 
 As with importing, exporting a project is a one-off activity; further
@@ -653,7 +668,8 @@ issues should be copied, moved, or forked with the C<--copy-issues>,
 C<--move-issues> and C<--fork-issues> options, each of which takes a
 status argument and can be called multiple times.
 
-    #!sh
+=for bifcode #!sh
+
     bif new project v2 \
         --dup devel \
         --fork-issues open,stalled \

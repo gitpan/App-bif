@@ -1,4 +1,4 @@
-CREATE TABLE func_change_issue(
+CREATE TABLE func_update_issue(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL, -- This is issues.id not project_issues.id!
     project_id INTEGER NOT NULL,
@@ -7,13 +7,13 @@ CREATE TABLE func_change_issue(
 );
 
 CREATE TRIGGER
-    func_change_issue_bi_1
+    func_update_issue_bi_1
 BEFORE INSERT ON
-    func_change_issue
+    func_update_issue
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER func_change_issue_bi_1',
+        'TRIGGER func_update_issue_bi_1',
         NEW.id,
         NEW.change_id,
         NEW.project_id,

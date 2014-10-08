@@ -1,5 +1,5 @@
 CREATE TABLE issue_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     new INTEGER,
     issue_id INTEGER NOT NULL,
@@ -10,7 +10,7 @@ CREATE TABLE issue_deltas (
     FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
     FOREIGN KEY(status_id) REFERENCES issue_status(id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE INDEX
     issue_deltas_issue_id_status_id

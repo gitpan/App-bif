@@ -1,26 +1,28 @@
 package App::bif::new::hub;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
 
-    $self->{name} ||= prompt( 'Name:', '' )
+    $opts->{name} ||= prompt( 'Name:', '' )
       || return $self->err( 'NameRequired', 'name is required' );
 
-    $self->{message} ||= "New hub $self->{name}";
+    $opts->{message} ||= "New hub $opts->{name}";
 
-    $db->txn(
+    $dbw->txn(
         sub {
-            my $uid = $self->new_change( message => $self->{message}, );
-            my $id = $db->nextval('topics');
+            my $uid = $self->new_change( message => $opts->{message}, );
+            my $id = $dbw->nextval('topics');
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_topic',
                 values      => {
                     id        => $id,
@@ -29,18 +31,19 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_new_hub',
                 values      => {
                     id        => $id,
                     change_id => $uid,
-                    name      => $self->{name},
+                    name      => $opts->{name},
                 },
             );
 
-            foreach my $loc ( @{ $self->{locations} } ) {
-                my $rid = $db->nextval('topics');
-                $db->xdo(
+            my $i;
+            foreach my $loc ( @{ $opts->{locations} } ) {
+                my $rid = $dbw->nextval('topics');
+                $dbw->xdo(
                     insert_into => 'func_new_topic',
                     values      => {
                         id        => $rid,
@@ -49,7 +52,7 @@ sub run {
                     },
                 );
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_new_hub_repo',
                     values      => {
                         id        => $rid,
@@ -58,36 +61,46 @@ sub run {
                         location  => $loc,
                     },
                 );
+
+                $dbw->xdo(
+                    update => 'hubs',
+                    set    => {
+                        default_repo_id => $rid,
+                    },
+                    where => {
+                        id => $id,
+                    },
+                ) unless $i++;
             }
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
                     new               => 1,
-                    action_format     => "new hub (%s) $self->{name}",
+                    action_format     => "new hub (%s) $opts->{name}",
                     action_topic_id_1 => $id,
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            if ( $self->{default} ) {
-                $db->xdo(
+            if ( $opts->{default} ) {
+                $dbw->xdo(
                     update => 'hubs',
                     set    => { local => 1 },
                     where  => { id => $id },
                 );
             }
 
-            printf( "Hub created: %s\n", $self->{name} );
+            printf( "Hub created: %s\n", $opts->{name} );
 
             # For test scripts
-            $self->{id}        = $id;
-            $self->{change_id} = $uid;
+            $opts->{id}        = $id;
+            $opts->{change_id} = $uid;
         }
     );
 
@@ -99,11 +112,13 @@ __END__
 
 =head1 NAME
 
-bifhub-new-hub - create a new hub in the repository
+=for bif-doc #hubadmin
+
+bif-new-hub - create a new hub in the repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -111,8 +126,8 @@ bifhub-new-hub - create a new hub in the repository
 
 =head1 DESCRIPTION
 
-The C<bifhub new hub> command creates a new hub representing an a
-project organisation.
+The B<bif-new-hub> command creates a new hub representing an a project
+organisation.
 
 =head1 ARGUMENTS & OPTIONS
 

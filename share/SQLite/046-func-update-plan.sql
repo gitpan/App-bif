@@ -1,4 +1,4 @@
-CREATE TABLE func_change_plan(
+CREATE TABLE func_update_plan(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     name VARCHAR,
@@ -7,9 +7,9 @@ CREATE TABLE func_change_plan(
 );
 
 CREATE TRIGGER
-    func_change_plan_bi_1
+    func_update_plan_bi_1
 BEFORE INSERT ON
-    func_change_plan
+    func_update_plan
 FOR EACH ROW BEGIN
 
     SELECT debug(

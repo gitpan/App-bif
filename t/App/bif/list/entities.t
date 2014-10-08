@@ -7,7 +7,7 @@ use Test::More;
 
 run_in_tempdir {
 
-    isa_ok exception { bif(qw/list entities/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/list entities/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/ init /);
 

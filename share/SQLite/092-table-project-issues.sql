@@ -1,5 +1,5 @@
 CREATE TABLE project_issues (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     issue_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
     status_id INTEGER NOT NULL,

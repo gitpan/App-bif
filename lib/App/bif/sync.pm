@@ -1,18 +1,18 @@
 package App::bif::sync;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
+use Bif::Mo;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $opts = shift;
-    $opts->{no_pager}++;    # causes problems with something in Coro?
-    my $self = __PACKAGE__->new($opts);
+    my $self = shift;
+    my $opts = $self->opts;
     my $dbw  = $self->dbw;
 
     if ( $opts->{hub} ) {
@@ -51,8 +51,8 @@ sub run {
             name          => $hub->{name},
             db            => $dbw,
             location      => $hub->{location},
-            debug         => $self->{debug},
-            debug_bifsync => $self->{debug_bifsync},
+            debug         => $opts->{debug},
+            debug_bifsync => $opts->{debug_bifsync},
             on_update     => sub {
                 $self->lprint("$hub->{name}: $_[0]");
             },
@@ -63,6 +63,8 @@ sub run {
         );
 
         my $coro = async {
+            select $App::bif::pager->fh if $opts->{debug};
+
             eval {
                 $dbw->txn(
                     sub {
@@ -109,7 +111,7 @@ sub run {
                             id => $uid,
                             message =>
                               "sync hub $hub->{name} via $hub->{location}"
-                              . $self->{message},
+                              . $opts->{message},
                         );
 
                         $dbw->xdo(
@@ -169,11 +171,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #sync
+
 bif-sync -  exchange changes with hubs
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

@@ -1,12 +1,12 @@
 CREATE TABLE identity_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     identity_id INTEGER NOT NULL,
     shortname VARCHAR,
     new INTEGER,
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
     FOREIGN KEY(identity_id) REFERENCES identities(id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     identity_deltas_ai_1

@@ -8,7 +8,7 @@ use Test::More;
 run_in_tempdir {
 
     isa_ok exception { bif(qw/drop change /) },  'OptArgs::Usage';
-    isa_ok exception { bif(qw/drop change 1/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/drop change 1/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
     isa_ok exception { bif(qw/drop change c101/) },

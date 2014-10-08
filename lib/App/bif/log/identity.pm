@@ -1,22 +1,23 @@
 package App::bif::log::identity;
 use strict;
 use warnings;
-use parent 'App::bif::log';
+use locale;
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::log';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
-    my $info = $self->get_topic( $self->{id} );
+    my $info = $self->get_topic( $opts->{id} );
 
-    return $self->err( 'TopicNotFound', "topic not found: $self->{id}" )
+    return $self->err( 'TopicNotFound', "topic not found: $opts->{id}" )
       unless $info;
 
-    return $self->err( 'NotAnIdentity', "not an identity ID: $self->{id}" )
+    return $self->err( 'NotAnIdentity', "not an identity ID: $opts->{id}" )
       unless $info->{kind} eq 'identity';
-
-    $self->init;
 
     my ( $dark, $reset, $yellow ) = $self->colours(qw/dark reset yellow/);
 
@@ -175,7 +176,6 @@ sub run {
 
     }
 
-    $self->end_pager;
     return $self->ok('LogIdentity');
 }
 
@@ -184,11 +184,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #history
+
 bif-log-identity - review the history of a identity
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -196,7 +198,7 @@ bif-log-identity - review the history of a identity
 
 =head1 DESCRIPTION
 
-The C<bif log identity> command displays the history of an identity.
+The B<bif-log-identity> command displays the history of an identity.
 
 =head1 ARGUMENTS & OPTIONS
 

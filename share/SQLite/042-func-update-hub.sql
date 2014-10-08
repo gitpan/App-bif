@@ -1,13 +1,13 @@
-CREATE TABLE func_change_hub(
+CREATE TABLE func_update_hub(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     name VARCHAR
 );
 
 CREATE TRIGGER
-    func_change_hub_bi_1
+    func_update_hub_bi_1
 BEFORE INSERT ON
-    func_change_hub
+    func_update_hub
 FOR EACH ROW BEGIN
 
     SELECT debug(

@@ -1,47 +1,51 @@
-package App::bif::init::repo;
+package App::bif::new::repo;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use Bif::DBW;
 use Config::Tiny;
 use Log::Any '$log';
 use Path::Tiny qw/path tempdir/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
+
+has subref => ( is => 'ro', );
 
 sub run {
-    my $self   = __PACKAGE__->new(shift);
-    my $subref = shift;
+    my $self = shift;
+    my $opts = $self->opts;
 
-    return $self->err( 'DirExists', 'location exists: ' . $self->{directory} )
-      if -e $self->{directory};
+    return $self->err( 'DirExists', 'location exists: ' . $opts->{directory} )
+      if -e $opts->{directory};
 
-    $self->{directory} = path( $self->{directory} );
-    $self->{directory}->parent->mkpath;
-    $self->{directory} = $self->{directory}->realpath;
+    $opts->{directory} = path( $opts->{directory} );
+    $opts->{directory}->parent->mkpath;
+    $opts->{directory} = $opts->{directory}->realpath;
 
     my $tempdir = tempdir(
-        DIR     => $self->{directory}->parent,
-        CLEANUP => !$self->{debug},
+        DIR     => $opts->{directory}->parent,
+        CLEANUP => !$opts->{debug},
     );
     $log->debug( 'init: tmpdir ' . $tempdir );
 
-    $self->{_bif_repo} = $tempdir;
+    $self->repo($tempdir);
+
     my $dbw = $self->dbw;
 
     $dbw->txn(
         sub {
             $|++;
-            printf "Initialising repository: %s", $self->{directory};
+            printf "Creating repository: %s", $opts->{directory};
 
             my ( $old, $new ) = $dbw->deploy;
             print " (v$new)\n";
 
-            $subref->(%$self) if $subref;
+            $self->subref->($dbw) if $self->subref;
         }
     );
 
-    if ( $self->{config} ) {
+    if ( $opts->{config} ) {
         my $conf = Config::Tiny->new;
 
         $conf->{'user.alias'}->{ls} =
@@ -58,11 +62,11 @@ sub run {
     # able to run commands inside a repo.
     symlink( '.', $tempdir->child('.bif') );
 
-    $tempdir->move( $self->{directory} )
+    $tempdir->move( $opts->{directory} )
       || return $self->err( 'Rename',
-        "rename $tempdir $self->{directory}: $!" );
+        "rename $tempdir $opts->{directory}: $!" );
 
-    return $self->ok('InitRepo');
+    return $self->ok('NewRepo');
 }
 
 1;
@@ -70,11 +74,13 @@ __END__
 
 =head1 NAME
 
-bif-init-repo -  create new bif repository
+=for bif-doc #admin
+
+bif-new-repo -  create an empty repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -82,7 +88,7 @@ bif-init-repo -  create new bif repository
 
 =head1 DESCRIPTION
 
-The B<bif-init-repo> command initialises a new bif repository in
+The B<bif-new-repo> command initialises a new bif repository in
 DIRECTORY.  Attempting to initialise an existing repository is
 considered an error.
 
@@ -100,7 +106,7 @@ Add a default config file to the repository.
 
 =back
 
-The global C<--user-repo> option is ignored by B<bif-init-repo>.
+The global C<--user-repo> option is ignored by B<bif-new-repo>.
 
 =head1 SEE ALSO
 

@@ -1,14 +1,16 @@
 package App::bif::show::plan;
 use strict;
 use warnings;
-use parent 'App::bif::show';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
-    $self->{id} = $self->uuid2id( $self->{id} );
+    $opts->{id} = $self->uuid2id( $opts->{id} );
 
     my @data;
 
@@ -32,13 +34,12 @@ sub run {
         on         => 'e.id = p.id',
         inner_join => 'changes c',
         on         => 'c.id = t.first_change_id',
-        where      => { 'pl.id' => $self->{id} },
+        where      => { 'pl.id' => $opts->{id} },
     );
 
-    return $self->err( 'PlanNotFound', "plan not found: $self->{id}" )
+    return $self->err( 'PlanNotFound', "plan not found: $opts->{id}" )
       unless $ref;
 
-    $self->init;
     my ($bold) = $self->colours('bold');
 
     push( @data,
@@ -62,17 +63,15 @@ sub run {
         from       => 'plan_hosts ph',
         inner_join => 'hosts h',
         on         => 'h.id = ph.host_id',
-        where      => { 'ph.plan_id' => $self->{id} },
+        where      => { 'ph.plan_id' => $opts->{id} },
         order_by   => [qw/ h.name /],
     );
 
     push( @data, $self->header( '  Host', $_->{name}, ) ) for @methods;
 
     $self->start_pager;
-    print $self->render_table( 'l  l',
-        $self->header( $bold . 'Plan', $bold . $ref->{title} ),
+    print $self->render_table( 'l  l', [ $bold . 'Plan', $ref->{title} ],
         \@data, 1 );
-    $self->end_pager;
 
     return $self->ok( 'ShowPlan', \@data );
 }
@@ -82,20 +81,21 @@ __END__
 
 =head1 NAME
 
-bifhub-show-plan - display a plan's current status
+=for bif-doc #hubadmin
+
+bif-show-plan - display a plan's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
-    bifhub show plan ID [OPTIONS...]
+    bif show plan ID [OPTIONS...]
 
 =head1 DESCRIPTION
 
-The C<bifhub show plan> command displays the characteristics of an
-plan.
+The B<bif-show-plan> command displays the characteristics of an plan.
 
 =head1 ARGUMENTS & OPTIONS
 
@@ -117,7 +117,7 @@ Lookup the topic using ID as a UUID string instead of a topic integer.
 
 =head1 SEE ALSO
 
-L<bifhub>(1)
+L<bif>(1)
 
 =head1 AUTHOR
 

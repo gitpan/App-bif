@@ -1,12 +1,13 @@
 package Test::Bif;
 use strict;
 use warnings;
+use App::bif::OptArgs;
 use Exporter::Tidy default => [
     qw/
       run_in_tempdir
       bif
       bif2
-      bifhub
+      bifsync
       debug_on
       debug_off
       new_test_change
@@ -23,7 +24,7 @@ use File::chdir;
 use Log::Any '$log';
 use Log::Any::Adapter;
 use Log::Any::Adapter::Diag;
-use OptArgs qw/dispatch/;
+use OptArgs qw/class_optargs/;
 use Path::Tiny;
 use Time::Piece;
 require Test::More;
@@ -53,7 +54,7 @@ sub run_in_tempdir (&) {
 }
 
 sub bif {
-    my @bif = ( qw/ run App::bif --no-pager /, @_ );
+    my @bif = ( qw/ --no-pager /, @_ );
 
     my $stdout;
     my $junk;
@@ -64,7 +65,10 @@ sub bif {
     }
 
     Test::More::diag("@bif") if $VERBOSE;
-    my $result = eval { dispatch(@bif) };
+    my $result = eval {
+        my ( $class, $opts ) = class_optargs( 'App::bif', @bif );
+        $class->new( opts => $opts )->run;
+    };
     my $err = $@;
 
     if ( !$VERBOSE ) {
@@ -85,12 +89,28 @@ sub bif2 {
     return bif(@_);
 }
 
-sub bifhub {
-    my @args = ( qw/ run App::bif --no-pager /, @_ );
+sub bifsync {
+    my $stdout;
+    my $junk;
 
-    Test::More::diag("bifhub @args") if $VERBOSE;
-    my $result = eval { dispatch(@args) };
+    if ( !$VERBOSE ) {
+        open( $stdout, '>&', 'STDOUT' )     or die "open: $!";
+        open( STDOUT,  '>',  'stdout.txt' ) or die "open: $!";
+    }
+
+    Test::More::diag("@_") if $VERBOSE;
+    my $result = eval {
+        my ( $class, $opts ) = class_optargs( 'App::bifsync', @_ );
+        $class->new( opts => $opts )->run;
+    };
     my $err = $@;
+
+    if ( !$VERBOSE ) {
+        open( STDOUT, '>&', $stdout );
+        close $stdout;
+        unlink 'stdout.txt';
+    }
+
     die $err if $err;
 
     return $result;
@@ -114,16 +134,22 @@ my $change = 0;
 sub new_test_change {
     my $db  = shift;
     my $ref = {
-        id      => $db->nextval('changes'),
-        mtime   => int( rand(time) ),
-        mtimetz => int( Time::Piece->new->tzoffset ),
-        author  => 'author' . $change++,
-        email   => 'email' . $change++,
+        id          => $db->nextval('changes'),
+        mtime       => int( rand(time) ),
+        mtimetz     => int( Time::Piece->new->tzoffset ),
+        author      => 'author' . $change++,
+        email       => 'email' . $change++,
+        identity_id => $db->xval(
+            select => 'b.identity_id',
+            from   => 'bifkv b',
+            where  => { 'b.key' => 'self' },
+        ),
     };
     $db->xdo(
         insert_into => 'changes',
         values      => $ref,
     );
+
     return $ref;
 }
 
@@ -158,6 +184,7 @@ sub new_test_hub {
         values      => $ref,
     );
 
+    debug_on;
     $db->xdo(
         insert_into => 'func_new_hub_repo',
         values      => {

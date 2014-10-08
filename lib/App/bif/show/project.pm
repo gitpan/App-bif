@@ -1,14 +1,16 @@
 package App::bif::show::project;
 use strict;
 use warnings;
-use parent 'App::bif::show';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
-    my $info = $self->get_project( $self->{path} );
+    my $info = $self->get_project( $opts->{path} );
 
     my @data;
 
@@ -42,7 +44,6 @@ sub run {
         where      => { 'projects.id' => $info->{id} },
     );
 
-    $self->init;
     my ($bold) = $self->colours('bold');
 
     push( @data, $self->header( '  Path', $ref->{path}, $ref->{uuid} ), );
@@ -50,7 +51,7 @@ sub run {
     push( @data, $self->header( '  Hub', $ref->{hub}, $ref->{location} ), )
       if $ref->{hub};
 
-    if ( $self->{full} ) {
+    if ( $opts->{full} ) {
         push(
             @data,
             $self->header( '  Creator', $ref->{author}, $ref->{email} ),
@@ -128,7 +129,7 @@ sub run {
         );
     }
 
-    if ( $self->{full} ) {
+    if ( $opts->{full} ) {
         require Text::Autoformat;
         push(
             @data,
@@ -145,10 +146,8 @@ sub run {
         );
     }
     $self->start_pager;
-    print $self->render_table( 'l  l',
-        $self->header( 'Project', $ref->{title} ),
+    print $self->render_table( 'l  l', [ $bold . 'Project', $ref->{title} ],
         \@data, 1 );
-    $self->end_pager;
 
     return $self->ok( 'ShowProject', \@data );
 }
@@ -158,11 +157,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show-project - display a project's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -170,7 +171,7 @@ bif-show-project - display a project's current status
 
 =head1 DESCRIPTION
 
-The C<bif show project> command displays a summary of a project's
+The B<bif-show-project> command displays a summary of a project's
 current status.
 
     bif show project todo

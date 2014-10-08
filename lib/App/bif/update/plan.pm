@@ -1,29 +1,31 @@
 package App::bif::update::plan;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
-    my $info = $self->get_topic( $self->{id} );
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
+    my $info = $self->get_topic( $opts->{id} );
 
-    if ( $self->{reply} ) {
+    if ( $opts->{reply} ) {
         my $uinfo =
-          $self->get_change( $self->{reply}, $info->{first_change_id} );
-        $self->{parent_uid} = $uinfo->{id};
+          $self->get_change( $opts->{reply}, $info->{first_change_id} );
+        $opts->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_change_id};
+        $opts->{parent_uid} = $info->{first_change_id};
     }
 
-    $self->{message} ||= $self->prompt_edit( opts => $self );
+    $opts->{message} ||= $self->prompt_edit( opts => $self );
 
     my @add;
-    foreach my $id ( @{ $self->{add} || [] } ) {
-        my $exists = $db->xarrayref(
+    foreach my $id ( @{ $opts->{add} || [] } ) {
+        my $exists = $dbw->xarrayref(
             select     => 'h.id',
             from       => 'plans pl',
             inner_join => 'providers p',
@@ -43,8 +45,8 @@ sub run {
     }
 
     my @remove;
-    foreach my $id ( @{ $self->{remove} || [] } ) {
-        my $exists = $db->xarrayref(
+    foreach my $id ( @{ $opts->{remove} || [] } ) {
+        my $exists = $dbw->xarrayref(
             select     => 'h.id',
             from       => 'plans pl',
             inner_join => 'providers p',
@@ -61,16 +63,16 @@ sub run {
         push( @remove, $id );
     }
 
-    $db->txn(
+    $dbw->txn(
         sub {
             my $uid = $self->new_change(
-                message   => $self->{message},
-                parent_id => $self->{parent_uid},
+                message   => $opts->{message},
+                parent_id => $opts->{parent_uid},
             );
 
             foreach my $host_id (@add) {
-                $db->xdo(
-                    insert_into => 'func_change_plan',
+                $dbw->xdo(
+                    insert_into => 'func_update_plan',
                     values      => {
                         change_id  => $uid,
                         id         => $info->{id},
@@ -81,8 +83,8 @@ sub run {
             }
 
             foreach my $host_id (@remove) {
-                $db->xdo(
-                    insert_into => 'func_change_plan',
+                $dbw->xdo(
+                    insert_into => 'func_update_plan',
                     values      => {
                         change_id  => $uid,
                         id         => $info->{id},
@@ -92,7 +94,7 @@ sub run {
                 );
             }
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
                     change_id         => $uid,
@@ -102,12 +104,12 @@ sub run {
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
 
-            print "Plan changed: $self->{id}.$uid\n";
+            print "Plan changed: $opts->{id}.$uid\n";
         }
     );
 
@@ -119,11 +121,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #hubadmin
+
 bif-update-plan - update or comment an plan
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -160,7 +164,7 @@ The message describing this change in detail.
 
 =head1 SEE ALSO
 
-L<bifhub>(1)
+L<bif>(1)
 
 =head1 AUTHOR
 

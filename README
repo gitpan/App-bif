@@ -1,8 +1,8 @@
-About Bif
-    Bif is a project management tool with a command-line interface. It helps
-    you track tasks, issues and bugs using a local database, exchanging
-    updates with remote databases on demand. The tool has several features
-    of interest to distributed project teams:
+About bif
+    Bif is a distributed bug tracker with a command-line interface. It helps
+    you manage tasks and issues using a local database, exchanging updates
+    with remote databases on demand. The tool has several features of
+    interest to distributed project teams:
 
     Offline Operation
         Many bif actions work offline; you can create and update tasks and
@@ -38,15 +38,13 @@ About Bif
     In addition to the generic problems facing every project organisation,
     bif aims to answer the following specific challenges:
 
-    *   The high costs of context switching
-
+    The high costs of context switching
         It takes a certain amount of effort to get your mind fully into a
         good edit/compile/test cycle. Switching contexts to record your
         progress in a browser is a painful and inefficient way to break up
         your day. You would be better off going for a walk.
 
-    *   When your network connectivity is unreliable
-
+    When your network connectivity is unreliable
         It is a difficult task to maintain communication and status tracking
         within a distributed project when the data network is an uncertain,
         or expensive resource. If developers can check in code, but can't
@@ -54,9 +52,7 @@ About Bif
         drops. When you cannot always link your project data with internal
         systems (e.g. billing) then other business functions can suffer.
 
-    *   When your success depends on factors outside the project
-        organisation
-
+    When your success depends on factors outside the project organisation
         Projects can experience time and cost difficulties when they have
         external dependencies. Keeping track of the status in someone else's
         issue tracking system is a thankless, manual process. If you can't
@@ -93,10 +89,12 @@ Installing
     <http://cpan.org>). Bif and its dependencies can be easily installed
     system-wide with the "cpan" tool which is a standard part of Perl.
 
-        #!sh
         sudo cpan App::bif
 
     Note that some of the dependencies require a C compiler to build.
+
+    Alternatively you might find the right pre-compiled binary for your
+    system at <http://bifax.org/bif/download/>.
 
 Documentation
     The main entry point for reference documentation is the bif manual.
@@ -144,15 +142,14 @@ Contributing
     positive and negative, is extremely valuable. Please get in touch!
 
 Development
-    For those comfortable with git, development takes place on the "devel"
+    For those comfortable with git, development takes place on the "dev"
     branch of the git repository, with communication via the development
     mailing list.
 
-        #!sh
-        git clone git://bifax.org/bif.git --branch devel
+        git clone git://bifax.org/bif.git --branch dev
         cd bif
 
-    The README.devel file in the repository describes how to hack on bif.
+    See the bif-doc-dev document for information on how to hack on bif.
 
 License
     Bif is free software: you can redistribute it and/or modify it under the

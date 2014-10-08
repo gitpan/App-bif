@@ -4,11 +4,12 @@ bif-doc-func-new-project - add a new project to an change
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
-    #!sqlite
+=for bifcode #!sqlite
+
     BEGIN;
 
     INSERT INTO changes(...);
@@ -23,7 +24,7 @@ bif-doc-func-new-project - add a new project to an change
 
     INSERT INTO func_new_project_status(...);
 
-    INSERT INTO func_change_project(...);
+    INSERT INTO func_update_project(...);
 
     INSERT INTO func_merge_changes(...);
 

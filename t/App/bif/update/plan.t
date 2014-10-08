@@ -9,7 +9,7 @@ run_in_tempdir {
 
     like exception { bif(qw/update plan/) }, qr/usage:/, 'usage';
 
-    isa_ok exception { bif(qw/update plan p/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/update plan p/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

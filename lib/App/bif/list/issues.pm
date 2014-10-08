@@ -2,12 +2,14 @@ package App::bif::list::issues;
 use strict;
 use warnings;
 use utf8;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
 
     DBIx::ThinSQL->import(qw/ qv concat coalesce/);
@@ -45,8 +47,8 @@ sub run {
             where      => {
                 'issue_status.project_id' => $project->[0],
                 do {
-                    if ( $self->{status} ) {
-                        ( 'issue_status.status' => $self->{status} );
+                    if ( $opts->{status} ) {
+                        ( 'issue_status.status' => $opts->{status} );
                     }
                     else {
                         ();
@@ -84,9 +86,7 @@ sub run {
 
     $self->start_pager;
 
-    print $table->render($App::bif::Context::term_width);
-
-    $self->end_pager;
+    print $table->render( $self->term_width );
 
     $self->ok( 'ListIssues', \@projects );
 }
@@ -96,11 +96,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #list
+
 bif-list-issues - list projects' issues
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

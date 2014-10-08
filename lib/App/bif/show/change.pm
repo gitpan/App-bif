@@ -1,15 +1,17 @@
 package App::bif::show::change;
 use strict;
 use warnings;
-use parent 'App::bif::show';
 use DBIx::ThinSQL qw/sq qv/;
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $dbw  = $self->dbw;
-    my $info = $self->get_change( $self->{uid} );
+    my $info = $self->get_change( $opts->{uid} );
 
     my $ref = $dbw->xhashref(
         select => [
@@ -39,8 +41,6 @@ sub run {
         where      => { 'c.id' => $info->{id} },
     );
 
-    $self->init;
-
     my @data;
     push( @data,
         $self->header( '  UUID', $ref->{uuid},              '' ),
@@ -56,8 +56,6 @@ sub run {
         [ 'Change ' . $ref->{id}, $ref->{action} ],
         \@data, 1 );
 
-    $self->end_pager;
-
     return $self->ok('ShowChange');
 }
 
@@ -66,11 +64,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show-change - show change information
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

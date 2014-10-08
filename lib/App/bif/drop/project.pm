@@ -1,17 +1,19 @@
 package App::bif::drop::project;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use DBIx::ThinSQL qw/sq/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $dbw  = $self->dbw;
-    my $info = $self->get_project( $self->{path} );
+    my $info = $self->get_project( $opts->{path} );
 
-    if ( !$self->{force} ) {
+    if ( !$opts->{force} ) {
         print "Nothing dropped (missing --force, -f)\n";
         return $self->ok('DropNoForce');
     }
@@ -138,11 +140,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #delete
+
 bif-drop-project - remove an project from the repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

@@ -1,37 +1,39 @@
 package App::bif::pull::hub;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
 use AnyEvent;
 use Bif::Client;
+use Bif::Mo;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $opts = shift;
-    $opts->{no_pager}++;    # causes problems with something in Coro?
-    my $self = __PACKAGE__->new($opts);
+    my $self = shift;
+    my $opts = $self->opts;
 
-    # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
-    my $dbw = $self->dbw;
+    # Do this early so that we complain about missing repo before we
+    # complain about a missing hub
+    my $dbw = $self->dbw;    # Consider upping PRAGMA cache_size?
+                             #Or handle that in Bif::Role::Sync?
 
-    if ( $self->{location} =~ m!^ssh://(.+)! ) {
+    if ( $opts->{location} =~ m!^ssh://(.+)! ) {
     }
-    elsif ( -d $self->{location} ) {
-        $self->{location} = path( $self->{location} )->realpath;
+    elsif ( -d $opts->{location} ) {
+        $opts->{location} = path( $opts->{location} )->realpath;
     }
     else {
         return $self->err( 'HubNotFound', 'hub not found: %s',
-            $self->{location} );
+            $opts->{location} );
     }
 
-    $log->debug("pull hub: $self->{location}");
+    $log->debug("pull hub: $opts->{location}");
 
-    my @locations = $dbw->get_hub_repos( $self->{location} );
+    my @locations = $dbw->get_hub_repos( $opts->{location} );
 
     return $self->err(
         'RepoExists', 'hub already pulled: %s (%s)',
@@ -43,13 +45,13 @@ sub run {
     my $cv = AE::cv;
 
     my $client = Bif::Client->new(
-        name          => $self->{location},
+        name          => $opts->{location},
         db            => $dbw,
-        location      => $self->{location},
-        debug         => $self->{debug},
-        debug_bifsync => $self->{debug_bifsync},
+        location      => $opts->{location},
+        debug         => $opts->{debug},
+        debug_bifsync => $opts->{debug_bifsync},
         on_update     => sub {
-            $self->lprint("$self->{location}: $_[0]");
+            $self->lprint("$opts->{location}: $_[0]");
         },
         on_error => sub {
             $error = shift;
@@ -58,12 +60,14 @@ sub run {
     );
 
     my $coro = async {
+        select $App::bif::pager->fh if $opts->{debug};
+
         eval {
             $dbw->txn(
                 sub {
                     my $uid = $dbw->nextval('changes');
 
-                    my $status = $client->pull_hub;
+                    my ( $status, $ref ) = $client->pull_hub;
 
                     print "\n";
 
@@ -75,29 +79,35 @@ sub run {
                         return $status;
                     }
 
-                    my ( $hid, $rid, $name ) = $dbw->xlist(
-                        select     => [ 'h.id', 'hr.id', 'h.name' ],
-                        from       => 'hub_repos hr',
-                        inner_join => 'hubs h',
-                        on         => 'h.id = hr.hub_id',
-                        where => { 'hr.location' => $self->{location} },
+                    my @repos = $dbw->xhashrefs(
+                        select    => [ 'h.name', 'hr.id', 'hr.location' ],
+                        from      => 'hubs h',
+                        left_join => 'hub_repos hr',
+                        on    => 'hr.hub_id = h.id',
+                        where => { 'h.id' => $ref->[0] },
+                        limit => 1,
                     );
 
-                    if ( !$rid ) {
-                        $error = 'could not find repository from location!';
-                        $dbw->rollback;
-                        return;
+                    my $repo;
+                    foreach my $try (@repos) {
+                        $repo = $try if $try->{location} eq $opts->{location};
+                    }
+
+                    unless ($repo) {
+                        $repo = $repos[0];
+                        warn "no match for default repo";
                     }
 
                     $dbw->xdo(
                         update => 'hubs',
-                        set    => { default_repo_id => $rid },
-                        where  => { id => $hid },
+                        set    => { default_repo_id => $repo->{id} },
+                        where  => { id => $ref->[0] },
                     );
 
                     $self->new_change(
-                        id      => $uid,
-                        message => "Registered hub at $self->{location}",
+                        id => $uid,
+                        message =>
+                          "Registered hub $repo->{name} at $opts->{location}",
                     );
 
                     $dbw->xdo(
@@ -105,8 +115,8 @@ sub run {
                         values      => {
                             new               => 1,
                             change_id         => $uid,
-                            action_format     => "pull hub (%s) $name",
-                            action_topic_id_1 => $hid,
+                            action_format     => "pull hub (%s) $repo->{name}",
+                            action_topic_id_1 => $ref->[0],
                         },
                     );
 
@@ -122,7 +132,7 @@ sub run {
                         from   => 'changes c',
                     );
 
-                    print "Hub pulled: $name\n";
+                    print "Hub pulled: $repo->{name}\n";
                     return $status;
                 }
             );
@@ -147,11 +157,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #sync
+
 bif-pull-hub -  import project lists from a remote repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

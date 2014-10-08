@@ -10,7 +10,7 @@ run_in_tempdir {
 
     like exception { bif(qw/ show issue /) }, qr/usage:/, 'usage';
 
-    isa_ok exception { bif(qw/ show issue 1/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ show issue 1/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

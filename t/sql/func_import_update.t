@@ -25,7 +25,7 @@ run_in_tempdir {
             $project_status = new_test_project_status( $xdb, $project );
 
             $xdb->xdo(
-                insert_into => 'func_change_project',
+                insert_into => 'func_update_project',
                 values      => {
                     change_id => $change->{id},
                     id        => $project->{id},

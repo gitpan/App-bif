@@ -1,4 +1,4 @@
-CREATE TABLE func_change_task_status(
+CREATE TABLE func_update_task_status(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     status VARCHAR(40),
@@ -7,13 +7,13 @@ CREATE TABLE func_change_task_status(
 );
 
 CREATE TRIGGER
-    func_change_task_status_bi_1
+    func_update_task_status_bi_1
 BEFORE INSERT ON
-    func_change_task_status
+    func_update_task_status
 FOR EACH ROW BEGIN
 
     SELECT debug(
-        'TRIGGER func_change_task_status_bi_1',
+        'TRIGGER func_update_task_status_bi_1',
         NEW.change_id,
         NEW.id,
         NEW.status,

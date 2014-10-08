@@ -1,5 +1,5 @@
 CREATE TABLE entity_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     entity_id INTEGER NOT NULL,
     contact_id INTEGER,
@@ -11,7 +11,7 @@ CREATE TABLE entity_deltas (
     FOREIGN KEY(contact_id) REFERENCES entities(id) ON DELETE CASCADE,
     FOREIGN KEY(default_contact_method_id)
         REFERENCES entity_contact_methods(id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     entity_deltas_ai_1

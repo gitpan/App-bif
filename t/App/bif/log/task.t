@@ -8,7 +8,7 @@ use Test::More;
 run_in_tempdir {
 
     isa_ok exception { bif(qw/ log task /) },  'OptArgs::Usage';
-    isa_ok exception { bif(qw/ log task 1/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/ log task 1/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

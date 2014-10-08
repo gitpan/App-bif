@@ -21,7 +21,7 @@ BEGIN
     );
 
     INSERT INTO
-        func_change_task(
+        func_update_task(
             change_id,
             id,
             status_id,

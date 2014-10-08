@@ -1,74 +1,76 @@
 package App::bif::update::issue;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw;
-    my $info = $self->get_topic( $self->uuid2id( $self->{id} ), 'issue' );
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
+    my $info = $self->get_topic( $self->uuid2id( $opts->{id} ), 'issue' );
 
-    my $project_id = $db->xval(
+    my $project_id = $dbw->xval(
         select => 'project_issues.project_id',
         from   => 'project_issues',
         where  => { 'project_issues.id' => $info->{id} },
     );
 
     my ( $status_ids, $invalid ) =
-      $db->status_ids( $info->{project_id}, 'issue', $self->{status} );
+      $dbw->status_ids( $info->{project_id}, 'issue', $opts->{status} );
 
     return $self->err( 'InvalidStatus',
         'unknown status(s): ' . join( ', ', @$invalid ) )
       if @$invalid;
 
-    if ( $self->{reply} ) {
+    if ( $opts->{reply} ) {
         my $uinfo =
-          $self->get_change( $self->{reply}, $info->{first_change_id} );
-        $self->{parent_uid} = $uinfo->{id};
+          $self->get_change( $opts->{reply}, $info->{first_change_id} );
+        $opts->{parent_uid} = $uinfo->{id};
     }
     else {
-        $self->{parent_uid} = $info->{first_change_id};
+        $opts->{parent_uid} = $info->{first_change_id};
     }
 
-    $self->{message} ||= $self->prompt_edit( opts => $self );
+    $opts->{message} ||= $self->prompt_edit( opts => $self );
 
-    $db->txn(
+    $dbw->txn(
         sub {
-            my $path = $db->xval(
+            my $path = $dbw->xval(
                 select => 'p.path',
                 from   => 'projects p',
                 where  => { 'p.id' => $info->{project_id} },
             );
 
-            $self->{change_id} = $self->new_change(
-                message   => $self->{message},
-                parent_id => $self->{parent_uid},
+            $opts->{change_id} = $self->new_change(
+                message   => $opts->{message},
+                parent_id => $opts->{parent_uid},
             );
 
-            $db->xdo(
-                insert_into => 'func_change_issue',
+            $dbw->xdo(
+                insert_into => 'func_update_issue',
                 values      => {
                     id         => $info->{id},
-                    change_id  => $self->{change_id},
+                    change_id  => $opts->{change_id},
                     project_id => $info->{project_id},
-                    $self->{title} ? ( title     => $self->{title} )   : (),
+                    $opts->{title} ? ( title     => $opts->{title} )   : (),
                     @$status_ids   ? ( status_id => $status_ids->[0] ) : (),
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'change_deltas',
                 values      => {
-                    change_id         => $self->{change_id},
+                    change_id         => $opts->{change_id},
                     new               => 1,
                     action_format     => "update issue %s",
                     action_topic_id_1 => $info->{id},
                 },
             );
 
-            $db->xdo(
+            $dbw->xdo(
                 insert_into => 'func_merge_changes',
                 values      => { merge => 1 },
             );
@@ -76,12 +78,12 @@ sub run {
         }
     );
 
-    print "Issue changed: $info->{project_issue_id}.$self->{change_id}\n";
+    print "Issue changed: $info->{project_issue_id}.$opts->{change_id}\n";
 
     # For testing
-    $self->{id}               = $info->{id};
-    $self->{parent_change_id} = $info->{change_id};
-    $self->{status}           = $status_ids;
+    $opts->{id}               = $info->{id};
+    $opts->{parent_change_id} = $info->{change_id};
+    $opts->{status}           = $status_ids;
     return $self->ok('ChangeIssue');
 }
 
@@ -90,11 +92,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #modify
+
 bif-update-issue - update an issue
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

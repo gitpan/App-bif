@@ -1,9 +1,10 @@
 package App::bifsync;
 use strict;
 use warnings;
-use App::bif::Context;
+use App::bif;
 use AnyEvent;
 use Bif::DBW;
+use Bif::Mo;
 use Bif::Server;
 use Coro;
 use Log::Any '$log';
@@ -12,7 +13,7 @@ use Log::Any::Plugin;
 use OptArgs;
 use Path::Tiny;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 arg directory => (
     isa     => 'Str',
@@ -25,8 +26,15 @@ opt debug => (
     comment => 'add debugging statements to stderr',
 );
 
+# class
+has opts => (
+    is       => 'ro',
+    required => 1,
+);
+
 sub run {
-    my $opts = shift;
+    my $self = shift;
+    my $opts = $self->opts;
 
     # no buffering
     $|++;
@@ -37,6 +45,9 @@ sub run {
     my $f      = 'db.sqlite3';
     my $dir    = path( $opts->{directory} );
     my $sqlite = $dir->child($f);
+
+    die Bif::Error->new( $opts, 'RepoNotFound', "directory not found: $dir\n" )
+      unless -e $dir;
 
     if ( !-f $sqlite ) {
         $log->error( 'file not found: ' . $sqlite );

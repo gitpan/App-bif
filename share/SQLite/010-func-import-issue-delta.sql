@@ -23,7 +23,7 @@ BEGIN
     );
 
     INSERT INTO
-        func_change_issue(
+        func_update_issue(
             change_id,
             id,
             project_id,

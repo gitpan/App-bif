@@ -1,5 +1,5 @@
 CREATE TABLE task_status_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     task_status_id INTEGER NOT NULL,
     new INTEGER,
@@ -12,7 +12,7 @@ CREATE TABLE task_status_deltas (
     CONSTRAINT def_constraint CHECK (
         def = 1 OR def IS NULL
     )
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     task_status_deltas_ai_1

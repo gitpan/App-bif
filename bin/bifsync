@@ -1,20 +1,32 @@
 #!perl
 use strict;
 use warnings;
-use OptArgs qw/dispatch/;
+use OptArgs qw/class_optargs/;
 
-dispatch(qw/run App::bifsync/);
+eval {
+    my ( $class, $opts ) = OptArgs::class_optargs('App::bifsync');
+    $class->new( opts => $opts )->run;
+};
+
+if ($@) {
+    print STDERR $@;
+    exit 1;
+}
+
+1;
 
 __END__
 
 
 =head1 NAME
 
+=for bif-doc #sync
+
 bifsync - synchronization server for bif hubs
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

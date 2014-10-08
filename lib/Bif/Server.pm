@@ -8,7 +8,7 @@ use JSON;
 use Log::Any '$log';
 use Role::Basic qw/with/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 with 'Bif::Role::Sync';
 
@@ -333,3 +333,10 @@ sub disconnect {
 }
 
 1;
+
+=head1 NAME
+
+=for bif-doc #perl
+
+Bif::Server - server for communication with a client
+

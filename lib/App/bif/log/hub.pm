@@ -2,18 +2,19 @@ package App::bif::log::hub;
 use strict;
 use warnings;
 use feature 'state';
-use parent 'App::bif::log';
 use locale;
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::log';
 
 sub run {
-    my $self  = __PACKAGE__->new(shift);
+    my $self  = shift;
+    my $opts  = $self->opts;
     my $db    = $self->db;
-    my ($hub) = $self->get_hub( $self->{name} );
+    my ($hub) = $self->get_hub( $opts->{name} );
     my @locs  = $db->get_hub_repos( $hub->{id} );
 
-    $self->init;
     my ( $dark, $reset ) = $self->colours(qw/dark reset/);
 
     my $sth = $db->xprepare(
@@ -58,7 +59,6 @@ sub run {
         $weekday = $n->[0];
     }
 
-    $self->end_pager;
     return $self->ok('LogHub');
 }
 
@@ -67,11 +67,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #history
+
 bif-log-hub - review the history of a hub
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -79,7 +81,7 @@ bif-log-hub - review the history of a hub
 
 =head1 DESCRIPTION
 
-The C<bif log hub> command displays the history of events in a hub or
+The B<bif-log-hub> command displays the history of events in a hub or
 the local repository.
 
 =head1 ARGUMENTS & OPTIONS

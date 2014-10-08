@@ -1,24 +1,21 @@
 package App::bif::pull::project;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use AnyEvent;
 use Bif::Client;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
     my $self = shift;
-    $self->{no_pager}++;    # causes problems with something in Coro?
-    $self = __PACKAGE__->new($self);
-
-    # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
-    my $db = $self->dbw;
+    my $opts = $self->opts;
 
     my @pinfo;
-    foreach my $path ( @{ $self->{path} } ) {
+    foreach my $path ( @{ $opts->{path} } ) {
         my $pinfo = $self->get_project($path);
 
         if ( $pinfo->{local} ) {
@@ -36,7 +33,9 @@ sub run {
     return $self->err( 'TooManyHubs', 'can only pull from a single hub' )
       unless 1 == scalar keys %hubs;
 
-    my @repos = $db->get_hub_repos( keys %hubs );
+    # Consider upping PRAGMA cache_size? Or handle that in Bif::Role::Sync?
+    my $dbw   = $self->dbw;
+    my @repos = $dbw->get_hub_repos( keys %hubs );
     my $hub   = $repos[0];
 
     $|++;    # no buffering
@@ -45,10 +44,10 @@ sub run {
 
     my $client = Bif::Client->new(
         name          => $hub->{name},
-        db            => $db,
+        db            => $dbw,
         location      => $hub->{location},
-        debug         => $self->{debug},
-        debug_bifsync => $self->{debug_bifsync},
+        debug         => $opts->{debug},
+        debug_bifsync => $opts->{debug_bifsync},
         on_update     => sub {
             $self->lprint("$hub->{name}: $_[0]");
         },
@@ -59,10 +58,12 @@ sub run {
     );
 
     my $coro = async {
+        select $App::bif::pager->fh if $opts->{debug};
+
         eval {
-            $db->txn(
+            $dbw->txn(
                 sub {
-                    my $uid = $db->get_max_change_id + 1;
+                    my $uid = $dbw->get_max_change_id + 1;
 
                     foreach my $pinfo (@pinfo) {
                         my $tmp =
@@ -70,7 +71,7 @@ sub run {
                                 "pull project $pinfo->{path}\@$hub->{name}"
                               . " from $hub->{location}" );
 
-                        $db->xdo(
+                        $dbw->xdo(
                             insert_into => 'change_deltas',
                             values      => {
                                 new           => 1,
@@ -81,7 +82,7 @@ sub run {
                             },
                         );
 
-                        $db->xdo(
+                        $dbw->xdo(
                             update => 'projects',
                             set    => 'local = 1',
                             where  => { id => $pinfo->{id} },
@@ -94,7 +95,7 @@ sub run {
                     unless ( $status eq 'RepoMatch'
                         or $status eq 'RepoSync' )
                     {
-                        $db->rollback;
+                        $dbw->rollback;
                         $error = " unexpected status received : $status ";
                         return;
 
@@ -104,7 +105,7 @@ sub run {
                         $status = $client->transfer_hub_changes;
 
                         if ( $status ne 'TransferHubChanges' ) {
-                            $db->rollback;
+                            $dbw->rollback;
                             $error = " unexpected status received : $status ";
                             return;
                         }
@@ -113,7 +114,7 @@ sub run {
                     $status = $client->sync_projects;
 
                     unless ( $status eq 'ProjectSync' ) {
-                        $db->rollback;
+                        $dbw->rollback;
                         $error = " unexpected status received : $status ";
                         return;
                     }
@@ -121,17 +122,17 @@ sub run {
                     $status = $client->transfer_project_related_changes;
 
                     if ( $status ne 'TransferProjectRelatedChanges' ) {
-                        $db->rollback;
+                        $dbw->rollback;
                         $error = " unexpected status received : $status ";
                         return;
                     }
 
-                    $db->xdo(
+                    $dbw->xdo(
                         insert_into => 'func_merge_changes',
                         values      => { merge => 1 },
                     );
 
-                    $db->xdo(
+                    $dbw->xdo(
                         insert_or_replace_into =>
                           [ 'bifkv', qw/key change_id change_id2/ ],
                         select => [ qv('last_sync'), $uid, 'MAX(c.id)', ],
@@ -154,7 +155,7 @@ sub run {
     };
 
     if ( $cv->recv ) {
-        $db->do('ANALYZE');
+        $dbw->do('ANALYZE');
         return $self->ok('PullProject');
     }
 
@@ -166,11 +167,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #sync
+
 bif-pull-project -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

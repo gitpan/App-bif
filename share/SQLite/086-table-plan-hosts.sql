@@ -1,5 +1,5 @@
 CREATE TABLE plan_hosts(
-    id INTEGER NOT NULL PRIMARY KEY,
+    --id INT NOT NULL PRIMARY KEY,
     plan_id INTEGER NOT NULL,
     host_id INTEGER NOT NULL,
     UNIQUE(plan_id,host_id),

@@ -1,5 +1,5 @@
--- TODO should callers actually use func_change_entity?
-CREATE TABLE func_change_identity(
+-- TODO should callers actually use func_update_entity?
+CREATE TABLE func_update_identity(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL,
     name VARCHAR,
@@ -9,9 +9,9 @@ CREATE TABLE func_change_identity(
 );
 
 CREATE TRIGGER
-    func_change_identity_bi_1
+    func_update_identity_bi_1
 BEFORE INSERT ON
-    func_change_identity
+    func_update_identity
 FOR EACH ROW BEGIN
 
     SELECT debug(

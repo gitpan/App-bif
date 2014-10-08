@@ -2,28 +2,30 @@ package App::bif::push::issue;
 use strict;
 use warnings;
 use feature 'state';
-use parent 'App::bif::Context';
+use Bif::Mo;
+use DBIx::ThinSQL qw/concat qv/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $info = $self->get_topic( $self->{id} );
+    my $self = shift;
+    my $opts = $self->opts;
+    my $info = $self->get_topic( $opts->{id} );
 
     return $self->err( 'NotAnIssue', 'not an issue topic: ' . $info->{id} )
       unless $info->{kind} eq 'issue';
 
-    state $thinsql = DBIx::ThinSQL->import(qw/concat qv/);
-    my $db = $self->dbw;
+    my $dbw = $self->dbw;
 
-    $db->txn(
+    $dbw->txn(
         sub {
 
-            foreach my $path ( @{ $self->{path} } ) {
+            foreach my $path ( @{ $opts->{path} } ) {
 
-                my $pinfo = $self->get_project( $path, $self->{hub} );
+                my $pinfo = $self->get_project( $path, $opts->{hub} );
 
-                my $existing = $db->xval(
+                my $existing = $dbw->xval(
                     select     => 'issue_status.status',
                     from       => 'project_issues',
                     inner_join => 'project_issues AS pi2',
@@ -39,39 +41,39 @@ sub run {
                 );
 
                 if ($existing) {
-                    if ( $self->{err_on_exists} ) {
+                    if ( $opts->{err_on_exists} ) {
                         return $self->err( 'DestinationExists',
-                            "$self->{id} already has status $path:$existing\n"
+                            "$opts->{id} already has status $path:$existing\n"
                         );
                     }
                     else {
                         print
-                          "$self->{id} already has status $path:$existing\n";
+                          "$opts->{id} already has status $path:$existing\n";
                         next;
                     }
                 }
 
-                my @unsatisfied = map { $_->[0] } $db->xarrayrefs(
-                    select     => concat( 'p.path', qv('@'), 'h.name' ),
-                    from       => 'project_issues pi',
-                    inner_join => 'projects p',
-                    on         => 'p.id = pi.project_id',
-                    inner_join => 'hubs h',
-                    on         => 'h.id = p.hub_id',
-                    where => { 'pi.issue_id' => $info->{id} },
-                    except_select => concat( 'p2.path', qv('@'), 'h.name' ),
+                my @unsatisfied = map { $_->[0] } $dbw->xarrayrefs(
+                    select        => 'p.fullpath',
+                    from          => 'project_issues pi',
+                    inner_join    => 'projects p',
+                    on            => 'p.id = pi.project_id',
+                    inner_join    => 'hubs h',
+                    on            => 'h.id = p.hub_id',
+                    where         => { 'pi.issue_id' => $info->{id} },
+                    except_select => 'p2.fullpath',
                     from          => 'projects p',
-                    inner_join => 'hub_related_projects hrp',
-                    on         => 'hrp.hub_id = p.hub_id',
-                    inner_join => 'projects p2',
-                    on         => 'p2.id = hrp.project_id',
-                    inner_join => 'hubs h',
-                    on         => 'h.id = p2.hub_id',
-                    where      => { 'p.id' => $pinfo->{id} },
+                    inner_join    => 'hub_related_projects hrp',
+                    on            => 'hrp.hub_id = p.hub_id',
+                    inner_join    => 'projects p2',
+                    on            => 'p2.id = hrp.project_id',
+                    inner_join    => 'hubs h',
+                    on            => 'h.id = p2.hub_id',
+                    where         => { 'p.id' => $pinfo->{id} },
                 );
 
                 if (@unsatisfied) {
-                    my $name = $db->xval(
+                    my $name = $dbw->xval(
                         select     => [ 'h.name', 'h.local' ],
                         from       => 'projects p',
                         inner_join => 'hubs h',
@@ -85,21 +87,21 @@ sub run {
                         "$path\@$name has no cooperation with @unsatisfied" );
                 }
 
-                $self->{message} ||= $self->prompt_edit;
+                $opts->{message} ||= $self->prompt_edit;
 
-                my $rid = $db->nextval('changes');
+                my $rid = $dbw->nextval('changes');
 
-                my $src = $db->xval(
-                    select => "p.path || COALESCE('\@' || h.name, '') AS path",
-                    from   => 'projects p',
+                my $src = $dbw->xval(
+                    select    => 'p.fullpath',
+                    from      => 'projects p',
                     left_join => 'hubs h',
                     on        => 'h.id = p.hub_id',
                     where     => { 'p.id' => $info->{project_id}, },
                 );
 
-                my $dest = $db->xval(
-                    select => "p.path || COALESCE('\@' || h.name, '') AS path",
-                    from   => 'projects p',
+                my $dest = $dbw->xval(
+                    select    => 'p.fullpath',
+                    from      => 'projects p',
                     left_join => 'hubs h',
                     on        => 'h.id = p.hub_id',
                     where     => { 'p.id' => $pinfo->{id}, },
@@ -108,11 +110,11 @@ sub run {
                 my $uid = $self->new_change(
                     parent_id => $info->{first_change_id},
                     message   => "[ forked: $src -> $dest ]\n\n"
-                      . $self->{message},
+                      . $opts->{message},
                     action => 'push issue',
                 );
 
-                my $status_id = $db->xval(
+                my $status_id = $dbw->xval(
                     select => 'id',
                     from   => 'issue_status',
                     where  => {
@@ -121,8 +123,8 @@ sub run {
                     },
                 );
 
-                $db->xdo(
-                    insert_into => 'func_change_issue',
+                $dbw->xdo(
+                    insert_into => 'func_update_issue',
                     values      => {
                         change_id  => $uid,
                         id         => $info->{id},
@@ -131,15 +133,15 @@ sub run {
                     },
                 );
 
-                $self->{change_id} = $uid;
+                $opts->{change_id} = $uid;
 
-                $db->xdo(
+                $dbw->xdo(
                     insert_into => 'func_merge_changes',
                     values      => { merge => 1 },
                 );
 
                 printf( "Issue pushed: %d.%d\n",
-                    $self->{id}, $self->{change_id} );
+                    $opts->{id}, $opts->{change_id} );
             }
         }
     );
@@ -152,11 +154,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #sync
+
 bif-push-issue - push an issue to another project
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -164,7 +168,7 @@ bif-push-issue - push an issue to another project
 
 =head1 DESCRIPTION
 
-The C<bif push issue> command is used to modify the relationship
+The B<bif-push-issue> command is used to modify the relationship
 between a topic and a previously unrelated project. The type of the
 topic being pushed determines the type of relationship changes that are
 possible.

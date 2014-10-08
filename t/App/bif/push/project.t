@@ -11,7 +11,7 @@ run_in_tempdir {
     isa_ok exception { bif(qw/push project/) },      'OptArgs::Usage';
     isa_ok exception { bif(qw/push project todo/) }, 'OptArgs::Usage';
     isa_ok exception { bif(qw/push project todo hub/) },
-      'Bif::Error::RepoNotFound';
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 
@@ -33,7 +33,7 @@ run_in_tempdir {
     isa_ok exception { bif(qw/push project todo hub/) },
       'Bif::Error::HubNotFound';
 
-    bif(qw/init hub hub/);
+    bif(qw/init hub/);
 
     bif2(qw/init/);
     bif2(qw/new project todo title2 -m message2/);

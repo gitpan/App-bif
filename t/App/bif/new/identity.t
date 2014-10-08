@@ -7,9 +7,13 @@ use Test::More;
 
 run_in_tempdir {
 
+    isa_ok exception { bif(qw/ new identity/) }, 'Bif::Error::UserRepoNotFound';
+
+    bif(qw/new repo .bifu/);
+
     isa_ok exception { bif(qw/ new identity/) }, 'Bif::Error::RepoNotFound';
 
-    bif(qw/init repo .bif/);
+    bif(qw/new repo .bif/);
 
     isa_ok exception { bif(qw/ new identity name method value -m m1/) },
       'Bif::Error::NoSelfIdentity';

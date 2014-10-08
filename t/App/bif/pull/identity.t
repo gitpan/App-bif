@@ -8,23 +8,21 @@ use Test::Fatal;
 use Test::More;
 
 run_in_tempdir {
-    my $repo = path(qw/x/);
-    bif( qw/init repo/, $repo );
+    bif(qw/new repo .bifu/);
 
     {
-        local $CWD = $repo;
-        isa_ok bif(qw/new identity name email value -m m1 --self/),
+        isa_ok bif(qw/new identity name email value -m m1 --user-repo --self/),
           'Bif::OK::NewIdentity';
     }
 
     isa_ok exception { bif(qw/pull identity/) }, 'OptArgs::Usage';
-    isa_ok exception { bif( qw/pull identity/, $repo ) },
+    isa_ok exception { bif(qw/pull identity .bifu/) },
       'Bif::Error::RepoNotFound';
 
-    bif(qw/init repo .bif/);
+    bif(qw/new repo .bif/);
 
-    isa_ok bif( qw/pull identity --self/, $repo ), 'Bif::OK::PullIdentity';
-    isa_ok bif(qw/show identity 1/), 'Bif::OK::ShowIdentity';
+    isa_ok bif(qw/pull identity --self .bifu/), 'Bif::OK::PullIdentity';
+    isa_ok bif(qw/show identity 1/),            'Bif::OK::ShowIdentity';
 };
 
 done_testing();

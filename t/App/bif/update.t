@@ -8,7 +8,7 @@ use Test::More;
 run_in_tempdir {
 
     like exception { bif(qw/update/) }, qr/usage:/, 'usage';
-    isa_ok exception { bif(qw/update junk/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/update junk/) }, 'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
     isa_ok exception { bif(qw/update todo/) }, 'Bif::Error::TopicNotFound';

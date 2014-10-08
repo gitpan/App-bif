@@ -98,7 +98,7 @@ run_in_tempdir {
 
             $db->xdo(
                 insert_into => [
-                    'func_change_project',
+                    'func_update_project',
                     qw/change_id id name title status_id/,
                 ],
                 select =>
@@ -267,7 +267,7 @@ run_in_tempdir {
 
             $child_change_id = $db->nextval('changes');
             ok $db->xdo(
-                insert_into => 'func_change_project',
+                insert_into => 'func_update_project',
                 values      => {
                     id        => $child_id,
                     change_id => $child_change_id,
@@ -316,7 +316,7 @@ run_in_tempdir {
             $child_change_id = $db->nextval('changes');
 
             ok $db->xdo(
-                insert_into => 'func_change_project',
+                insert_into => 'func_update_project',
                 values      => {
                     id        => $child_id,
                     change_id => $child_change_id,

@@ -1,5 +1,5 @@
 CREATE TABLE entities (
-    id INTEGER NOT NULL PRIMARY KEY,
+    id INT NOT NULL PRIMARY KEY,
     contact_id INTEGER NOT NULL DEFAULT -1,
     default_contact_method_id INTEGER NOT NULL DEFAULT -1,
     name VARCHAR(128) NOT NULL,

@@ -1,5 +1,5 @@
 CREATE TABLE hub_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     hub_id INTEGER NOT NULL,
     name VARCHAR(128),
@@ -8,7 +8,7 @@ CREATE TABLE hub_deltas (
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
     FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     hub_deltas_ai_1

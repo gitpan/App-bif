@@ -10,16 +10,16 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/pull project/) }, 'OptArgs::Usage';
     isa_ok exception { bif(qw/pull project todo /) },
-      'Bif::Error::RepoNotFound';
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
-    isa_ok exception { bif(qw/pull project todo@hub/) },
+    isa_ok exception { bif(qw{pull project hub/todo}) },
       'Bif::Error::HubNotFound';
 
-    bif(qw/init hub hub/);
+    bif(qw/init hub/);
     bif(qw/pull hub hub/);
 
-    isa_ok exception { bif(qw/pull project todo@hub/) },
+    isa_ok exception { bif(qw{pull project hub/todo}) },
       'Bif::Error::ProjectNotFound';
 
     isa_ok exception { bif(qw/pull project todo/) },
@@ -37,7 +37,7 @@ run_in_tempdir {
     bif2(qw/init/);
     bif2(qw{pull hub ../hub});
 
-    isa_ok bif2(qw/show project todo@hub/), 'Bif::OK::ShowProject';
+    isa_ok bif2(qw{show project hub/todo}), 'Bif::OK::ShowProject';
 
     isa_ok exception { bif2( qw/show --uuid/, $tinfo->{uuid} ) },
       'Bif::Error::UuidNotFound';
@@ -48,12 +48,12 @@ run_in_tempdir {
     #    isa_ok exception { bif( qw/pull project/, $tinfo->{id}, qw/hub/ ) },
     #      'Bif::Error::ProjectNotFound';;
 
-    isa_ok bif2(qw/pull project todo@hub/), 'Bif::OK::PullProject';
+    isa_ok bif2(qw{pull project hub/todo}), 'Bif::OK::PullProject';
 
     isa_ok bif2(qw/show todo/), 'Bif::OK::ShowProject';
     isa_ok bif2( qw/show --uuid/, $tinfo->{uuid} ), 'Bif::OK::ShowTask';
 
-    isa_ok bif2(qw/pull project todo@hub/), 'Bif::OK::PullProject';
+    isa_ok bif2(qw{pull project hub/todo}), 'Bif::OK::PullProject';
 
     return;
 };

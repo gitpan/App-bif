@@ -10,7 +10,7 @@ run_in_tempdir {
     like exception { bif(qw/ push issue/) },    qr/usage:/, 'usage';
     like exception { bif(qw/ push issue 1 /) }, qr/usage:/, 'usage';
     isa_ok exception { bif(qw/ push issue 1 todo2/) },
-      'Bif::Error::RepoNotFound';
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
 

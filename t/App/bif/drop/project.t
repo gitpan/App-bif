@@ -7,11 +7,12 @@ use Test::More;
 
 run_in_tempdir {
 
-    isa_ok exception { bif(qw/drop project /) },     'OptArgs::Usage';
-    isa_ok exception { bif(qw/drop project todo/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/drop project /) }, 'OptArgs::Usage';
+    isa_ok exception { bif(qw/drop project todo/) },
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
-    bif(qw/init hub hub/);
+    bif(qw/init hub/);
     bif(qw/pull hub hub/);
 
     isa_ok exception { bif(qw/drop project todo/) },

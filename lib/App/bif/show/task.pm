@@ -1,86 +1,79 @@
 package App::bif::show::task;
 use strict;
 use warnings;
-use parent 'App::bif::show';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db;
-    my $info = $self->get_topic( $self->uuid2id( $self->{id} ), 'task' );
+    my $info = $self->get_topic( $self->uuid2id( $opts->{id} ), 'task' );
 
-    DBIx::ThinSQL->import(qw/sum qv concat/);
+    DBIx::ThinSQL->import(qw/sum qv concat coalesce/);
 
     my $ref = $db->xhashref(
         select => [
-            'topics.id AS id',
-            'substr(topics.uuid,1,8) as uuid',
-            "projects.path || COALESCE('\@' || h.name,'') AS path",
+            't.id AS id',
+            'substr(t.uuid,1,8) as uuid',
+            'p.fullpath AS path',
             'h.name AS hub',
             'hr.location',
-            'substr(topics2.uuid,1,8) AS project_uuid',
+            'substr(t2.uuid,1,8) AS project_uuid',
             'tasks.title AS title',
-            'topics.mtime AS mtime',
-            'topics.mtimetz AS mtimetz',
-            'topics.ctime AS ctime',
-            'topics.ctimetz AS ctimetz',
-            'changes.author AS author',
-            'changes.email AS email',
-            'changes.message AS message',
-            'task_status.status AS status',
-            'changes2.mtime AS smtime',
+            't.mtime AS mtime',
+            't.mtimetz AS mtimetz',
+            't.ctime AS ctime',
+            't.ctimetz AS ctimetz',
+            'c1.author AS author',
+            'c1.email AS email',
+            'c1.message AS message',
+            'ts.status AS status',
+            'c12.mtime AS smtime',
+            'e1.name as creator',
+            'e2.name as updator',
         ],
-        from       => 'topics',
-        inner_join => 'changes',
-        on         => 'changes.id = topics.first_change_id',
+        from       => 'topics t',
+        inner_join => 'changes c1',
+        on         => 'c1.id = t.first_change_id',
+        inner_join => 'entities e1',
+        on         => 'e2.id = c2.identity_id',
+        inner_join => 'changes c2',
+        on         => 'c2.id = t.last_change_id',
+        inner_join => 'entities e2',
+        on         => 'e1.id = c1.identity_id',
         inner_join => 'tasks',
-        on         => 'tasks.id = topics.id',
-        inner_join => 'task_status',
-        on         => 'task_status.id = tasks.status_id',
-        inner_join => 'projects',
-        on         => 'projects.id = task_status.project_id',
+        on         => 'tasks.id = t.id',
+        inner_join => 'task_status ts',
+        on         => 'ts.id = tasks.status_id',
+        inner_join => 'projects p',
+        on         => 'p.id = ts.project_id',
         left_join  => 'hubs h',
-        on         => 'h.id = projects.hub_id',
+        on         => 'h.id = p.hub_id',
         left_join  => 'hub_repos hr',
         on         => 'hr.id = h.default_repo_id',
-        inner_join => 'topics AS topics2',
-        on         => 'topics2.id = projects.id',
-        inner_join => 'changes AS changes2',
-        on         => 'changes2.id = tasks.change_id',
-        where      => [ 'topics.id = ', qv( $info->{id} ) ],
+        inner_join => 'topics t2',
+        on         => 't2.id = p.id',
+        inner_join => 'changes AS c12',
+        on         => 'c12.id = tasks.change_id',
+        where      => [ 't.id = ', qv( $info->{id} ) ],
     );
-
-    $self->init;
 
     my @data;
     my ($bold) = $self->colours('bold');
     my @ago = $self->ago( $ref->{smtime}, $ref->{mtimetz} );
 
-    push( @data, $self->header( '  ID', "$ref->{id}", $ref->{uuid} ), );
-
-    if ( $ref->{hub} ) {
-        push(
-            @data,
-            $self->header(
-                '  Project', $ref->{path},
-                "$ref->{project_uuid}\@$ref->{location}"
-            )
-        );
-    }
-    else {
-        push( @data,
-            $self->header( '  Project', $ref->{path}, $ref->{project_uuid} ) );
-    }
-
-    push(
-        @data,
-        $self->header(
-            '  Status', "$ref->{status} (" . $ago[0] . ')', $ago[1]
-        )
+    push( @data, $self->header( '  UUID', $ref->{uuid} ) );
+    my ( $t1, $t2 ) = $self->ago( $ref->{ctime}, $ref->{ctimetz} );
+    push( @data,
+        $self->header( '  Created-By', "$ref->{creator} ($t1)", $t2 ),
     );
 
-    if ( $self->{full} ) {
+    push( @data, $self->header( '  Status', "$ref->{status} [$ref->{path}]" ) );
+
+    if ( $opts->{full} ) {
         require Text::Autoformat;
         push(
             @data,
@@ -97,17 +90,14 @@ sub run {
         );
     }
 
-    push(
-        @data,
-        $self->header(
-            '  Updated', $self->ago( $ref->{mtime}, $ref->{mtimetz} )
-        ),
-    );
+    ( $t1, $t2 ) = $self->ago( $ref->{mtime}, $ref->{mtimetz} );
+    push( @data,
+        $self->header( '  Updated-By', "$ref->{updator} ($t1)", $t2 ),
+    ) unless $ref->{mtime} == $ref->{ctime};
 
     $self->start_pager;
-    print $self->render_table( 'l  l', $self->header( 'Task', $ref->{title} ),
+    print $self->render_table( 'l  l', [ $bold . 'Task', $ref->{title} ],
         \@data, 1 );
-    $self->end_pager;
 
     $self->ok( 'ShowTask', \@data );
 
@@ -118,11 +108,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show-task - display a task's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -130,7 +122,7 @@ bif-show-task - display a task's current status
 
 =head1 DESCRIPTION
 
-The C<bif show task> command displays the characteristics of an task.
+The B<bif-show-task> command displays the characteristics of an task.
 
 =head1 ARGUMENTS & OPTIONS
 

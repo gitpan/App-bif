@@ -9,7 +9,7 @@ use JSON;
 use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
 
 with 'Bif::Role::Sync';
 
@@ -189,9 +189,10 @@ sub pull_hub {
 
     $self->write( 'IMPORT', 'hub' );
 
-    my ( $action, $type ) = $self->read;
+    my ( $action, $type, $uuid ) = $self->read;
     if ( $action eq 'EXPORT' and $type eq 'hub' ) {
-        return $self->real_import_hub;
+        return 'NoUUID' unless $uuid;
+        return $self->real_import_hub($uuid);
     }
     return $action;
 }
@@ -367,21 +368,23 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #perl
+
 Bif::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
     use strict;
     use warnings;
     use AnyEvent;
-    use App::bif::Context;
+    use App::bif;
     use Bif::Client;
 
-    my $ctx = App::bif::Context->new( {} );
+    my $ctx = App::bif->new( {} );
     my $client = Bif::Client->new(
         db       => $ctx->dbw,
         location => $LOCATION,
@@ -390,6 +393,8 @@ Bif::Client - client for communication with a bif hub
     # Bif::Client is a Coro::Handle user so you want
     # to do things inside a coroutine
     async {
+        select $App::bif::pager->fh if $opts->{debug};
+
         $client->pull_hub;
     };
 

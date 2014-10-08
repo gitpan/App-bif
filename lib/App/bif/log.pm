@@ -3,40 +3,40 @@ use strict;
 use warnings;
 use feature 'state';
 use locale;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use utf8;
 use Text::Autoformat qw/autoformat/;
 
-our $VERSION = '0.1.0_28';
-
-sub init {
-    my $self = shift;
-    $self->{_now} = time;
-    $self->colours(qw/bold yellow white dark reset/);
-}
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db   = $self->db();
 
-    if ( $self->{id} ) {
-        my $info  = $self->get_topic( $self->{id} );
+    if ( $opts->{id} ) {
+        my $info  = $self->get_topic( $opts->{id} );
         my $class = "App::bif::log::$info->{kind}";
 
         if ( eval "require $class" ) {
-            $self->{path} = delete $self->{id}
+            $opts->{path} = delete $opts->{id}
               if ( $info->{kind} eq 'project' );
 
-            return $class->can('run')->($self);
+            return $class->new( db => $self->db, opts => $opts )->run;
         }
         die $@ if $@;
         return $self->err( 'LogUnimplemented',
             'cannnot log type: ' . $info->{kind} );
     }
 
-    $self->{order} = 'time';
+    $opts->{order} = 'time';
+
     require App::bif::log::repo;
-    return App::bif::log::repo::run($self);
+    return App::bif::log::repo->new(
+        opts => $opts,
+        db   => $self->db,
+    )->run($self);
 }
 
 sub reformat {
@@ -44,9 +44,9 @@ sub reformat {
     my $text  = shift;
     my $depth = shift || 0;
 
-    $depth-- if $depth;
+    #    $depth-- if $depth;
 
-    my $left   = 1 + 4 * $depth;
+    my $left   = 1 + 2 * $depth;
     my $indent = '    ' x $depth;
 
     my @result;
@@ -72,16 +72,19 @@ sub log_item {
     my $row  = shift;
     my $type = shift;
 
+    my $yellow = $self->colours('yellow');
+    my $dark   = $self->colours('yellow');
+    my $reset  = $self->colours('yellow');
+
     $title = $row->{title};
     $path  = $row->{path};
 
-    ( my $id = $row->{change_id} ) =~
-      s/(.+)\./$self->{_colours}->{yellow}$1$self->{_colours}->{dark}\./;
+    ( my $id = $row->{change_id} ) =~ s/(.+)\./$yellow$1$dark\./;
     my @data = (
         $self->header(
-            $self->{_colours}->{yellow} . $row->{change_id},
-            $self->{_colours}->{yellow} . $row->{action},
-            $row->{change_uuid}
+            $dark . $yellow . 'action',
+            $dark . $yellow . $row->{action},
+            $row->{change_id},
         ),
         $self->header( 'From', $row->{author}, $row->{email} ),
     );
@@ -119,16 +122,15 @@ sub log_comment {
     my $row  = shift;
     my @data;
 
+    state $yellow = $self->colours('yellow');
+    state $dark   = $self->colours('yellow');
+
     push(
         @data,
         $self->header(
-            $self->{_colours}->{dark}
-              . $self->{_colours}->{yellow}
-              . $row->{change_id},
-            $self->{_colours}->{dark}
-              . $self->{_colours}->{yellow}
-              . $row->{action},
-            $row->{change_uuid}
+            $dark . $yellow . 'action',
+            $dark . $yellow . $row->{action},
+            $row->{change_id},
         ),
         $self->header( 'From', $row->{author}, $row->{email} ),
     );
@@ -154,8 +156,7 @@ sub log_comment {
         push( @data, $self->header(@$field) );
     }
 
-    print $self->render_table( 'l  l', undef, \@data,
-        4 * ( $row->{depth} - 1 ) )
+    print $self->render_table( 'l  l', undef, \@data, 2 * ( $row->{depth} ) )
       . "\n";
 
     if ( $row->{push_to} ) {
@@ -171,11 +172,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #history
+
 bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

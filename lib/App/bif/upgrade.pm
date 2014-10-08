@@ -1,19 +1,21 @@
 package App::bif::upgrade;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->dbw( $self->{directory} );
+    my $self = shift;
+    my $opts = $self->opts;
+    my $dbw  = $self->dbw;
 
-    my ( $old, $new ) = $db->txn(
+    my ( $old, $new ) = $dbw->txn(
         sub {
             $self->new_change( action => 'upgrade', );
-            $db->deploy;
+            $dbw->deploy;
         }
     );
 
@@ -32,11 +34,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #admin
+
 bif-upgrade - upgrade a repository
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

@@ -1,5 +1,5 @@
 CREATE TABLE task_deltas (
-    id INTEGER NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
+    id INT NOT NULL PRIMARY KEY DEFAULT (nextval('deltas')),
     change_id INTEGER NOT NULL,
     task_id INTEGER NOT NULL,
     new INTEGER,
@@ -9,7 +9,7 @@ CREATE TABLE task_deltas (
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
     FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
     FOREIGN KEY(status_id) REFERENCES task_status(id) ON DELETE CASCADE
-) WITHOUT ROWID;
+);
 
 CREATE TRIGGER
     task_deltas_ai_2

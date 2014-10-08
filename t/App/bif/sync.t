@@ -8,18 +8,18 @@ use Test::More;
 
 run_in_tempdir {
 
-    isa_ok exception { bif(qw/sync/) }, 'Bif::Error::RepoNotFound';
+    isa_ok exception { bif(qw/sync/) }, 'Bif::Error::UserRepoNotFound';
     bif(qw/init/);
     isa_ok exception { bif(qw/sync/) }, 'Bif::Error::SyncNone';
 
-    bif(qw/init hub hub/);
+    bif(qw/init hub/);
     bif(qw/pull hub hub/);
 
     bif2(qw/init/);
     bif2(qw!pull hub ../hub!);
 
     isa_ok bif(qw/sync/), 'Bif::OK::Sync';
-    isa_ok exception { bif(qw/show project todo@hub/) },
+    isa_ok exception { bif(qw{show project hub/todo}) },
       'Bif::Error::ProjectNotFound';
 
     my $pinfo = bif(qw/new project todo title -m m1/);
@@ -27,9 +27,9 @@ run_in_tempdir {
 
     isa_ok bif2(qw/sync -m m2/), 'Bif::OK::Sync';
 
-    isa_ok bif2(qw/show project todo@hub/), 'Bif::OK::ShowProject';
+    isa_ok bif2(qw{show project hub/todo}), 'Bif::OK::ShowProject';
 
-    bif2(qw/pull project todo@hub/);
+    bif2(qw{pull project hub/todo});
 
     #    bif(qw/update todo -m m3a/);
     #    bif2(qw/update todo -m m3b/);

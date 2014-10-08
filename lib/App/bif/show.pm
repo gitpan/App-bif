@@ -1,36 +1,30 @@
 package App::bif::show;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
-
-sub init {
-    my $self = shift;
-    $self->{_now} = time;
-    $self->colours(qw/bold yellow white dark reset/);
-}
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
-    my $db   = $self->db();
+    my $self = shift;
+    my $opts = $self->opts;
 
-    if ( $self->{id} eq 'VERSION' ) {
+    if ( $opts->{id} eq 'VERSION' ) {
         require App::bif::Build;
         print "version: $App::bif::Build::VERSION\n"
           . "date:    $App::bif::Build::DATE\n"
-          . "branch:  $App::bif::Build::BRANCH\n"
-          . "commit:  $App::bif::Build::COMMIT\n"
-          . "bin:     $0\n"
-          . "lib:     $App::bif::Build::FILE\n";
+          . "commit:  $App::bif::Build::COMMIT\n";
+        print "bin:     $0\n" . "lib:     $App::bif::Build::FILE\n"
+          unless defined &static::find;
         return $self->ok('ShowVersion');
     }
 
-    my $info  = $self->get_topic( $self->uuid2id( $self->{id} ) );
+    my $info  = $self->get_topic( $self->uuid2id( $opts->{id} ) );
     my $class = "App::bif::show::$info->{kind}";
 
     if ( eval "require $class" ) {
-        $self->{path} = delete $self->{id}
+        $opts->{path} = delete $opts->{id}
           if ( $info->{kind} eq 'project' );
 
         return $class->can('run')->($self);
@@ -47,11 +41,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show - display a topic's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 

@@ -1,31 +1,33 @@
 package App::bif::sql;
 use strict;
 use warnings;
-use parent 'App::bif::Context';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif';
 
 sub run {
-    my $self = __PACKAGE__->new(shift);
+    my $self = shift;
+    my $opts = $self->opts;
     my $db;
 
-    if ( $self->{user} ) {
-        $db = $self->{write} ? $self->user_dbw : $self->user_db;
+    if ( $opts->{user} ) {
+        $db = $opts->{write} ? $self->user_dbw : $self->user_db;
     }
     else {
-        $db = $self->{write} ? $self->dbw : $self->db;
+        $db = $opts->{write} ? $self->dbw : $self->db;
     }
 
-    if ( !$self->{statement} ) {
+    if ( !$opts->{statement} ) {
         local $/;
-        $self->{statement} = <STDIN>;
+        $opts->{statement} = <STDIN>;
     }
 
-    if ( $self->{statement} =~ m/^(select)|(pragma)|(explain)/i ) {
-        my $sth = $db->prepare( $self->{statement} );
+    if ( $opts->{statement} =~ m/^(select)|(pragma)|(explain)/i ) {
+        my $sth = $db->prepare( $opts->{statement} );
         $sth->execute(@_);
 
-        if ( $self->{noprint} ) {
+        if ( $opts->{noprint} ) {
             return $sth->fetchall_arrayref;
         }
 
@@ -44,11 +46,9 @@ sub run {
 
         print $self->render_table( $header, $sth->{NAME}, $data );
 
-        $self->end_pager;
-
     }
     else {
-        print $db->do( $self->{statement} ) . "\n";
+        print $db->do( $opts->{statement} ) . "\n";
     }
 
     return 'BifSQL';
@@ -59,11 +59,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #admin
+
 bif-sql -  run an SQL command against the database
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -74,7 +76,8 @@ bif-sql -  run an SQL command against the database
 The C<bif sql> command runs an SQL statement directly against the
 database of the current bif repository.
 
-    #!sh
+=for bifcode #!sh
+
     bif sql "select id,message from changes"
 
 If C<STATEMENT> is not given on the command line it will be read from

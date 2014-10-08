@@ -1,3 +1,4 @@
+
 =head1 Bif Documentation Table of Contents
 
 =head2 Introduction & General Information
@@ -8,13 +9,13 @@
 
 =item * L<bif-doc> - bif documentation table of contents (this document)
 
-=item * L<bif-doc-changelog> - what has changed in each release
-
-=item * L<bif-doc-devel> - developer documentation
-
-=item * L<bif-doc-intro> - a hands-on quickstart introduction
+=item * L<bif-doc-about> - README file and main web page
 
 =item * L<bif-doc-faq> - frequently asked questions
+
+=item * L<bif-doc-intro> - a quick hands-on introduction
+
+
 
 =back
 
@@ -22,95 +23,270 @@
 
 =over
 
-=item * L<bif-init> - initialise a bif repository
+=item * L<bif-init> - initialize a new bif repository
+
+
 
 =back
 
-=head2 Topic Creation
+=head2 Creating Topics - Tasks, Issues, Projects...
 
 =over
 
-=item * L<bif-new-project> - initialise a bif repository
+=item * L<bif-new-identity> - create a new identity in the repository
 
-=item * L<bif-new-task> - initialise a bif repository
+=item * L<bif-new-issue> - add a new issue to a project
 
-=item * L<bif-new-issue> - initialise a bif repository
+=item * L<bif-new-project> - create a new project
+
+=item * L<bif-new-task> - add a new task to a project
+
+
 
 =back
 
-=head2 Current Information Retrieval
+=head2 Listing Topics
 
 =over
 
-=item * L<bif-list-projects> - initialise a bif repository
+=item * L<bif-list-entities> - list entities present in repository
 
-=item * L<bif-list-project-status> - initialise a bif repository
+=item * L<bif-list-hubs> - list hubs registered with current repository
 
-=item * L<bif-list-topics> - initialise a bif repository
+=item * L<bif-list-issue-status> - list valid issue status/status values
 
-=item * L<bif-show> - display a topics current status
+=item * L<bif-list-issues> - list projects' issues
 
-=item * L<bif-show-hub> - show a repository current status
+=item * L<bif-list-project-status> - list valid project status/status values
 
-=item * L<bif-show-change> - dump an change in YAML format
+=item * L<bif-list-projects> - list projects with task/issue count & progress
+
+=item * L<bif-list-task-status> - list valid task status/status values
+
+=item * L<bif-list-tasks> - list projects' tasks
+
+=item * L<bif-list-topics> - list projects' tasks and issues
+
+
 
 =back
 
-=head2 Historical Information Retrieval
+=head2 Displaying Current Status
 
 =over
 
-=item * L<bif-log> - review changes/history
+=item * L<bif-show> - display a topic's current status
 
-=item * L<bif-log-hub> - review a hub's history
+=item * L<bif-show-change> - show change information
 
-=item * L<bif-log-changes> - review all changes in current repository
+=item * L<bif-show-entity> - display a entity's current status
+
+=item * L<bif-show-hub> - display a hub's current status
+
+=item * L<bif-show-identity> - display a identity's current status
+
+=item * L<bif-show-issue> - display an issue's current status
+
+=item * L<bif-show-project> - display a project's current status
+
+=item * L<bif-show-task> - display a task's current status
+
+
 
 =back
 
-=head2 Topic Modification
+=head2 Retrieving Historical Information
+
+=over
+
+=item * L<bif-log> - review the repository or topic history
+
+=item * L<bif-log-hub> - review the history of a hub
+
+=item * L<bif-log-identity> - review the history of a identity
+
+=item * L<bif-log-issue> - review the history of a issue
+
+=item * L<bif-log-project> - review a project history
+
+=item * L<bif-log-repo> - review the history of the current repository
+
+=item * L<bif-log-task> - review a task history
+
+
+
+=back
+
+=head2 Commenting On Topics Or Modifying Their Status
+
+=over
+
+=item * L<bif-update> - change or comment a topic
+
+=item * L<bif-update-hub> - update or comment a hub
+
+=item * L<bif-update-identity> - update or comment an identity
+
+=item * L<bif-update-issue> - update an issue
+
+=item * L<bif-update-project> - update a project
+
+=item * L<bif-update-task> - update a task
+
+
+
+=back
+
+=head2 Removing Topics and Changes
 
 =over
 
 =item * L<bif-drop> - delete a topic or topic change
 
-=item * L<bif-update> - comment on or change a topic
+=item * L<bif-drop-change> - remove an change from the repository
+
+=item * L<bif-drop-issue> - remove an issue from the repository
+
+=item * L<bif-drop-project> - remove an project from the repository
+
+=item * L<bif-drop-task> - remove an task from the repository
+
+
 
 =back
 
-=head2 Distribution, Collaboration & Synchronisation
+=head2 Collaborating With Others
 
 =over
 
-=item * L<bif-pull-identity> - import project list from a hub
+=item * L<bif-pull-hub> - import project lists from a remote repository
 
-=item * L<bif-pull-hub> - import project list from a hub
+=item * L<bif-pull-identity> - import an identity from a repository
 
-=item * L<bif-pull-project> - import a project from a hub
+=item * L<bif-pull-project> - import projects from a remote hub
 
-=item * L<bif-push> - push a topic to another project
+=item * L<bif-push-issue> - push an issue to another project
 
-=item * L<bif-push-hub> - export a hub to a provider
+=item * L<bif-push-project> - export a project to a remote hub
 
-=item * L<bif-push-issue> - send an issue to another project
+=item * L<bif-sync> - exchange changes with hubs
 
-=item * L<bif-push-project> - export a project to a hub
+=item * L<bifsync> - synchronization server for bif hubs
 
-=item * L<bif-sync> - initialise a bif repository
+
 
 =back
 
-=head2 Repository & Hub Management
+=head2 Local Repository Management
 
 =over
 
-=item * L<bif-upgrade> - upgrade a repository
+=item * L<bif-new-repo> - create an empty repository
 
 =item * L<bif-sql> - run an SQL command against the database
 
-=item * L<bifhub> - bif hub management
+=item * L<bif-upgrade> - upgrade a repository
 
-=item * L<bifsync> - bif synchronization server
+
 
 =back
 
+=head2 Remote Hub Management
+
+=over
+
+=item * L<bif-doc-hub> - how to manage remote hub repositories
+
+=item * L<bif-list-hosts> - list hosts present in repository
+
+=item * L<bif-list-plans> - list plans present in repository
+
+=item * L<bif-list-providers> - list providers present in repository
+
+=item * L<bif-new-host> - create a new host in the repository
+
+=item * L<bif-new-hub> - create a new hub in the repository
+
+=item * L<bif-new-plan> - create a new plan in the repository
+
+=item * L<bif-new-provider> - create a new provider in the repository
+
+=item * L<bif-show-plan> - display a plan's current status
+
+=item * L<bif-update-plan> - update or comment an plan
+
+
+
+=back
+
+=head1 Developer Documentation
+
+=head2 Developer Introduction
+
+=over
+
+=item * L<bif-doc-design> - how and why bif does what it does
+
+=item * L<bif-doc-dev> - how to hack on bif source files
+
+=item * L<bif-doc-roadmap> - where development is focused
+
+
+
+=back
+
+=head2 Perl Module Reference Documentation
+
+=over
+
+=item * L<App::bif> - A base class for App::bif::* commands
+
+=item * L<App::bif::LAA> - Simple adapter for logging to current filehandle
+
+=item * L<App::bif::OptArgs> - bif command argument & option definitions
+
+=item * L<App::bif::Pager> - pipe output to a system (text) pager
+
+=item * L<Bif::Client> - client for communication with a bif hub
+
+=item * L<Bif::DB> - helper methods for a read-only bif database
+
+=item * L<Bif::DB::Plugin::Changes> - read-write helper methods for a bif database
+
+=item * L<Bif::DBW> - read-write helper methods for a bif database
+
+=item * L<Bif::Mo> - mini object-oriented module
+
+=item * L<Bif::Role::Sync> - synchronisation role
+
+=item * L<Bif::Role::Sync::Identity> - synchronisation role for identities
+
+=item * L<Bif::Role::Sync::Project> - synchronisation role for projects
+
+=item * L<Bif::Role::Sync::Repo> - synchronisation role for hubs
+
+=item * L<Bif::Server> - server for communication with a client
+
+
+
+=back
+
+=head2 Database Tables & Triggers
+
+=for bif-doc #dbtables
+
+=over
+
+=item To be generated.
+
+=back
+
+=head2 Database Functions
+
+=for bif-doc #dbfunc
+
+=over
+
+=item To be generated.
+
+=back

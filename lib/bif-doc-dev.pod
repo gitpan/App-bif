@@ -1,12 +1,19 @@
-README.devel - how to hack on bif
----------------------------------
+=for bif-doc #devintro
+
+=head1 NAME
+
+bif-doc-dev - how to hack on bif source files
+
+=head1 DESCRIPTION
+
+
+README.dev - how to hack on bif ---------------------------------
 
 Congratulations on checking out the bif repository, and thanks for
 taking the time and effort to contribute something back to the
 community.
 
-Dependencies
-------------
+Dependencies ------------
 
 We recommend the use of direnv (http://direnv.net) to keep bif
 development dependencies away from the rest of your system. Once you
@@ -27,8 +34,7 @@ Development dependencies can then be installed like so:
 
     cpanm --installdeps --with-develop $PWD
 
-Tidy Code
----------
+Tidy Code ---------
 
 All Perl and POD content is expected to be "tidy" according to the
 .perltidyrc and .podtidy-opts files in the source tree. The easiest way
@@ -37,8 +43,7 @@ to ensure this happens on commit is to run githook-perltidy
 
     githook-perltidy install
 
-Development bif script
-----------------------
+Development bif script ----------------------
 
 A test bif script is created in the tbin/ directory when you run
 Makefile.PL.
@@ -51,8 +56,7 @@ The great thing about direnv is that the local tbin/bif will be used
 when your current directory is in the repository, but not when you are
 elsewhere.
 
-Personal Git Branches
----------------------
+Personal Git Branches ---------------------
 
 We encourage personal development branches in the git repository. Send
 a request to the mailing list with your *public* ssh key (something
@@ -64,14 +68,14 @@ something like the following:
     git config remote.origin.url ssh://git@bifax.org:bif.git
 
     # Create your own feature branch
-    git checkout -b u/USERNAME/feature devel
+    git checkout -b u/USERNAME/feature dev
 
     # $EDIT files
     git commit
 
-    # Rebase your tree against most recent devel
+    # Rebase your tree against most recent dev
     git fetch
-    git rebase origin/devel
+    git rebase origin/dev
 
     # Upload and tell the mailing list what you have done
     git push --force origin u/USERNAME/feature
@@ -79,3 +83,4 @@ something like the following:
 This allows anyone who clones the repository to see, modify and merge
 your work from the command line, without having to visit a website to
 find where all the forks are.
+

@@ -1,17 +1,17 @@
 package App::bif::show::hub;
 use strict;
 use warnings;
-use parent 'App::bif::show';
+use Bif::Mo;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self  = __PACKAGE__->new(shift);
-    my $db    = $self->db;
-    my $hub   = $self->get_hub( $self->{name} );
-    my @repos = $db->get_hub_repos( $hub->{id} );
-
-    $self->init;
+    my $self   = shift;
+    my $opts   = $self->opts;
+    my $db     = $self->db;
+    my $hub    = $self->get_hub( $opts->{name} );
+    my @repos  = $db->get_hub_repos( $hub->{id} );
     my ($bold) = $self->colours('bold');
 
     my @data;
@@ -20,7 +20,7 @@ sub run {
         @data,
         $self->header(
             '  ID', $hub->{id},
-            $self->{full} ? $hub->{uuid} : substr( $hub->{uuid}, 1, 8 )
+            $opts->{full} ? $hub->{uuid} : substr( $hub->{uuid}, 1, 8 )
         ),
     );
 
@@ -44,10 +44,8 @@ sub run {
     );
 
     $self->start_pager;
-    print $self->render_table( 'l  l',
-        $self->header( $bold . 'Hub', $bold . $hub->{name} ),
-        \@data, 1 );
-    $self->end_pager;
+    print $self->render_table( 'l  l', [ $bold . 'Hub', $hub->{name} ], \@data,
+        1 );
 
     return $self->ok( 'ShowHub', \@data );
 }
@@ -57,11 +55,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show-hub - display a hub's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -69,7 +69,7 @@ bif-show-hub - display a hub's current status
 
 =head1 DESCRIPTION
 
-The C<bif show hub> command displays a summary of a hub's current
+The B<bif-show-hub> command displays a summary of a hub's current
 status.
 
     bif show hub local

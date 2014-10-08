@@ -1,54 +1,55 @@
 package App::bif::show::issue;
 use strict;
 use warnings;
-use parent 'App::bif::show';
-use DBIx::ThinSQL qw/qv case concat/;
+use Bif::Mo;
+use DBIx::ThinSQL qw/sum case coalesce concat qv/;
 
-our $VERSION = '0.1.0_28';
+our $VERSION = '0.1.2';
+extends 'App::bif::show';
 
 sub run {
-    my $self   = __PACKAGE__->new(shift);
+    my $self   = shift;
+    my $opts   = $self->opts;
     my $db     = $self->db;
-    my $info   = $self->get_topic( $self->uuid2id( $self->{id} ), 'issue' );
+    my $info   = $self->get_topic( $self->uuid2id( $opts->{id} ), 'issue' );
     my ($bold) = $self->colours('bold');
     my @data;
-
-    $self->init;
 
     my $ref = $db->xhashref(
         select => [
             'SUBSTR(t.uuid,1,8) as uuid', 'i.title',
             't.ctime',                    't.ctimetz',
             't.mtime',                    't.mtimetz',
+            'e1.name as creator',         'e2.name as updator',
         ],
         from       => 'topics t',
+        inner_join => 'changes c1',
+        on         => 'c1.id = t.first_change_id',
+        inner_join => 'entities e1',
+        on         => 'e2.id = c2.identity_id',
+        inner_join => 'changes c2',
+        on         => 'c2.id = t.last_change_id',
+        inner_join => 'entities e2',
+        on         => 'e1.id = c1.identity_id',
         inner_join => 'issues i',
         on         => 'i.id = t.id',
         where      => { 't.id' => $info->{id} },
     );
 
     push( @data, $self->header( '  UUID', $ref->{uuid} ), );
-    push(
-        @data,
-        $self->header(
-            '  Created', $self->ago( $ref->{ctime}, $ref->{ctimetz} )
-        ),
+    my ( $t1, $t2 ) = $self->ago( $ref->{ctime}, $ref->{ctimetz} );
+    push( @data,
+        $self->header( '  Created-By', "$ref->{creator} ($t1)", $t2 ),
     );
 
     my @refs = $db->xhashrefs(
         select => [
             'pi.id AS id',
-            concat(
-                'p.path',
-                case (
-                    when => 'h.id IS NOT NULL',
-                    then => concat( qv('@'), 'h.name' ),
-                    else => qv(''),
-                )
-              )->as('path'),
+            'p.fullpath AS path',
             'ist.status',
             'c.mtime AS mtime',
             'c.mtimetz AS mtimetz',
+            'p.hub_id',
         ],
         from       => 'project_issues pi',
         inner_join => 'projects p',
@@ -60,7 +61,7 @@ sub run {
         inner_join => 'changes c',
         on         => 'c.id = pi.change_id',
         where      => { 'pi.issue_id' => $info->{id} },
-        order_by   => 'path',
+        order_by   => [ 'p.hub_id IS NOT NULL', 'path' ],
     );
 
     my %seen;
@@ -78,17 +79,14 @@ sub run {
         );
     }
 
-    push(
-        @data,
-        $self->header(
-            '  Updated', $self->ago( $ref->{mtime}, $ref->{mtimetz} )
-        ),
-    );
+    ( $t1, $t2 ) = $self->ago( $ref->{mtime}, $ref->{mtimetz} );
+    push( @data,
+        $self->header( '  Updated-By', "$ref->{updator} ($t1)", $t2 ),
+    ) unless $ref->{mtime} == $ref->{ctime};
 
     $self->start_pager;
-    print $self->render_table( 'l  l', $self->header( 'Issue', $ref->{title} ),
+    print $self->render_table( 'l  l', [ $bold . 'Issue', $ref->{title} ],
         \@data, 1 );
-    $self->end_pager;
 
     $self->ok( 'ShowIssue', \@data );
 }
@@ -98,11 +96,13 @@ __END__
 
 =head1 NAME
 
+=for bif-doc #show
+
 bif-show-issue - display an issue's current status
 
 =head1 VERSION
 
-0.1.0_28 (2014-09-23)
+0.1.2 (2014-10-08)
 
 =head1 SYNOPSIS
 
@@ -110,7 +110,7 @@ bif-show-issue - display an issue's current status
 
 =head1 DESCRIPTION
 
-The C<bif show issue> command displays the characteristics of an issue.
+The B<bif-show-issue> command displays the characteristics of an issue.
 
 =head1 ARGUMENTS & OPTIONS
 
