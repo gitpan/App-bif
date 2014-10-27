@@ -19,6 +19,8 @@ run_in_tempdir {
 
     isa_ok bif( qw/drop issue/,         $t->{id} ), 'Bif::OK::DropNoForce';
     isa_ok bif( qw/drop issue --force/, $t->{id} ), 'Bif::OK::DropIssue';
+
+    bifcheck;
 };
 
 done_testing();

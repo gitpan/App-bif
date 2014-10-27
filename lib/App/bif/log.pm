@@ -7,7 +7,7 @@ use Bif::Mo;
 use utf8;
 use Text::Autoformat qw/autoformat/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -30,13 +30,72 @@ sub run {
             'cannnot log type: ' . $info->{kind} );
     }
 
-    $opts->{order} = 'time';
+    state $have_dbix = DBIx::ThinSQL->import(qw/ case concat coalesce sq qv/);
 
-    require App::bif::log::repo;
-    return App::bif::log::repo->new(
-        opts => $opts,
-        db   => $self->db,
-    )->run($self);
+    my ( $yellow, $reset ) = $self->colours(qw/yellow reset/);
+    my $now = $self->now;
+
+    my $sth = $db->xprepare(
+        with => 'b',
+        as   => sq(
+            select => [ 'b.change_id AS start', 'b.change_id2 AS stop' ],
+            from   => 'bifkv b',
+            where => { 'b.key' => 'last_sync' },
+        ),
+        select => [
+            '"a" || c.id AS change_id',
+            'p.fullpath AS project',
+            'COALESCE(c.author,i.shortname,e.name) AS author',
+            'COALESCE(c.email,i.shortname,e.name) AS email',
+
+            #            'c.id AS change_id',
+            'c.action',
+            'c.mtime',
+            'c.mtimetz',
+            'c.mtimetzhm',
+            qq{$now - strftime('%s', c.mtime, 'unixepoch') AS mtime_age},
+            'c.message',
+            '0 AS depth',
+            concat(
+                'c.action',
+                case (
+                    when => 'b.start',
+                    then => qv( $yellow . ' [+]' . $reset ),
+                    else => qv(''),
+                )
+            )->as('action'),
+        ],
+        from       => 'changes c',
+        left_join  => 'change_deltas cd',
+        on         => 'cd.change_id = c.id',
+        inner_join => 'entities e',
+        on         => 'e.id = c.identity_id',
+        inner_join => 'identities i',
+        on         => 'i.id = c.identity_id',
+        left_join  => 'b',
+        on         => 'c.id BETWEEN b.start+1 AND b.stop',
+        left_join  => 'tasks t',
+        on         => 't.id = cd.action_topic_id_1',
+        left_join  => 'task_status ts',
+        on         => 'ts.id = t.task_status_id',
+        left_join  => 'topics tp',
+        on         => 'tp.id = t.id',
+        left_join  => 'projects p',
+        on         => 'p.id = ts.project_id OR p.id = cd.action_topic_id_1',
+        left_join  => 'hubs h',
+        on         => 'h.id = p.hub_id',
+        order_by   => [ 'c.mtime DESC', 'c.id DESC' ],
+    );
+
+    $sth->execute;
+
+    $self->start_pager;
+
+    while ( my $row = $sth->hashref ) {
+        $self->log_comment($row);
+    }
+
+    return $self->ok('Log');
 }
 
 sub reformat {
@@ -82,18 +141,18 @@ sub log_item {
     ( my $id = $row->{change_id} ) =~ s/(.+)\./$yellow$1$dark\./;
     my @data = (
         $self->header(
-            $dark . $yellow . 'action',
+            $dark . $yellow . $row->{change_id},    #'action',
             $dark . $yellow . $row->{action},
-            $row->{change_id},
+
+            #            $row->{change_id},
         ),
         $self->header( 'From', $row->{author}, $row->{email} ),
     );
 
     push( @data, $self->header( 'To', $row->{path} ) ) if $row->{path};
-    push( @data,
-        $self->header( 'When', $self->ago( $row->{mtime}, $row->{mtimetz} ) ) );
+    push( @data, $self->header( 'When', $self->ctime_ago($row) ) );
 
-    if ( $row->{status} ) {
+    if ( $row->{title} and $row->{status} ) {
         push(
             @data,
             $self->header(
@@ -101,7 +160,7 @@ sub log_item {
             )
         );
     }
-    else {
+    elsif ( $row->{title} ) {
         push( @data,
             $self->header( 'Subject', "[$row->{path}] $row->{title}" ) );
     }
@@ -137,18 +196,18 @@ sub log_comment {
 
     $path = $row->{path} if $row->{path};
     push( @data, $self->header( 'To', $path ) ) if $path;
-    push( @data,
-        $self->header( 'When', $self->ago( $row->{mtime}, $row->{mtimetz} ) ) );
+    push( @data, $self->header( 'When', $self->mtime_ago($row) ) );
 
     if ( $row->{title} ) {
-        $title = $row->{title} if $row->{title};
-        push( @data, $self->header( 'Subject', "$title" ) );
+        $title = $row->{title} if defined $row->{title};
+        push( @data, $self->header( 'Subject', "$title" ) ) if $title;
     }
     elsif ( $row->{status} ) {
-        push( @data, $self->header( 'Subject', "[$row->{status}] $title" ) );
+        push( @data, $self->header( 'Subject', "[$row->{status}] $title" ) )
+          if $title;
     }
     else {
-        push( @data, $self->header( 'Subject', "↪ $title" ) );
+        push( @data, $self->header( 'Subject', "↪ $title" ) ) if $title;
     }
 
     foreach my $field (@_) {
@@ -178,7 +237,7 @@ bif-log - review the repository or topic history
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

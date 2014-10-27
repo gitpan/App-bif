@@ -2,13 +2,13 @@ package App::bif::pull::identity;
 use strict;
 use warnings;
 use AnyEvent;
-use Bif::Client;
+use Bif::Sync::Client;
 use Bif::Mo;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -22,7 +22,7 @@ sub run {
     $|++;
 
     my $error;
-    my $client = Bif::Client->new(
+    my $client = Bif::Sync::Client->new(
         name          => $opts->{location},
         db            => $dbw,
         location      => $opts->{location},
@@ -124,7 +124,7 @@ bif-pull-identity - import an identity from a repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

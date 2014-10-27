@@ -17,7 +17,7 @@ run_in_tempdir {
     isa_ok exception { bif(qw/ show hub unknown /) }, 'Bif::Error::HubNotFound';
 
     bif(qw/init myhub/);
-    bif(qw/pull hub myhub/);
+    bif(qw/pull hub myhub.bif/);
 
     isa_ok bif(qw/ show hub myhub/), 'Bif::OK::ShowHub';
 

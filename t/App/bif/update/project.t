@@ -27,6 +27,8 @@ run_in_tempdir {
       bif( qw/update project todo/, qw/closed --title title --message m4/ );
 
     isa_ok $u, 'Bif::OK::ChangeProject';
+
+    bifcheck;
 };
 
 done_testing();

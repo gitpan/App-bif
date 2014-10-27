@@ -218,7 +218,7 @@ run_in_tempdir {
     return;
 
     is_deeply $db->selectrow_arrayref(
-        'select tasks.status_id, tasks.change_id
+        'select tasks.task_status_id, tasks.change_id
          from tasks
          where tasks.id=?',
         undef, $id
@@ -241,7 +241,7 @@ run_in_tempdir {
       'change task status';
 
     is_deeply $db->selectrow_arrayref(
-        'select tasks.status_id, task_deltas.status_id
+        'select tasks.task_status_id, task_deltas.task_status_id
          from task_deltas
          inner join tasks
          on tasks.id = task_deltas.task_id

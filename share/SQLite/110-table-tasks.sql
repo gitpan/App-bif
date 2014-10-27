@@ -1,18 +1,18 @@
 CREATE TABLE tasks (
     id INT NOT NULL PRIMARY KEY,
     change_id INTEGER NOT NULL,
-    status_id INTEGER NOT NULL,
+    task_status_id INTEGER NOT NULL,
     title VARCHAR(1024) NOT NULL DEFAULT '',
     FOREIGN KEY(id) REFERENCES topics(id) ON DELETE CASCADE,
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
-    FOREIGN KEY(status_id) REFERENCES task_status(id) ON DELETE CASCADE
+    FOREIGN KEY(task_status_id) REFERENCES task_status(id) ON DELETE CASCADE
 );
 
 
 /*
     Used by "list topics", "list tasks"
 */
-CREATE INDEX tasks_status_id ON tasks(status_id);
+CREATE INDEX tasks_status_id ON tasks(task_status_id);
 
 CREATE TRIGGER
     tasks_ad_1
@@ -23,7 +23,7 @@ BEGIN
     SELECT debug(
         OLD.id,
         OLD.change_id,
-        OLD.status_id,
+        OLD.task_status_id,
         OLD.title
     );
 

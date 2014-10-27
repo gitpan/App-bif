@@ -5,7 +5,7 @@ use Bif::Mo;
 use IO::Prompt::Tiny qw/prompt/;
 use DBIx::ThinSQL qw/ qv sq/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub dup {
@@ -60,29 +60,18 @@ sub dup {
 
             $dbw->xdo(
                 update => 'projects',
-                set    => {
-                    local  => 1,
-                    hub_id => $dup_pinfo->{hub_id},
-                },
-                where => { id => $id },
+                set    => { local => 1, },
+                where  => { id => $id },
             );
 
             if ( $dup_pinfo->{hub_id} ) {
                 $dbw->xdo(
-                    insert_into => 'hub_deltas',
+                    insert_into => 'func_update_project',
                     values      => {
-                        change_id  => $uid,
-                        hub_id     => $dup_pinfo->{hub_id},
-                        project_id => $id,
+                        id        => $id,
+                        change_id => $uid,
+                        hub_id    => $dup_pinfo->{hub_id},
                     },
-                );
-
-                $dbw->xdo(
-                    insert_into =>
-                      [ 'func_update_project', qw/id change_id hub_uuid/ ],
-                    select => [ $id, $uid, 't.uuid' ],
-                    from   => 'topics t',
-                    where => { 't.id' => $dup_pinfo->{hub_id} },
                 );
             }
 
@@ -90,7 +79,7 @@ sub dup {
                 select    => [ 'ps.status', 'ps.rank', 'p.id AS current_id' ],
                 from      => 'project_status ps',
                 left_join => 'projects p',
-                on       => 'p.status_id = ps.id',
+                on       => 'p.project_status_id = ps.id',
                 where    => { 'ps.project_id' => $dup_pinfo->{id} },
                 order_by => 'ps.rank',
             );
@@ -123,9 +112,9 @@ sub dup {
             $dbw->xdo(
                 insert_into => 'project_deltas',
                 values      => {
-                    change_id  => $uid,
-                    project_id => $id,
-                    status_id  => $status_id,
+                    change_id         => $uid,
+                    project_id        => $id,
+                    project_status_id => $status_id,
                 },
             );
 
@@ -333,8 +322,10 @@ sub run {
             }
 
             $dbw->xdo(
-                insert_into =>
-                  [ 'project_deltas', qw/change_id project_id status_id/, ],
+                insert_into => [
+                    'project_deltas',
+                    qw/change_id project_id project_status_id/,
+                ],
                 select     => [ qv($uid), qv($id), 'project_status.id', ],
                 from       => 'default_status',
                 inner_join => 'project_status',
@@ -457,7 +448,7 @@ bif-new-project - create a new project
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

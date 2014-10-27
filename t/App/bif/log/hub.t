@@ -16,7 +16,7 @@ run_in_tempdir {
     isa_ok exception { bif(qw/ log hub junk/) }, 'Bif::Error::HubNotFound';
 
     bif(qw/init localhub/);
-    bif(qw/pull hub localhub/);
+    bif(qw/pull hub localhub.bif/);
 
     isa_ok bif(qw/log hub localhub/), 'Bif::OK::LogHub';
 

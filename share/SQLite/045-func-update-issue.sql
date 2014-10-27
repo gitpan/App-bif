@@ -2,7 +2,7 @@ CREATE TABLE func_update_issue(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL, -- This is issues.id not project_issues.id!
     project_id INTEGER NOT NULL,
-    status_id INTEGER,
+    issue_status_id INTEGER,
     title VARCHAR
 );
 
@@ -17,7 +17,7 @@ FOR EACH ROW BEGIN
         NEW.id,
         NEW.change_id,
         NEW.project_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.title
     );
 
@@ -26,14 +26,14 @@ FOR EACH ROW BEGIN
             change_id,
             issue_id,
             project_id,
-            status_id,
+            issue_status_id,
             title
         )
     VALUES(
         NEW.change_id,
         NEW.id,
         NEW.project_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.title
     );
 

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use parent 'Log::Any::Adapter::FileScreenBase';
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 
 __PACKAGE__->make_logging_methods(
     sub {
@@ -23,7 +23,7 @@ App::bif::LAA - Simple adapter for logging to current filehandle
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

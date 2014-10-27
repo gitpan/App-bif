@@ -36,6 +36,7 @@ run_in_tempdir {
     my $res = bif( qw/push issue/, $i1->{id}, qw/todo2 --message m6/ );
     isa_ok $res, 'Bif::OK::PushIssue';
 
+    bifcheck;
 };
 
 done_testing();

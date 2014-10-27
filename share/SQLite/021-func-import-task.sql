@@ -24,7 +24,7 @@ BEGIN
         func_new_task(
             change_id,
             id,
-            status_id,
+            task_status_id,
             title
         )
     SELECT

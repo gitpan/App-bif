@@ -49,12 +49,13 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: entity' || x'0A'
+                    '  _: entity' || x'0A'
                 ELSE
-                    '- _: entity_delta' || x'0A'
+                    '  _: entity_delta' || x'0A'
                 END
                 || '  contact_uuid: '
                 || COALESCE(c.uuid, '~') || x'0A'
@@ -67,7 +68,13 @@ BEGIN
                 ELSE
                     '  entity_uuid: ' || topics.uuid || x'0A'
                 END
-                || '  name: ' || COALESCE(NEW.name, '~') || x'0A'
+                || CASE WHEN
+                    instr(NEW.name, ' ')
+                THEN
+                    '  name: ''' || NEW.name || '''' || x'0A'
+                ELSE
+                    '  name: ' || COALESCE(NEW.name,'~') || x'0A'
+                END
                 || CASE WHEN
                     NEW.new
                 THEN

@@ -1,79 +1,79 @@
 package App::bif::init;
 use strict;
 use warnings;
-use App::bif::new::repo;
-use App::bif::new::identity;
-use App::bif::pull::identity;
 use Bif::Mo;
-use File::HomeDir;
-use Log::Any '$log';
-use Path::Tiny qw/path/;
+use Path::Tiny qw/cwd path/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
     my $self = shift;
     my $opts = $self->opts;
-    my $dir  = path( $opts->{name} ? $opts->{name} : '.bif' )->realpath;
+    my $dir  = cwd->child( $opts->{name} ? $opts->{name} . '.bif' : '.bif' );
 
     return $self->err( 'DirExists', 'directory exists: ' . $dir )
       if -e $dir;
 
-    my $user_repo = path( File::HomeDir->my_home, '.bifu' )->absolute;
+    require File::HomeDir;
+    my $user_repo = path( File::HomeDir->my_home )->child('.bifu');
 
-    if ( !-d $user_repo ) {
-        App::bif::new::repo->new(
+    $self->dispatch(
+        'App::bif::new::repo',
+        {
             opts => {
-                %$opts,    # for global options
                 config    => 1,
                 directory => $user_repo,
             },
             subref => sub {
-                my $dbw = shift;
 
-                App::bif::new::identity->new(
-                    dbw  => $dbw,
-                    opts => {
-                        %$opts,    # for global options
-                        self => 1,
-                    },
-                )->run;
-            },
-        )->run;
-    }
+                # This $self is a new_repo with a valid db handle
+                my $self = shift;
 
-    App::bif::new::repo->new(
-        opts => {
-            %$opts,                # for global options
-            directory => $dir,
-        },
-        subref => sub {
-            my $dbw = shift;
-
-            App::bif::pull::identity->new(
-                dbw  => $dbw,
-                opts => {
-                    %$opts,        # for global options
-                    location => $user_repo,
-                    self     => 1,
-                }
-            )->run;
-
-            if ( $opts->{name} ) {
-                require App::bif::new::hub;
-                App::bif::new::hub->new(
-                    dbw  => $dbw,
-                    opts => {
-                        %$opts,    # for global options
-                        name      => $dir->basename,
-                        locations => [ $opts->{location} || $dir ],
-                        default   => 1,
+                $self->dispatch(
+                    'App::bif::new::identity',
+                    {
+                        opts => {
+                            %$opts,    # for global options
+                            self => 1,
+                        },
                     }
-                )->run;
-            }
+                );
+            },
+        }
+    ) if !-d $user_repo;
+
+    $self->dispatch(
+        'App::bif::new::repo',
+        {
+            opts   => { directory => $dir },
+            subref => sub {
+
+                # This $self is a new_repo with a valid db handle
+                my $self = shift;
+                $self->dispatch(
+                    'App::bif::pull::identity',
+                    {
+                        opts => {
+                            location => $user_repo,
+                            self     => 1,
+                        },
+                    },
+                );
+
+                $self->dispatch(
+                    'App::bif::new::hub',
+                    {
+                        opts => {
+                            name      => $opts->{name},
+                            locations => [ $opts->{location} || $dir ],
+                            default   => 1,
+                        },
+                    }
+                ) if $opts->{name};
+            },
         },
-    )->run;
+    );
 
     return $self->ok('Init');
 }
@@ -89,7 +89,7 @@ bif-init - initialize a new bif repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
@@ -98,18 +98,18 @@ bif-init - initialize a new bif repository
 =head1 DESCRIPTION
 
 The B<bif-init> command initializes a repository ready for use by other
-bif commands. Different types of repository are created depending on
-the arguments and options provided.
+bif commands. The repository type - Working, Local Hub, or Remote Hub -
+depends on the arguments given. In addition, a special User repository
+will always be created if it doesn't exist.
 
-B<bif-init> does all of its work through other bif commands.  They are
-wrapped by this command in order to simplify common initialization
-scenarios, which are described in more detail below.
+All of the work is actually performed by other commands. They are
+wrapped by B<bif-init> in order to simplify common initialization
+scenarios, each of which is described in more detail below.
 
 =head2 User Repository
 
-B<bif-init> will always attempt to create the user repository
-F<$HOME/.bifu> if it doesn't exist. After doing so it will also create
-a new "self" identity.
+If the user repository (F<$HOME/.bifu>) does not exist B<bif-init> will
+initialize it with a "self" identity before doing anything else.
 
 =for bifcode #!sh
 
@@ -122,6 +122,8 @@ a new "self" identity.
     #   Contact Email: [your@email.adddr] 
     # Identity created: 1
 
+=begin comment
+
 The above is equivalent to the following:
 
 =for bifcode #!sh
@@ -132,16 +134,24 @@ The above is equivalent to the following:
         bif new identity --user-repo --self
     fi
 
-=head2 Current Working Repository
+=end comment
 
-When called with no arguments a regular local repository is created in
-F<$PWD/.bif>.
+After the user repository check B<bif-init> continues with the intended
+action.
+
+=head2 Working (Normal) Repository
+
+When called with no arguments a working repository is created in
+F<$PWD/.bif> and the "self" identity is imported from the User
+repository.
 
 =for bifcode #!sh
     
     bif init
     # Creating repository: $PWD/.bif (v323)
     # Importing identity ($HOME/.bifu): received: 1/1
+
+=begin comment
 
 The individual steps for initializing a normal local repository would
 look something like this:
@@ -151,13 +161,26 @@ look something like this:
     bif new repo .bif/
     bif pull identity $USER_REPO --self
 
-=head2 Hub Repositories
+=end comment
 
-When the NAME argument is given on its own a I<local hub> repository is
-initialized.
+The current working repository is where most project management actions
+take place.
 
-The individual steps for initializing a I<local hub> repository would
-look something like this:
+=head2 Local Hub Repository
+
+When the NAME argument is given on its own a I<local> hub repository is
+initialized in F<NAME.bif>.
+
+=for bifcode #!sh
+
+    bif init myhub
+    # Creating repository: myhub.bif (v323)
+    # Importing identity ($HOME/.bifu): received: 1/1
+    # Hub created: myhub
+
+=begin comment
+
+For the above case the individual steps would look something like this:
 
 =for bifcode #!sh
 
@@ -168,72 +191,57 @@ look something like this:
     bif new hub $NAME $DIR --default
     cd ..
 
-=head2 Remote "Hub" Repository
+=end comment
 
-A remote repository is a little different to the above cases, as it
-requires that you are first have a local repository, are registered
-with a hub provider, and have signed up for a plan:
+A purely local hub repository is really only useful for debugging
+synchonization operations, or if several people are working on a
+project together inside a single machine. The L<bif-pull-hub> command
+is used to "register" a local hub with the current working repository:
+
+=for bifcode #!sh
+    
+    bif pull hub myhub.bif
+    # myhub.bif: received: 2/2
+    # Hub pulled: myhub
+
+=head2 Remote Hub Repository
+
+Initializing a I<remote> hub repository can only be performed from a
+previously initialized working repository. It also requires that you
+have registered with a hub provider and have signed up for a hosting
+plan.
 
 =for bifcode #!sh
 
     bif init
-    bif register PROVIDER
+    bif pull provider PROVIDER
     bif list plans
     bif signup PLAN
 
-Then you can initialize the remote hub at a particular host:
+You can initialize a remote hub by specifying the provider's host as
+the LOCATION.
 
     bif list hosts
-    bif init NAME LOCATION
+    bif init myhub host.provider
 
-The individual steps for initializing a I<remote hub> repository would
-look something like this:
-
-=for bifcode #!sh
-
-    bif new hub $NAME
-    bif push hub $NAME $HOST --default
-
-=over
-
-=item No arguments
-
-A local "current" repository will be initialized in F<$PWD/.bif/>.
-
-=item NAME only
-
-A local "hub" repository with NAME will be initialized in
-F<$PWD/NAME/>.
-
-=item NAME and LOCATION
-
-A local "hub" repository with NAME will be initialized in
-F<$PWD/NAME/>.
-
-A remote "hub" repository with NAME will be initialized at the remote
-HOST.
-
-=back
-
-=head2 Arguments & Options
+=head1 ARGUMENTS & OPTIONS
 
 =over
 
 =item NAME
 
-The name of the new I<hub> repository
+The name of a new hub repository
 
-=item HOST
+=item LOCATION
 
-The host location of the new I<hub> repository when it is remote, which
-must be attached to a valid plan that has been signed up for.
+The location of a new I<remote> hub repository.
 
 =back
 
 Note that the global C<--user-repo> option does not apply in the
 context of B<bif-init> and is ignored.
 
-=head2 Errors
+=head1 ERRORS
 
 =over
 

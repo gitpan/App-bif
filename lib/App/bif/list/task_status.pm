@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -49,7 +49,7 @@ bif-list-task-status - list valid task status/status values
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

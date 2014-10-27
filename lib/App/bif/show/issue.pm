@@ -4,7 +4,7 @@ use warnings;
 use Bif::Mo;
 use DBIx::ThinSQL qw/sum case coalesce concat qv/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::show';
 
 sub run {
@@ -13,14 +13,23 @@ sub run {
     my $db     = $self->db;
     my $info   = $self->get_topic( $self->uuid2id( $opts->{id} ), 'issue' );
     my ($bold) = $self->colours('bold');
+    my $now    = $self->now;
     my @data;
 
     my $ref = $db->xhashref(
         select => [
-            'SUBSTR(t.uuid,1,8) as uuid', 'i.title',
-            't.ctime',                    't.ctimetz',
-            't.mtime',                    't.mtimetz',
-            'e1.name as creator',         'e2.name as updator',
+            'SUBSTR(t.uuid,1,8) as uuid',
+            'i.title',
+            't.ctime',
+            't.ctimetz',
+            't.ctimetzhm AS ctimetzhm',
+            "$now - t.ctime AS ctime_age",
+            't.mtime',
+            't.mtimetz',
+            't.mtimetzhm AS mtimetzhm',
+            "$now - t.mtime AS mtime_age",
+            'e1.name as creator',
+            'e2.name as updator',
         ],
         from       => 'topics t',
         inner_join => 'changes c1',
@@ -37,7 +46,7 @@ sub run {
     );
 
     push( @data, $self->header( '  UUID', $ref->{uuid} ), );
-    my ( $t1, $t2 ) = $self->ago( $ref->{ctime}, $ref->{ctimetz} );
+    my ( $t1, $t2 ) = $self->ctime_ago($ref);
     push( @data,
         $self->header( '  Created-By', "$ref->{creator} ($t1)", $t2 ),
     );
@@ -49,6 +58,8 @@ sub run {
             'ist.status',
             'c.mtime AS mtime',
             'c.mtimetz AS mtimetz',
+            'c.mtimetzhm AS mtimetzhm',
+            "$now - c.mtime AS mtime_age",
             'p.hub_id',
         ],
         from       => 'project_issues pi',
@@ -57,7 +68,7 @@ sub run {
         left_join  => 'hubs h',
         on         => 'h.id = p.hub_id',
         inner_join => 'issue_status ist',
-        on         => 'ist.id = pi.status_id',
+        on         => 'ist.id = pi.issue_status_id',
         inner_join => 'changes c',
         on         => 'c.id = pi.change_id',
         where      => { 'pi.issue_id' => $info->{id} },
@@ -68,7 +79,7 @@ sub run {
     my $count = @refs;
     my $i     = 1;
     foreach my $ref (@refs) {
-        my @ago = $self->ago( $ref->{mtime}, $ref->{mtimetz} );
+        my @ago = $self->mtime_ago($ref);
 
         push(
             @data,
@@ -79,7 +90,7 @@ sub run {
         );
     }
 
-    ( $t1, $t2 ) = $self->ago( $ref->{mtime}, $ref->{mtimetz} );
+    ( $t1, $t2 ) = $self->mtime_ago($ref);
     push( @data,
         $self->header( '  Updated-By', "$ref->{updator} ($t1)", $t2 ),
     ) unless $ref->{mtime} == $ref->{ctime};
@@ -102,7 +113,7 @@ bif-show-issue - display an issue's current status
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

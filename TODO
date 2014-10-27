@@ -1,3 +1,5 @@
+- bifsync $SIG{__WARN__} handler into log::any->warn
+
 - per repo bifkv last_sync values
 
 - Store tree information for issue push history to be shown by
@@ -51,7 +53,7 @@ local) hub.
 
 * Think about the difference in transactions between clients and
 servers. For example, a project push can fail due to an issue/task
-problem, but at the moment Bif::Server will commit the addition of the
+problem, but at the moment Bif::Sync::Server will commit the addition of the
 project to its hub_related_updates table while the client doesn't. One
 solution is possibly to dynamically generate and sync the hub merkle
 tree based on ... project_updates_merkle if it existed? We might

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -18,7 +18,7 @@ sub run {
             select     => 'task_status.project_id',
             from       => 'tasks',
             inner_join => 'task_status',
-            on         => 'task_status.id = tasks.status_id',
+            on         => 'task_status.id = tasks.task_status_id',
             where      => { 'tasks.id' => $info->{id} },
         );
 
@@ -47,7 +47,7 @@ sub run {
                 select     => 'p.path',
                 from       => 'tasks t',
                 inner_join => 'task_status ts',
-                on         => 'ts.id = t.status_id',
+                on         => 'ts.id = t.task_status_id',
                 inner_join => 'projects p',
                 on         => 'p.id = ts.project_id',
                 where      => { 't.id' => $info->{id} },
@@ -63,8 +63,8 @@ sub run {
                 values      => {
                     id        => $info->{id},
                     change_id => $opts->{change_id},
-                    $opts->{title} ? ( title     => $opts->{title} )   : (),
-                    $status_ids    ? ( status_id => $status_ids->[0] ) : (),
+                    $opts->{title} ? ( title => $opts->{title} ) : (),
+                    $status_ids ? ( task_status_id => $status_ids->[0] ) : (),
                 },
             );
 
@@ -105,7 +105,7 @@ bif-update-task - update a task
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

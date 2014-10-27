@@ -1,3 +1,28 @@
+0.1.4 (2014-10-27)
+
+    API / Behaviour Changes:
+        - Renamed bif-log-repo to bif-list-actions
+        - Local hubs are now postfixed with .bif.
+
+    New Features:
+        - New bif-drop-hub command
+
+    Enhancements:
+        - Make bif-init error much quicker when repository already
+          exists
+        - Re-worked Bif::Sync|Client|Server as normal single
+          inheritance model under Bif::Sync.
+        - Removal of Role::Basic and POSIX as dependencies
+        - Start of Win32 support.
+        - Small documentation updates.
+        - New App::bif::Editor to replace Proc::InvokeEditor
+        - bif-log is now consistent with other bif-log-* commands
+        - Record & display duplicate changes received
+        - Most tests now conclude with a bif-check
+
+    Bug Fixes:
+        - Fix a timing issue in bif-list-actions
+
 0.1.2 (2014-10-08)
 
     Initial Release.

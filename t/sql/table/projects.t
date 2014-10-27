@@ -158,7 +158,7 @@ run_in_tempdir {
             LEFT JOIN
                 topics AS pus -- project_delta_status
             ON
-                pus.id = project_deltas.status_id
+                pus.id = project_deltas.project_status_id
             LEFT JOIN
                 project_status_deltas AS psu
             ON
@@ -189,7 +189,7 @@ run_in_tempdir {
                 'select project_status.status
                 from projects
                 inner join project_status
-                on projects.status_id = project_status.id
+                on projects.project_status_id = project_status.id
                 where projects.id=?',
                 undef, $id
               ),
@@ -330,8 +330,8 @@ run_in_tempdir {
 
             is_deeply $db->selectrow_arrayref(
                 'select
-                     projects.status_id,
-                     project_deltas.status_id
+                     projects.project_status_id,
+                     project_deltas.project_status_id
                  from project_deltas
                  inner join projects
                  on projects.id = project_deltas.project_id

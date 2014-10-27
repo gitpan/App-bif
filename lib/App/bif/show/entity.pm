@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::show';
 
 sub run {
@@ -15,18 +15,19 @@ sub run {
     my @data;
 
     DBIx::ThinSQL->import(qw/sum case coalesce concat qv/);
+    my $now = $self->now;
 
     my $ref = $db->xhashref(
         select => [
             't.id',
             'substr(t.uuid,1,8) as uuid',
             'e.name',
-            'c.contact_id != e.id AS other_contact',
-            'c.name AS contact',
-            't.ctime',
-            't.ctimetz',
-            't.mtime',
-            't.mtimetz',
+            'e.contact_id != e.id AS other_contact',
+            'ec.name AS contact',
+            't.mtime AS mtime',
+            't.mtimetz AS mtimetz',
+            'c.mtimetzhm AS mtimetzhm',
+            "$now - c.mtime AS mtime_age",
             'c.author',
             'c.email',
             'c.message',
@@ -39,8 +40,8 @@ sub run {
         on         => 't.id = e.id',
         inner_join => 'changes c',
         on         => 'c.id = t.first_change_id',
-        inner_join => 'entities c',
-        on         => 'c.id = e.contact_id',
+        inner_join => 'entities ec',
+        on         => 'ec.id = e.contact_id',
         inner_join => 'hubs h',
         on         => 'h.id = e.hub_id',
         inner_join => 'hub_repos hr',
@@ -53,13 +54,10 @@ sub run {
 
     my ($bold) = $self->colours('bold');
 
-    push(
-        @data,
+    push( @data,
         $self->header( '  UUID', $ref->{uuid} ),
         $self->header( '  Hub', $ref->{hub_name}, $ref->{hub_location} ),
-        $self->header(
-            '  Updated', $self->ago( $ref->{mtime}, $ref->{mtimetz} )
-        ),
+        $self->header( '  Updated', $self->mtime_ago($ref) ),
     );
 
     push( @data, $self->header( '  Contact', $ref->{contact} ), )
@@ -106,7 +104,7 @@ bif-show-entity - display a entity's current status
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

@@ -2,12 +2,12 @@ package App::bif::sync;
 use strict;
 use warnings;
 use AnyEvent;
-use Bif::Client;
+use Bif::Sync::Client;
 use Bif::Mo;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -47,7 +47,7 @@ sub run {
         my $error;
         my $cv = AE::cv;
 
-        my $client = Bif::Client->new(
+        my $client = Bif::Sync::Client->new(
             name          => $hub->{name},
             db            => $dbw,
             location      => $hub->{location},
@@ -177,7 +177,7 @@ bif-sync -  exchange changes with hubs
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

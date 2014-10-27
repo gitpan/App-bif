@@ -1,6 +1,6 @@
 package App::bif::OptArgs;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 
 package    # do a little hiding
   App::bif;
@@ -58,11 +58,26 @@ opt user_repo => (
 );
 
 # ------------------------------------------------------------------------
+# bif check
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => 'check',
+    hidden  => 1,
+    comment => 'check all changeset UUIDs',
+);
+
+opt verbose => (
+    isa     => 'Bool',
+    alias   => 'v',
+    comment => 'display YAML differences',
+);
+
+# ------------------------------------------------------------------------
 # bif init
 # ------------------------------------------------------------------------
 subcmd(
     cmd     => 'init',
-    comment => 'initialize a new repository or hub',
+    comment => 'initialize a new repository',
 );
 
 arg name => (
@@ -153,19 +168,6 @@ arg method => (
 arg value => (
     isa     => 'Str',
     comment => 'The contact value',
-);
-
-# ------------------------------------------------------------------------
-# new host
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new host/],
-    comment => 'create a new provider host',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'name of the host in format [PROVIDER:]NAME',
 );
 
 # ------------------------------------------------------------------------
@@ -299,50 +301,6 @@ opt tasks => (
 );
 
 # ------------------------------------------------------------------------
-# new plan
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new plan/],
-    hidden  => 1,
-    comment => 'create a new plan',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'name of the plan in format [PROVIDER:]NAME',
-);
-
-arg title => (
-    isa     => 'Str',
-    greedy  => 1,
-    comment => 'title of the plan',
-);
-
-# ------------------------------------------------------------------------
-# new provider
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/new provider/],
-    hidden  => 1,
-    comment => 'create a new provider',
-);
-
-arg name => (
-    isa     => 'Str',
-    comment => 'name of the provider',
-);
-
-arg method => (
-    isa     => 'Str',
-    comment => 'The contact type (email, phone, etc)',
-);
-
-arg value => (
-    isa     => 'Str',
-    comment => 'The contact value',
-);
-
-# ------------------------------------------------------------------------
 # bif new task
 # ------------------------------------------------------------------------
 subcmd(
@@ -399,6 +357,20 @@ arg items => (
     isa      => 'SubCmd',
     comment  => '',
     required => 1,
+);
+
+# ------------------------------------------------------------------------
+# bif list repo
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/list actions/],
+    comment => 'list actions in the current repository',
+);
+
+opt action => (
+    isa     => 'Bool',
+    alias   => 'a',
+    comment => 'order actions by action ID instead of time'
 );
 
 # ------------------------------------------------------------------------
@@ -693,6 +665,20 @@ arg path => (
 );
 
 # ------------------------------------------------------------------------
+# bif show table
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/show table/],
+    comment => 'summarize the current status of a table',
+);
+
+arg name => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'table name',
+);
+
+# ------------------------------------------------------------------------
 # bif show task
 # ------------------------------------------------------------------------
 subcmd(
@@ -829,27 +815,6 @@ arg id => (
 );
 
 # ------------------------------------------------------------------------
-# bif log repo
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/log repo/],
-    comment => 'review history of current repository',
-);
-
-opt full => (
-    isa     => 'Bool',
-    alias   => 'f',
-    comment => 'include all actions',
-);
-
-opt order => (
-    isa     => 'Str',
-    alias   => 'o',
-    default => 'time',
-    comment => 'the field to order changes by [time|uid]'
-);
-
-# ------------------------------------------------------------------------
 # bif update
 # ------------------------------------------------------------------------
 subcmd(
@@ -978,32 +943,6 @@ opt title => (
 );
 
 # ------------------------------------------------------------------------
-# change plan
-# ------------------------------------------------------------------------
-subcmd(
-    cmd     => [qw/update plan/],
-    comment => 'update a provider plan',
-);
-
-arg id => (
-    isa      => 'Int',
-    required => 1,
-    comment  => 'plan ID',
-);
-
-opt add => (
-    isa     => 'ArrayRef',
-    alias   => 'a',
-    comment => 'hosts to add to plan',
-);
-
-opt remove => (
-    isa     => 'ArrayRef',
-    alias   => 'r',
-    comment => 'hosts to remove from plan',
-);
-
-# ------------------------------------------------------------------------
 # bif update project
 # ------------------------------------------------------------------------
 subcmd(
@@ -1072,6 +1011,20 @@ opt force => (
     isa     => 'Bool',
     alias   => 'f',
     comment => 'Do not ask for confirmation',
+);
+
+# ------------------------------------------------------------------------
+# bif drop hub
+# ------------------------------------------------------------------------
+subcmd(
+    cmd     => [qw/drop hub/],
+    comment => 'remove a hub',
+);
+
+arg name => (
+    isa      => 'Str',
+    required => 1,
+    comment  => 'hub name (TODO: or ID)',
 );
 
 # ------------------------------------------------------------------------
@@ -1441,7 +1394,7 @@ App::bif::OptArgs - bif command argument & option definitions
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

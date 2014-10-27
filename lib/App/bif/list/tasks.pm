@@ -4,7 +4,7 @@ use warnings;
 use utf8;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -20,7 +20,7 @@ sub run {
 
         #        inner_join => 'project_status',
         #        on         => [
-        #            'projects.status_id = project_status.id AND ',
+        #            'projects.project_status_id = project_status.id AND ',
         #            'project_status.status = ',
         #            qv('active')
         #        ],
@@ -41,7 +41,7 @@ sub run {
             ],
             from       => 'task_status',
             inner_join => 'tasks',
-            on         => 'tasks.status_id = task_status.id',
+            on         => 'tasks.task_status_id = task_status.id',
             where      => {
                 'task_status.project_id' => $project->[0],
                 do {
@@ -59,7 +59,7 @@ sub run {
         next unless $data;
 
         require Term::ANSIColor;
-        my $dark  = Term::ANSIColor::color('dark');
+        my $dark  = Term::ANSIColor::color('yellow');
         my $bold  = Term::ANSIColor::color('white');
         my $reset = Term::ANSIColor::color('reset');
 
@@ -99,7 +99,7 @@ bif-list-tasks - list projects' tasks
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

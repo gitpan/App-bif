@@ -8,6 +8,7 @@ use Exporter::Tidy default => [
       bif
       bif2
       bifsync
+      bifcheck
       debug_on
       debug_off
       new_test_change
@@ -54,7 +55,7 @@ sub run_in_tempdir (&) {
 }
 
 sub bif {
-    my @bif = ( qw/ --no-pager /, @_ );
+    my @bif = ( @_, qw/ --no-pager / );
 
     my $stdout;
     my $junk;
@@ -114,6 +115,12 @@ sub bifsync {
     die $err if $err;
 
     return $result;
+}
+
+sub bifcheck {
+    my $res = eval { bif('check') };
+    Test::More::isa_ok( $res, 'Bif::OK::Check' );
+    Test::More::diag $@ if $@;
 }
 
 my $DEBUG;

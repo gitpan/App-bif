@@ -28,7 +28,7 @@ bif - distributed bug tracking tool
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
@@ -116,7 +116,7 @@ standard Create, Retrieve, Update and Delete (CRUD) database
 application. The end goal is a distributed communication system that
 carries both conversations and structured meta-data. The finer details
 of the advantages and trade-offs with regards the bif design can be
-found in L<bif-doc-design>(3) and L<bif-doc-faq>(3).
+found in L<bif-doc-design> and L<bif-doc-faq>.
 
 =head2 Terminology
 
@@ -124,17 +124,17 @@ found in L<bif-doc-design>(3) and L<bif-doc-faq>(3).
 
 =item Repository
 
-A bif repository is simply a configuration file and an SQLite database
+A bif repository is usually a configuration file and an SQLite database
 inside a directory named F<.bif>. The database contains the history,
 status and relationships of a set of topics.  All bif commands find the
-"current" repository by searching upwards through the file-system for
-such a directory. The terms repository and database are often used
-interchangeably.
+"current working" repository by searching upwards through the
+file-system for such a directory. The terms repository and database are
+often used interchangeably.
 
 =item Hub
 
-A bif hub is conceptually synonymous with a project organisation. It
-consists of one or more remote repositories that act as synchronisation
+A bif hub is conceptually synonymous with a project organisation. It is
+located across one or more repositories that act as synchronisation
 points for exchanging project activities.  A hub can be referred to by
 its globally unique name (typically an organisation's domain name)
 after it has been registered (see L<bif-pull-hub>) with the local
@@ -142,12 +142,12 @@ repository.
 
 =item Topic
 
-Topic is is a catch-all term for any task, issue, bug or feature etc
-which has a conversation (the history) plus associated meta data
-(status). Topics are identified by an integer ID which is unique to the
-local repository. Some topic types (issues for example) can be
-associated with multiple projects in which case they have multiple IDs
-and multiple status values.
+Topic is is a catch-all term for a task, issue, bug, feature etc - even
+a hub.  Topics are identified by an integer ID which is unique to the
+local repository, or by a hexidecimal UUID which is globally unique.
+Some topic types (issues for example) can be associated with multiple
+projects in which case they have multiple IDs and multiple status
+values.
 
 =item Project
 
@@ -167,19 +167,19 @@ language describes actions - verb followed by subject. For example
 C<bif list topics> or C<bif update issue 34>. The top level bif verbs
 are as follows:
 
-    drop            remove an item from the database
-    init            initialize a new repository in .bif
-    list            list various things in the database
-    log             review change history and comments
-    new             create a new topic
-    pull            import something from elsewhere
-    push            export something to somewhere else
-    show            summarize the current status of a topic
-    signup          sign up with a hub provider
-    sql             run an SQL command against the database
-    sync            exchange updates with a hub
-    update          update or comment a topic
-    upgrade         upgrade a repository
+    drop              remove an item from the database
+    init              initialize a new repository or hub
+    list              list topics in the repository
+    log               view comments and status history
+    new               create a new topic
+    pull              import topics from elsewhere
+    push              export topics to somewhere else
+    show              display a topic's current status
+    signup            sign up with a hub provider
+    sql               run an SQL command against the database
+    sync              exchange changes with a hub
+    update            comment on or modify a topic
+    upgrade           upgrade a repository
 
 In addition, a couple of useful aliases are created by default:
 
@@ -419,83 +419,11 @@ change. However you will find that as soon as you re-synchronise with a
 hub that has those changes they will return to haunt you like the
 undead.
 
-=head2 Scenario 2 - Reporting Issues Upstream
+=head2 Scenario 2 - Distributed Project Team
 
 The above scenario only uses local operations.  However the real value
 of bif comes from its collaboration capabilities with others via the
-internet. The second scenario presents the situation where a user has
-an issue they want to report to a project team.
-
-=begin graph-easy
-
-    (Local Repository [issue])
-    (Remote Hub [project])
-
-    [issue] --> [project]
-
-
-=end graph-easy 
-
-    + - - - - - - - - - -+     +- - - - - - - +
-    ' Local Repository   '     ' Remote Hub   '
-    '                    '     '              '
-    ' +----------------+ '     ' +----------+ '
-    ' |     issue      | ' --> ' | project  | '
-    ' +----------------+ '     ' +----------+ '
-    '                    '     '              '
-    + - - - - - - - - - -+     +- - - - - - - +
-
-=head3 Signing up with a provider
-
-As previously mentioned, a remote repository known as a hub is the
-mechanism for exchanging updates with others.  You can either self host
-a hub on a server you control, or you can use a commercial provider.
-Regardless of who is hosting, the communication with the server is via
-ssh, for which you will want your own ssh keypair.
-
-Read the L<ssh-keygen>(1) manpage for how to create a keypair, and
-L<ssh-copy-id>(1) for how to transfer the public key to your own
-server.  Commercial providers will probably use another method (such as
-the L<bifhub>(1) tool) for transfering the public key during their
-signup process.
-
-=head3 Registering With A Hub
-
-The reason for registering with a hub is to obtain the list of projects
-hosted there.
-
-=for bifcode #!sh
-
-    bif pull hub my.org@provider.com
-
-By default the C<my.org> part of the provider address can be used as
-the hub name in other commands.  To view the list of projects we give
-the hub alias to the L<bif-list-projects> command:
-
-=for bifcode #!sh
-
-    bif list projects my.org
-
-Registering a project brings in a shallow copy - only the project and
-its status types are visible. The local user can create issues against
-this project just as if the project was local.
-
-=head3 Synchronising & Reviewing Updates
-
-Updates such as new topics or updates to existing topics are not
-exchanged until you run the L<bif-sync> command.
-
-    bif sync
-
-What is useful after a L<bif-sync> call is to review what updates were
-transfered from the hub to the local repository. The L<bif-log> command
-(an alias for L<bif-log-repo> does just that.
-
-=for bifcode #!sh
-
-    bif log repo
-
-=head2 Scenario 3 - Project Team
+internet. The second scenario presents the
 
 Project team members probably want to know about every issue and task
 in a project.
@@ -546,6 +474,41 @@ in a project.
     '             '     '                                    '
     + - - - - - - +     + - - - - - - - - - - - - - - - - - -+
 
+
+=head3 Signing up with a provider
+
+As previously mentioned, a remote repository known as a hub is the
+mechanism for exchanging updates with others.  You can either self host
+a hub on a server you control, or you can use a commercial provider.
+Regardless of who is hosting, the communication with the server is via
+ssh, for which you will want your own ssh keypair.
+
+Read the L<ssh-keygen>(1) manpage for how to create a keypair, and
+L<ssh-copy-id>(1) for how to transfer the public key to your own
+server. Hub providers will probably use another method for transfering
+the public key during their signup process.
+
+=head3 Registering With A Hub
+
+The reason for registering with a hub is to obtain the list of projects
+hosted there.
+
+=for bifcode #!sh
+
+    bif pull hub my.org@provider.com
+
+By default the C<my.org> part of the provider address can be used as
+the hub name in other commands.  To view the list of projects we give
+the hub alias to the L<bif-list-projects> command:
+
+=for bifcode #!sh
+
+    bif list projects my.org
+
+Registering a project brings in a shallow copy - only the project and
+its status types are visible. The local user can create issues against
+this project just as if the project was local.
+
 =head3 Importing Projects
 
 A developer must also sign up and register a hub as described
@@ -567,6 +530,50 @@ that you want to see locally. As time goes on and projects are created
 and then completed, their relevance becomes less and less. New team
 members are not forced to download the entire project history to work
 on the current project.
+
+=head3 Exporting Projects
+
+How did a project get up to a hub in the first place? Well the inverse
+of L<bif-pull-project> is L<bif-push-project>.  To mirror the todo
+project I<from> the local repository I<to> the bifax.org hub for
+example we would run the following:
+
+=for bifcode #!sh
+
+    bif push project todo bifax.org
+
+As with importing, exporting a project is a one-off activity; further
+updates are exchanged with the L<bif-sync> command.
+
+=head3 Synchronising & Reviewing Updates
+
+Updates such as new topics or updates to existing topics are not
+exchanged until you run the L<bif-sync> command.
+
+    bif sync [ID] [HUB]
+
+By default all topics will be synchronised to all relevant hubs, but
+you can limit that as desired.
+
+=for bifcode #!sh
+
+    bif sync -p unstable   # ignore all other projects
+
+[TODO: describe the merge algorithm for meta data]
+
+What is useful after a L<bif-sync> call is to review what updates were
+transfered from the hub to the local repository. The L<bif-log> command
+(an alias for L<bif-log-repo> does just that.
+
+=for bifcode #!sh
+
+    bif log repo
+
+Actions that were transferred into the local repository during the last
+sync are marked in the output of the log and list commands. New topics
+are prefixed with a "+". Updated topics are prefixed with a "+-".
+
+=head2 Advanced Topic Management
 
 =head3 Inter-Project Issue Collaboration
 
@@ -618,40 +625,7 @@ in a project that you regularly want to use in other projects. Once
 again however, L<bif-new-project> probably has more interesting
 mechanisms for copying template-style projects.
 
-=head3 Synchronising Updates
-
-Even after you have imported or exported a project, updates will not be
-exchanged until you run the L<bif-sync> command.
-
-    bif sync [ID] [HUB]
-
-By default all topics will be synchronised to all relevant hubs, but
-you can limit that as desired.
-
-=for bifcode #!sh
-
-    bif sync unstable   # ignore all other projects
-
-[TODO: describe the merge algorithm for meta data]
-
-=head2 Scenario 4 - Project Manager
-
-=head3 Exporting Projects
-
-How did a project get up to a hub in the first place? Well the inverse
-of L<bif-pull-project> is L<bif-push-project>.  To mirror the todo
-project I<from> the local repository I<to> the bifax.org hub for
-example we would run the following:
-
-=for bifcode #!sh
-
-    bif push project todo bifax.org
-
-As with importing, exporting a project is a one-off activity; further
-updates are exchanged with the L<bif-sync> command.
-
-
-=head3 Making New Releases
+=head3 Making A New Release
 
 Consider what happens when a software team makes a new stable release
 from their development version. This is effectively an internal fork -
@@ -689,12 +663,30 @@ also occurs when software has external dependencies.  To address this
 bif makes it possible (under certain conditions) to collaborate on an
 issue across multiple hubs.  [to be implemented]
 
-=head3 Hub Administration
+=head3 External Collaboration
 
-Bif is also used to create and manage hub repositories hosted by a hub
-provider. However to keep I<this> document focused on local repository
-operations the documentation for hub management is maintained
-separately in L<bifhub>.
+Imagine the situation where a (non-team-member) user has an issue they
+want to report to a project team.
+
+=begin graph-easy
+
+    (Local Repository [issue])
+    (Remote Hub [project])
+
+    [issue] --> [project]
+
+
+=end graph-easy 
+
+    + - - - - - - - - - -+     +- - - - - - - +
+    ' Local Repository   '     ' Remote Hub   '
+    '                    '     '              '
+    ' +----------------+ '     ' +----------+ '
+    ' |     issue      | ' --> ' | project  | '
+    ' +----------------+ '     ' +----------+ '
+    '                    '     '              '
+    + - - - - - - - - - -+     +- - - - - - - +
+
 
 =head2 Repository Administration
 
@@ -710,6 +702,130 @@ management is L<bif-sql>. This is more of a developer or debugging aide
 for querying the database directly. This is needed as the bif software
 architecture prevents the SQLite command-line tool C<sqlite3> from
 working for some statements.
+
+=head2 Hub Administration
+
+Bif is also used to create and manage hub repositories hosted by a hub
+provider.
+
+=head3 Quickstart
+
+If you want to create a new hub and already know the provider's plan &
+host(s) you wish to use, you can get up and running with the following
+command inside an initialized repository:
+
+    bif signup --create hub.name bifhub.com:plan host
+
+This is equivalent to the following:
+
+    bif pull provider bifhub.com
+    bif new hub hub.name
+    bif signup hub.name plan
+    bif push hub hub.name host
+
+=head3 Importing a providers plans and locations
+
+The second step is to register a hub provider, in order to see their
+hosts and/or availabe plans.
+
+=for bifcode #!sh
+
+    bif pull provider bifhub.com
+
+Listing the offers (plans) and locations (hosts) is possible with the
+appropriate C<list> command:
+
+=for bifcode #!sh
+
+    bif list hosts
+
+    bif list plans
+
+=head3 Signing up for a plan
+
+=for bifcode #!sh
+
+    bif signup my.org bifhub.com:plan2
+
+This will do a check with the provider to ensure that the name has not
+been already taken. If successful you should be able to see the
+invoice:
+
+=for bifcode #!sh
+
+    bif list invoices
+
+=head3 Initializing A Hub
+
+The L<bif-init> command is also used to create a hub repository when
+given the appropriate arguments.
+
+    bif init [NAME] [LOCATION]
+
+The first argument to the C<init> command is the name of your hub.  The
+name is representative of your project organisation, and should be
+globally unique. We generally recommend to use something similar to a
+DNS zone.
+
+When the LOCATION specified matches one of the hosts from a provider
+than the initialization happens remotely.
+
+=head3 Team communication
+
+After a push your hub will be available on the designated hosts, and
+you can inform your team how to register their L<bif> repositories with
+the hub:
+
+    Hi team,
+
+    Our collaboration hub has been created at the following location:
+
+        your.org@zrh.bifhub.com
+    
+    To access the hub send us your identity from a local bif
+    repository:
+
+=for bifcode #!sh
+
+        bif init
+        bif push identity 1 your.org@zrh.bifhub.com
+
+    Once we have enabled the permissions you can register the hub:
+
+=for bifcode #!sh
+
+        bif pull hub your.org@zrh.bifhub.com
+
+    And then import the "devel" project to work on straight away.
+        
+=for bifcode #!sh
+
+        bif pull project devel
+
+        # bif new issue/task etc...
+
+    Don't forget to sync regularly.
+
+=for bifcode #!sh
+
+        bif sync
+
+    Thanks,
+    PM
+
+=head3 Managing the hub
+
+You can at any time confirm the hub and its status:
+
+=for bifcode #!sh
+
+    bif list hubs
+
+    bif show hub ID
+
+At some point in the future there will be actions that a hub manager
+can take, such as allowing access, defining roles & permissions, paying
+invoices and so on.
 
 =head1 FILES
 
@@ -735,7 +851,7 @@ Current repository database.
 
 =head1 SEE ALSO
 
-L<bifhub>(1), L<bifsync>(1)
+L<bifsync>(1)
 
 =head1 SUPPORT
 

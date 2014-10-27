@@ -7,7 +7,7 @@ use Config::Tiny;
 use Log::Any '$log';
 use Path::Tiny qw/path tempdir/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 has subref => ( is => 'ro', );
@@ -21,7 +21,6 @@ sub run {
 
     $opts->{directory} = path( $opts->{directory} );
     $opts->{directory}->parent->mkpath;
-    $opts->{directory} = $opts->{directory}->realpath;
 
     my $tempdir = tempdir(
         DIR     => $opts->{directory}->parent,
@@ -33,17 +32,31 @@ sub run {
 
     my $dbw = $self->dbw;
 
-    $dbw->txn(
-        sub {
-            $|++;
-            printf "Creating repository: %s", $opts->{directory};
+    # On windows at least, an SQLite handle on the database prevents a
+    # rename or temp directory removal. Unfortunately, doing the
+    # eval/disconnect check below results in the "uncleared implementors
+    # data" warning on error. For the moment I would prefer the warning
+    # than have the user left with a temporary directory to clean up.
 
-            my ( $old, $new ) = $dbw->deploy;
-            print " (v$new)\n";
+    eval {
+        $dbw->txn(
+            sub {
+                $|++;
+                printf "Creating repository: %s", $opts->{directory};
 
-            $self->subref->($dbw) if $self->subref;
-        }
-    );
+                my ( $old, $new ) = $dbw->deploy;
+                print " (v$new)\n";
+
+                $self->subref->($self) if $self->subref;
+            }
+        );
+    };
+
+    if ( my $err = $@ ) {
+        $dbw->disconnect;
+        Carp::croak $err;
+    }
+    $dbw->disconnect;
 
     if ( $opts->{config} ) {
         my $conf = Config::Tiny->new;
@@ -60,11 +73,15 @@ sub run {
 
     # We don't care if this fails as it is just a convenience for being
     # able to run commands inside a repo.
-    symlink( '.', $tempdir->child('.bif') );
+    symlink( '.', $tempdir->child('.bif') ) unless $self->MSWin32;
 
     $tempdir->move( $opts->{directory} )
       || return $self->err( 'Rename',
         "rename $tempdir $opts->{directory}: $!" );
+
+    # Rebuild the dbw for further commands?
+    $self->repo( $opts->{directory} );
+    $self->dbw( $self->_build_dbw );
 
     return $self->ok('NewRepo');
 }
@@ -74,13 +91,13 @@ __END__
 
 =head1 NAME
 
-=for bif-doc #admin
+=for bif-doc #devadmin
 
 bif-new-repo -  create an empty repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

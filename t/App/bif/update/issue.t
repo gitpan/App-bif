@@ -24,6 +24,8 @@ run_in_tempdir {
       bif( qw/update issue/, $t->{id}, qw/closed --title title --message m4/ );
 
     isa_ok $u, 'Bif::OK::ChangeIssue';
+
+    bifcheck;
 };
 
 done_testing();

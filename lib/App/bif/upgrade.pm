@@ -2,29 +2,30 @@ package App::bif::upgrade;
 use strict;
 use warnings;
 use Bif::Mo;
-use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
     my $self = shift;
-    my $opts = $self->opts;
     my $dbw  = $self->dbw;
 
-    my ( $old, $new ) = $dbw->txn(
+    $dbw->txn(
         sub {
-            $self->new_change( action => 'upgrade', );
-            $dbw->deploy;
+            my ( $old, $new ) = $dbw->deploy;
+            $self->new_change( action => "upgrade from v$old to v$new" );
+
+            if ( $new > $old ) {
+                printf( "Database upgraded (v%s-v%s)\n", $old, $new );
+            }
+            else {
+                printf( "Database remains at v%s\n", $new );
+            }
+
+            printf("Checking UUIDs");
+            $self->dispatch('App::bif::check');
         }
     );
-
-    if ( $new > $old ) {
-        printf( "Database upgraded (v%s-v%s)\n", $old, $new );
-    }
-    else {
-        printf( "Database remains at v%s\n", $new );
-    }
 
     return $self->ok('Upgrade');
 }
@@ -40,31 +41,25 @@ bif-upgrade - upgrade a repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
-    bif upgrade [DIRECTORY] [OPTIONS...]
+    bif upgrade [OPTIONS...]
 
 =head1 DESCRIPTION
 
-Upgrade a repository to match the version of the installed B<bif>
-software.
+The B<bif-upgrade> command upgrades the current repository database to
+match the running version of bif. Before the upgrade is committed the
+L<bif-check> command is run to ensure the respository information is
+consistent.
 
-As an advanced command, C<upgrade> is only shown in usage messages when
-C<--help> is given.
+As an administration command, B<bif-upgrade> is only shown in usage
+messages when the C<--help> option is used.
 
-=head1 ARGUMENTS
+=head1 ARGUMENTS & OPTIONS
 
-=over
-
-=item DIRECTORY
-
-Upgrade the repository found in DIRECTORY instead of the current
-working repository which is the first F<.bif/> directory found when
-searching upwards through the filesystem.
-
-=back
+Global options only.
 
 =head1 SEE ALSO
 

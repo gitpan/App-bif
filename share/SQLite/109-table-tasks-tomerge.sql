@@ -1,7 +1,7 @@
 CREATE TABLE tasks_tomerge(
     task_id INTEGER NOT NULL UNIQUE,
     parent_id INTEGER DEFAULT 0,
-    status_id INTEGER DEFAULT 0,
+    task_status_id INTEGER DEFAULT 0,
     title INTEGER DEFAULT 0,
     resolve INTEGER,
     FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE
@@ -107,7 +107,7 @@ ON
     tasks_tomerge
 FOR EACH ROW WHEN
     NEW.resolve = 1 AND
-    OLD.status_id != 0
+    OLD.task_status_id != 0
 BEGIN
 
     SELECT debug(
@@ -118,9 +118,9 @@ BEGIN
     UPDATE
         tasks
     SET
-        status_id = (
+        task_status_id = (
             SELECT
-                task_deltas.status_id
+                task_deltas.task_status_id
             FROM
                 task_deltas
             INNER JOIN
@@ -129,7 +129,7 @@ BEGIN
                 changes.id = task_deltas.change_id
             WHERE
                 task_deltas.task_id = OLD.task_id AND
-                task_deltas.status_id IS NOT NULL
+                task_deltas.task_status_id IS NOT NULL
             ORDER BY
                 changes.mtime DESC,
                 changes.uuid
@@ -147,7 +147,7 @@ BEGIN
                 changes.id = task_deltas.change_id
             WHERE
                 task_deltas.task_id = OLD.task_id AND
-                task_deltas.status_id IS NOT NULL
+                task_deltas.task_status_id IS NOT NULL
             ORDER BY
                 changes.mtime DESC,
                 changes.uuid

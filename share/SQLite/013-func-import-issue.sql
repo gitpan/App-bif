@@ -24,7 +24,7 @@ BEGIN
         func_new_issue(
             change_id,
             topic_id,
-            status_id,
+            issue_status_id,
             title
         )
     SELECT

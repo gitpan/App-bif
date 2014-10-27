@@ -10,15 +10,18 @@ run_in_tempdir {
 
     isa_ok exception { bif(qw/pull hub/) }, 'OptArgs::Usage';
 
-    isa_ok exception { bif(qw/pull hub hub/) }, 'Bif::Error::UserRepoNotFound';
+    isa_ok exception { bif(qw/pull hub hub.bif/) },
+      'Bif::Error::UserRepoNotFound';
 
     bif(qw/init/);
-    isa_ok exception { bif(qw/pull hub hub/) }, 'Bif::Error::HubNotFound';
+    isa_ok exception { bif(qw/pull hub hub.bif/) }, 'Bif::Error::HubNotFound';
 
     bif(qw/init hub/);
-    isa_ok bif(qw/pull hub hub/), 'Bif::OK::PullHub';
+    isa_ok bif(qw/pull hub hub.bif/), 'Bif::OK::PullHub';
 
-    isa_ok exception { bif(qw/pull hub hub/) }, 'Bif::Error::RepoExists';
+    isa_ok exception { bif(qw/pull hub hub.bif/) }, 'Bif::Error::RepoExists';
+
+    bifcheck;
 };
 
 run_in_tempdir {
@@ -51,10 +54,10 @@ run_in_tempdir {
         "select id from topics where uuid='$iinfo->{uuid}'" );
     is $ref->[0][0], $iinfo->{topic_id}, 'uuid -> id';
 
-    isa_ok bif2(qw{pull hub ../hub}), 'Bif::OK::PullHub';
+    isa_ok bif2(qw{pull hub ../hub.bif}), 'Bif::OK::PullHub';
     bif2(qw/push project todo hub/);
 
-    isa_ok bif(qw/pull hub hub/), 'Bif::OK::PullHub';
+    isa_ok bif(qw/pull hub hub.bif/), 'Bif::OK::PullHub';
     my $list = bif(qw/list hubs/);
     isa_ok $list, 'Bif::OK::ListHubs';    # TODO need to do better than this
 
@@ -68,6 +71,7 @@ run_in_tempdir {
         "select id from topics where uuid='$iinfo->{uuid}'" );
     is $ref->[0][0], undef, 'pull not include issues';
 
+    bifcheck;
 };
 
 done_testing();

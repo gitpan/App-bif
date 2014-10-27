@@ -24,6 +24,8 @@ run_in_tempdir {
       bif( qw/update task/, $t->{id}, qw/done --title title --message m4/ );
 
     isa_ok $u, 'Bif::OK::ChangeTask';
+
+    bifcheck;
 };
 
 done_testing();

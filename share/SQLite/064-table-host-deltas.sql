@@ -42,12 +42,13 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: host' || x'0A'
+                    '  _: host' || x'0A'
                 ELSE
-                    '- _: host_delta' || x'0A'
+                    '  _: host_delta' || x'0A'
                     || '  host_uuid: ' || topics.uuid || x'0A'
                 END
                 || '  name: ' || COALESCE(NEW.name,'~') || x'0A'

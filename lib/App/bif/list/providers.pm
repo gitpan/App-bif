@@ -4,14 +4,14 @@ use warnings;
 use Bif::Mo;
 use Term::ANSIColor 'color';
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
     my $self  = shift;
     my $opts  = $self->opts;
     my $db    = $self->db;
-    my $dark  = color('dark');
+    my $dark  = color('yellow');
     my $reset = color('reset');
 
     DBIx::ThinSQL->import(qw/ case qv sum sq/);
@@ -67,7 +67,7 @@ bif-list-providers - list providers present in repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

@@ -31,6 +31,7 @@ run_in_tempdir {
     my $i2 = bif(qw/new issue -p todo title -m m3 -s stalled/);
     isa_ok $i2, 'Bif::OK::NewIssue';
 
+    bifcheck;
 };
 
 done_testing();

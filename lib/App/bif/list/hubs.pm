@@ -4,7 +4,7 @@ use warnings;
 use Bif::Mo;
 use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -16,7 +16,7 @@ sub run {
 
     my $data = $db->xarrayrefs(
         select => [
-            concat( qv( color('dark') ), 't.kind', qv( color('reset') ) )
+            concat( qv( color('yellow') ), 't.kind', qv( color('reset') ) )
               ->as('type'),
             'h.id',
             'COALESCE(h.name,"") AS hname',
@@ -56,7 +56,7 @@ bif-list-hubs - list hubs registered with current repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

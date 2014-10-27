@@ -4,18 +4,18 @@ CREATE TABLE issue_deltas (
     new INTEGER,
     issue_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
-    status_id INTEGER,
+    issue_status_id INTEGER,
     title VARCHAR(1024),
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
     FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY(status_id) REFERENCES issue_status(id) ON DELETE CASCADE
+    FOREIGN KEY(issue_status_id) REFERENCES issue_status(id) ON DELETE CASCADE
 );
 
 CREATE INDEX
-    issue_deltas_issue_id_status_id
+    issue_deltas_issue_id_issue_status_id
 ON
-    issue_deltas(issue_id,status_id)
+    issue_deltas(issue_id,issue_status_id)
 ;
 
 CREATE TRIGGER
@@ -23,7 +23,7 @@ CREATE TRIGGER
 AFTER INSERT ON
     issue_deltas
 FOR EACH ROW WHEN
-    NEW.status_id IS NOT NULL
+    NEW.issue_status_id IS NOT NULL
 BEGIN
 
     SELECT debug(
@@ -31,7 +31,7 @@ BEGIN
         NEW.change_id,
         NEW.issue_id,
         NEW.project_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.title
     );
 
@@ -55,7 +55,7 @@ BEGIN
         'TRIGGER issue_deltas_ai_1',
         NEW.change_id,
         NEW.issue_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.title
     );
 
@@ -80,20 +80,29 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: issue' || x'0A'
+                    '  _: issue' || x'0A'
                     || '  issue_status_uuid: '
                     || COALESCE(status.uuid, '~') || x'0A'
                 ELSE
-                    '- _: issue_delta' || x'0A'
+                    '  _: issue_delta' || x'0A'
                     || '  issue_status_uuid: '
                     || COALESCE(status.uuid, '~') || x'0A'
                     || '  issue_uuid: ' || topics.uuid || x'0A'
+                    || '  project_uuid: '
+                        || COALESCE(projects.uuid, '~') || x'0A'
                 END
-                || '  project_uuid: ' || COALESCE(projects.uuid, '~') || x'0A'
-                || '  title: ' || COALESCE(NEW.title, '~') || x'0A'
+                || CASE WHEN
+                    instr(NEW.title, ' ')
+                THEN
+                    '  title: ''' || NEW.title || '''' || x'0A'
+                ELSE
+                    '  title: ' 
+                    || COALESCE(NEW.title,'~') || x'0A'
+                END
                 || CASE WHEN
                     NEW.new
                 THEN
@@ -110,7 +119,7 @@ BEGIN
             LEFT JOIN
                 topics AS status
             ON
-                status.id = NEW.status_id
+                status.id = NEW.issue_status_id
             WHERE
                 topics.id = NEW.issue_id
         )
@@ -159,13 +168,13 @@ CREATE TRIGGER
 AFTER DELETE ON
     issue_deltas
 FOR EACH ROW WHEN
-    OLD.status_id IS NOT NULL
+    OLD.issue_status_id IS NOT NULL
 BEGIN
 
     SELECT debug(
         OLD.change_id,
         OLD.issue_id,
-        OLD.status_id,
+        OLD.issue_status_id,
         OLD.title
     );
 
@@ -192,7 +201,7 @@ BEGIN
     SELECT debug(
         OLD.change_id,
         OLD.issue_id,
-        OLD.status_id,
+        OLD.issue_status_id,
         OLD.title
     );
 

@@ -6,8 +6,10 @@ CREATE TABLE topics (
     kind VARCHAR NOT NULL,
     ctime INTEGER NOT NULL,
     ctimetz INTEGER NOT NULL,
+    ctimetzhm VARCHAR, -- NOT NULL
     mtime INTEGER NOT NULL,
     mtimetz INTEGER NOT NULL,
+    mtimetzhm VARCHAR, -- NOT NULL
     lang VARCHAR(8) NOT NULL DEFAULT 'en',
     hash VARCHAR,
     delta_id INTEGER NOT NULL DEFAULT (nextval('deltas')),
@@ -17,6 +19,62 @@ CREATE TABLE topics (
 );
 
 SELECT create_sequence('topics');
+
+CREATE TRIGGER
+    topics_ai_1
+AFTER INSERT ON
+    topics
+FOR EACH ROW
+BEGIN
+    UPDATE
+        topics
+    SET
+        ctimetzhm = printf(
+            "%+.2d%.2d",
+            CAST(NEW.ctimetz / 3600 AS INTEGER),
+            (
+                abs(NEW.ctimetz) -
+                CAST(abs(NEW.ctimetz) / 3600 AS INTEGER) * 3600
+            ) / 60
+        ),
+        mtimetzhm = printf(
+            "%+.2d%.2d",
+            CAST(NEW.mtimetz / 3600 AS INTEGER),
+            (
+                abs(NEW.mtimetz) -
+                CAST(abs(NEW.mtimetz) / 3600 AS INTEGER) * 3600
+            ) / 60
+        )
+    WHERE
+        id = NEW.id
+    ;
+END;
+
+
+CREATE TRIGGER
+    topics_au_1
+AFTER UPDATE OF
+    mtimetz
+ON
+    topics
+FOR EACH ROW
+BEGIN
+    UPDATE
+        topics
+    SET
+        mtimetzhm = printf(
+            "%+.2d%.2d",
+            CAST(NEW.mtimetz / 3600 AS INTEGER),
+            (
+                abs(NEW.mtimetz) -
+                CAST(abs(NEW.mtimetz) / 3600 AS INTEGER) * 3600
+            ) / 60
+        )
+    WHERE
+        id = NEW.id
+    ;
+END;
+
 
 CREATE TRIGGER
     topics_bi_1

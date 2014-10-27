@@ -48,13 +48,14 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: project_status' || x'0A'
+                    '  _: project_status' || x'0A'
                     || '  project_uuid: ' || p.uuid || x'0A'
                 ELSE
-                    '- _: project_status_delta' || x'0A'
+                    '  _: project_status_delta' || x'0A'
                     || '  project_status_uuid: ' || topics.uuid || x'0A'
                 END
                 || '  rank: ' || COALESCE(NEW.rank, '~') || x'0A'

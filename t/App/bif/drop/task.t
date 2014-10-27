@@ -19,6 +19,8 @@ run_in_tempdir {
 
     isa_ok bif( qw/drop task/,         $t->{id} ), 'Bif::OK::DropNoForce';
     isa_ok bif( qw/drop task --force/, $t->{id} ), 'Bif::OK::DropTask';
+
+    bifcheck;
 };
 
 done_testing();

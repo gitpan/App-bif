@@ -1,29 +1,18 @@
-package Bif::Client;
+package Bif::Sync::Client;
 use strict;
 use warnings;
 use AnyEvent;
 use Bif::Mo;
 use Coro::Handle;
-use DBIx::ThinSQL qw/sq/;
-use JSON;
-use Role::Basic qw/with/;
 use Sys::Cmd qw/spawn/;
 
-our $VERSION = '0.1.2';
-
-with 'Bif::Role::Sync';
-
-has db => (
-    is       => 'ro',
-    required => 1,
-);
+our $VERSION = '0.1.4';
+extends 'Bif::Sync';
 
 has name => (
     is       => 'ro',
     required => 1,
 );
-
-has debug => ( is => 'ro' );
 
 has location => ( is => 'ro', );
 
@@ -48,45 +37,9 @@ has stderr_watcher => ( is => 'rw' );
 
 has debug_bifsync => ( is => 'ro' );
 
-has changes_tosend => ( is => 'rw', default => 0 );
-
-has changes_torecv => ( is => 'rw', default => 0 );
-
-has changes_sent => ( is => 'rw', default => 0 );
-
-has changes_recv => ( is => 'rw', default => 0 );
-
-has on_update => (
-    is      => 'rw',
-    default => sub {
-        sub { }
-    }
-);
-
 has rh => ( is => 'rw' );
 
 has wh => ( is => 'rw' );
-
-has json => ( is => 'rw', default => sub { JSON->new->utf8 } );
-
-has on_error => ( is => 'ro', required => 1 );
-
-has temp_table => (
-    is       => 'rw',
-    init_arg => undef,
-    default  => sub {
-        my $self = shift;
-        my $tmp = 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) );
-
-        $self->db->do( "CREATE TEMPORARY TABLE "
-              . $tmp . "("
-              . "id INTEGER UNIQUE ON CONFLICT IGNORE,"
-              . "ucount INTEGER"
-              . ")" );
-
-        return $tmp;
-    },
-);
 
 sub BUILD {
     my $self = shift;
@@ -99,9 +52,15 @@ sub BUILD {
         );
     }
     else {
+        my @bifsync = ('bifsync');
+        if ( $^O eq 'MSWin32' ) {
+            require Path::Tiny;
+            @bifsync = ( $^X, Path::Tiny::path($0)->parent->child('bifsync') );
+        }
+
         $self->child(
             spawn(
-                  'bifsync', $self->debug_bifsync
+                @bifsync, $self->debug_bifsync
                 ? '--debug'
                 : (),
                 $self->location
@@ -137,8 +96,39 @@ sub BUILD {
     $self->wh(
         Coro::Handle->new_from_fh( $self->child->stdin, timeout => 30 ) );
 
-    $self->json->pretty if $self->debug;
+    $self->new_temp_table;
     return;
+}
+
+sub trigger_on_update {
+    my $self = shift;
+    if ( $self->changes_tosend ) {
+        if ( $self->changes_torecv ) {
+            $self->on_update->( 'sent: '
+                  . ( $self->changes_sent // '' ) . '/'
+                  . $self->changes_tosend
+                  . ' received: '
+                  . ( $self->changes_recv // '' ) . '/'
+                  . $self->changes_torecv
+                  . ' duplicates: '
+                  . $self->changes_dup );
+        }
+        else {
+            $self->on_update->( 'sent: '
+                  . ( $self->changes_sent // '' ) . '/'
+                  . $self->changes_tosend );
+        }
+    }
+    elsif ( $self->changes_torecv ) {
+        $self->on_update->( 'received: '
+              . ( $self->changes_recv // '' ) . '/'
+              . $self->changes_torecv
+              . ' duplicates: '
+              . $self->changes_dup );
+    }
+    else {
+        $self->on_update->('no changes');
+    }
 }
 
 sub bootstrap_identity {
@@ -149,6 +139,8 @@ sub bootstrap_identity {
     my ( $action, $type, $uuid ) = $self->read;
     return $action
       unless ( $action eq 'EXPORT' and $type eq 'identity', and $uuid );
+
+    require Bif::Sync::Plugin::Identity;
 
     my $status = $self->real_import_identity;
     return $status unless $status eq 'IdentityImported';
@@ -192,6 +184,7 @@ sub pull_hub {
     my ( $action, $type, $uuid ) = $self->read;
     if ( $action eq 'EXPORT' and $type eq 'hub' ) {
         return 'NoUUID' unless $uuid;
+        require Bif::Sync::Plugin::Repo;
         return $self->real_import_hub($uuid);
     }
     return $action;
@@ -213,6 +206,7 @@ sub sync_hub {
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'SYNC' and $type eq 'hub' ) {
+        require Bif::Sync::Plugin::Repo;
         return $self->real_sync_hub($id);
     }
     elsif ( $action eq 'RepoMatch' ) {
@@ -224,6 +218,7 @@ sub sync_hub {
 
 sub transfer_hub_changes {
     my $self = shift;
+    require Bif::Sync::Plugin::Repo;
 
     $self->write( 'TRANSFER', 'hub_changes' );
     return $self->real_transfer_hub_changes;
@@ -246,6 +241,8 @@ sub import_project {
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'SYNC' and $type eq 'project' ) {
+        require Bif::Sync::Plugin::Project;
+
         my $result = $self->real_sync_project( $pinfo->{id} );
         if ( $result eq 'ProjectSync' or $result eq 'ProjectMatch' ) {
             my $status = $self->transfer_project_related_changes;
@@ -298,6 +295,7 @@ sub sync_projects {
     return $action unless ( $action eq 'SYNC' and $type eq 'projects' );
 
     foreach my $id (@ids) {
+        require Bif::Sync::Plugin::Project;
         my $status = $self->real_sync_project( $id, \@ids );
         return $status unless $status eq 'ProjectSync';
     }
@@ -307,6 +305,7 @@ sub sync_projects {
 
 sub transfer_project_related_changes {
     my $self = shift;
+    require Bif::Sync::Plugin::Project;
 
     $self->write( 'TRANSFER', 'project_related_changes' );
     return $self->real_transfer_project_related_changes;
@@ -320,6 +319,7 @@ sub export_project {
 
     my ( $action, $type ) = $self->read;
     if ( $action eq 'IMPORT' and $type eq 'project' ) {
+        require Bif::Sync::Plugin::Project;
         return $self->real_export_project( $pinfo->{id} );
     }
     return $action;
@@ -370,11 +370,11 @@ __END__
 
 =for bif-doc #perl
 
-Bif::Client - client for communication with a bif hub
+Bif::Sync::Client - client for communication with a bif hub
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
@@ -382,15 +382,15 @@ Bif::Client - client for communication with a bif hub
     use warnings;
     use AnyEvent;
     use App::bif;
-    use Bif::Client;
+    use Bif::Sync::Client;
 
     my $ctx = App::bif->new( {} );
-    my $client = Bif::Client->new(
+    my $client = Bif::Sync::Client->new(
         db       => $ctx->dbw,
         location => $LOCATION,
     );
 
-    # Bif::Client is a Coro::Handle user so you want
+    # Bif::Sync::Client is a Coro::Handle user so you want
     # to do things inside a coroutine
     async {
         select $App::bif::pager->fh if $opts->{debug};
@@ -402,13 +402,13 @@ Bif::Client - client for communication with a bif hub
 
 =head1 DESCRIPTION
 
-B<Bif::Client> is a class for communicating with a bif hub.
+B<Bif::Sync::Client> is a class for communicating with a bif hub.
 
 =head1 CONSTRUCTOR
 
 =over 4
 
-=item Bif::Client->new( db => $dbh, hub => $location )
+=item Bif::Sync::Client->new( db => $dbh, hub => $location )
 
 =back
 
@@ -475,7 +475,7 @@ the same. This method only results in project-only changes.
 
 =head1 SEE ALSO
 
-L<Bif::Server>
+L<Bif::Sync::Server>
 
 =head1 AUTHOR
 

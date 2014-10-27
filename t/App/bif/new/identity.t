@@ -23,6 +23,8 @@ run_in_tempdir {
 
     isa_ok bif(qw/ new identity name method value -m m3/),
       'Bif::OK::NewIdentity';
+
+    bifcheck;
 };
 
 done_testing();

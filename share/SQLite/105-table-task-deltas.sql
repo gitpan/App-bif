@@ -3,12 +3,12 @@ CREATE TABLE task_deltas (
     change_id INTEGER NOT NULL,
     task_id INTEGER NOT NULL,
     new INTEGER,
-    status_id INTEGER,
+    task_status_id INTEGER,
     title VARCHAR(1024),
     UNIQUE(change_id,task_id), -- one change per change
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
     FOREIGN KEY(task_id) REFERENCES tasks(id) ON DELETE CASCADE,
-    FOREIGN KEY(status_id) REFERENCES task_status(id) ON DELETE CASCADE
+    FOREIGN KEY(task_status_id) REFERENCES task_status(id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER
@@ -16,7 +16,7 @@ CREATE TRIGGER
 AFTER INSERT ON
     task_deltas
 FOR EACH ROW WHEN
-    NEW.status_id IS NOT NULL
+    NEW.task_status_id IS NOT NULL
 BEGIN
     -- This catches the current change project for the task
     INSERT INTO
@@ -32,7 +32,7 @@ BEGIN
     FROM
         task_status ts
     WHERE
-        ts.id = NEW.status_id
+        ts.id = NEW.task_status_id
     ;
 
 END;
@@ -47,7 +47,7 @@ BEGIN
     SELECT debug(
         NEW.change_id,
         NEW.task_id,
-        NEW.status_id,
+        NEW.task_status_id,
         NEW.title
     );
 
@@ -72,12 +72,13 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: task' || x'0A'
+                    '  _: task' || x'0A'
                 ELSE
-                    '- _: task_delta' || x'0A'
+                    '  _: task_delta' || x'0A'
                 END
                 || '  task_status_uuid: '
                 || COALESCE(status.uuid, '~') || x'0A'
@@ -88,7 +89,14 @@ BEGIN
                 ELSE
                     '  task_uuid: ' || topics.uuid || x'0A'
                 END
-                || '  title: ' || COALESCE(NEW.title, '~') || x'0A'
+                || CASE WHEN
+                    instr(NEW.title, ' ')
+                THEN
+                    '  title: ''' || NEW.title || '''' || x'0A'
+                ELSE
+                    '  title: ' 
+                    || COALESCE(NEW.title,'~') || x'0A'
+                END
                 || CASE WHEN
                     NEW.new
                 THEN
@@ -101,7 +109,7 @@ BEGIN
             LEFT JOIN
                 topics as status
             ON
-                status.id = NEW.status_id
+                status.id = NEW.task_status_id
             WHERE
                 topics.id = NEW.task_id
         )
@@ -125,7 +133,7 @@ BEGIN
     INNER JOIN
         task_status ts
     ON
-        ts.id = t.status_id
+        ts.id = t.task_status_id
     WHERE
         t.id = NEW.task_id
     ;
@@ -139,7 +147,7 @@ BEGIN
     UPDATE
         tasks_tomerge
     SET
-        status_id = status_id + (NEW.status_id IS NOT NULL),
+        task_status_id = task_status_id + (NEW.task_status_id IS NOT NULL),
         title    = title + (NEW.title IS NOT NULL)
     WHERE
         task_id = NEW.task_id
@@ -158,7 +166,7 @@ BEGIN
     SELECT debug(
         OLD.change_id,
         OLD.task_id,
-        OLD.status_id,
+        OLD.task_status_id,
         OLD.title
     );
 
@@ -171,7 +179,7 @@ BEGIN
     UPDATE
         tasks_tomerge
     SET
-        status_id = status_id + (OLD.status_id IS NOT NULL),
+        task_status_id = task_status_id + (OLD.task_status_id IS NOT NULL),
         title    = title + (OLD.title IS NOT NULL)
     WHERE
         task_id = OLD.task_id

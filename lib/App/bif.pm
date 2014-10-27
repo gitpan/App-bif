@@ -10,8 +10,10 @@ use File::HomeDir;
 use Log::Any qw/$log/;
 use Path::Tiny qw/path rootdir cwd/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 our $pager;
+
+sub MSWin32 { $^O eq 'MSWin32' }
 
 has db => (
     is      => 'ro',
@@ -19,7 +21,7 @@ has db => (
 );
 
 has dbw => (
-    is      => 'ro',
+    is      => 'rw',           # for bif-new-repo?
     default => \&_build_dbw,
 );
 
@@ -60,7 +62,7 @@ has term_width => (
     is      => 'ro',
     default => sub {
         my $width;
-        if ( $^O eq 'MSWin32' ) {
+        if (MSWin32) {
             require Term::Size::Win32;
             $width = ( Term::Size::Win32::chars(*STDOUT) )[0] || 80;
         }
@@ -77,7 +79,7 @@ has term_height => (
     is      => 'ro',
     default => sub {
         my $height;
-        if ( $^O eq 'MSWin32' ) {
+        if (MSWin32) {
             require Term::Size::Win32;
             $height = ( Term::Size::Win32::chars(*STDOUT) )[1] || 40;
         }
@@ -110,7 +112,7 @@ sub BUILD {
     my $opts = $self->opts;
 
     # For Term::ANSIColor
-    #    $ENV{ANSI_COLORS_DISABLED} = !$is_term || $opts->{no_color};
+    $ENV{ANSI_COLORS_DISABLED} = $opts->{no_color} || !-t STDOUT;
 
     binmode STDIN,  ':encoding(utf8)';
     binmode STDOUT, ':encoding(utf8)';
@@ -264,6 +266,16 @@ sub _build_dbw {
 
 ### class methods ###
 
+sub dispatch {
+    my $self  = shift;
+    my $class = shift;
+    my $ref   = shift || {};
+
+    Carp::croak($@) unless eval "require $class;";
+
+    return $class->new( %$self, %$ref )->run;
+}
+
 # Run user defined aliases
 sub run {
     my $self  = shift;
@@ -346,25 +358,36 @@ sub header {
     ];
 }
 
-sub ago {
-    my $self   = shift;
-    my $time   = shift || Carp::confess "TIME";
-    my $offset = shift;
+sub ctime_ago {
+    my $self = shift;
+    my $row  = shift;
 
-    state $have_posix         = require POSIX;
     state $have_time_piece    = require Time::Piece;
     state $have_time_duration = require Time::Duration;
 
     use locale;
 
-    my $hours   = POSIX::floor( $offset / 60 / 60 );
-    my $minutes = ( abs($offset) - ( abs($hours) * 60 * 60 ) ) / 60;
-    my $dt      = Time::Piece->strptime( $time + $offset, '%s' );
+    return (
+        Time::Duration::ago( $row->{ctime_age}, 1 ),
+        Time::Piece->strptime( $row->{ctime} + $row->{ctimetz}, '%s' )
+          ->strftime('%a %F %R ') . $row->{ctimetzhm}
+    );
+}
 
-    my $local =
-      sprintf( '%s %+.2d%.2d', $dt->strftime('%a %F %R'), $hours, $minutes );
+sub mtime_ago {
+    my $self = shift;
+    my $row  = shift;
 
-    return ( Time::Duration::ago( $self->now - $time, 1 ), $local );
+    state $have_time_piece    = require Time::Piece;
+    state $have_time_duration = require Time::Duration;
+
+    use locale;
+
+    return (
+        Time::Duration::ago( $row->{mtime_age}, 1 ),
+        Time::Piece->strptime( $row->{mtime} + $row->{mtimetz}, '%s' )
+          ->strftime('%a %F %R ') . $row->{mtimetzhm}
+    );
 }
 
 sub err {
@@ -403,7 +426,7 @@ sub start_pager {
     }
 
     local $ENV{'LESS'} = '-FXeR';
-    local $ENV{'MORE'} = '-FXer' unless $^O =~ /^MSWin/;
+    local $ENV{'MORE'} = '-FXer' unless MSWin32;
 
     require App::bif::Pager;
     $pager = App::bif::Pager->new;
@@ -520,7 +543,7 @@ sub render_table {
     my $data   = shift;
     my $indent = shift || 0;
 
-    my ( $white, $dark, $reset ) = $self->colours(qw/white dark reset/);
+    my ( $white, $dark, $reset ) = $self->colours(qw/yellow dark reset/);
     require Text::FormatTable;
 
     my $table = Text::FormatTable->new($format);
@@ -569,9 +592,8 @@ sub prompt_edit {
 
     require IO::Prompt::Tiny;
     if ( IO::Prompt::Tiny::_is_interactive() ) {
-        require Proc::InvokeEditor;
-        $args{val} = Proc::InvokeEditor->edit( $args{val} || $args{txt} );
-        utf8::decode( $args{val} );
+        require App::bif::Editor;
+        $args{val} = App::bif::Editor->new( txt => $args{txt} )->result;
     }
 
     $args{val} =~ s/^#.*//gm;
@@ -773,7 +795,7 @@ App::bif - A base class for App::bif::* commands
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
@@ -934,6 +956,12 @@ operations.
 You should manually import any L<DBIx::ThinSQL> functions you need only
 after calling C<$self->dbw>, in order to keep startup time short for
 cases such as when the repository is not found.
+
+=item dispatch($class, $attrs)
+
+Loads the bif class C<$class>, creates a new object populated with the
+attributes from C<$self> plus the attributes in the HASHref C<$attrs>
+and runs the C<run()> method.
 
 =item run
 

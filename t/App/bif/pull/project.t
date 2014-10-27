@@ -17,7 +17,7 @@ run_in_tempdir {
       'Bif::Error::HubNotFound';
 
     bif(qw/init hub/);
-    bif(qw/pull hub hub/);
+    bif(qw/pull hub hub.bif/);
 
     isa_ok exception { bif(qw{pull project hub/todo}) },
       'Bif::Error::ProjectNotFound';
@@ -35,7 +35,7 @@ run_in_tempdir {
     bif(qw/push project todo hub -m m3/);
 
     bif2(qw/init/);
-    bif2(qw{pull hub ../hub});
+    bif2(qw{pull hub ../hub.bif});
 
     isa_ok bif2(qw{show project hub/todo}), 'Bif::OK::ShowProject';
 
@@ -55,7 +55,7 @@ run_in_tempdir {
 
     isa_ok bif2(qw{pull project hub/todo}), 'Bif::OK::PullProject';
 
-    return;
+    bifcheck;
 };
 
 done_testing();

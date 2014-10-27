@@ -2,14 +2,14 @@ package App::bif::pull::hub;
 use strict;
 use warnings;
 use AnyEvent;
-use Bif::Client;
+use Bif::Sync::Client;
 use Bif::Mo;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
 use Log::Any '$log';
 use Path::Tiny;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -44,7 +44,7 @@ sub run {
     my $error;
     my $cv = AE::cv;
 
-    my $client = Bif::Client->new(
+    my $client = Bif::Sync::Client->new(
         name          => $opts->{location},
         db            => $dbw,
         location      => $opts->{location},
@@ -113,10 +113,9 @@ sub run {
                     $dbw->xdo(
                         insert_into => 'change_deltas',
                         values      => {
-                            new               => 1,
-                            change_id         => $uid,
-                            action_format     => "pull hub (%s) $repo->{name}",
-                            action_topic_id_1 => $ref->[0],
+                            new           => 1,
+                            change_id     => $uid,
+                            action_format => "pull hub $repo->{name}",
                         },
                     );
 
@@ -163,7 +162,7 @@ bif-pull-hub -  import project lists from a remote repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

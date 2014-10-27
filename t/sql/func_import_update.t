@@ -119,7 +119,7 @@ run_in_tempdir {
                         inner_join => 'topics AS projects',
                         on         => 'projects.id = project_deltas.project_id',
                         inner_join => 'topics AS status',
-                        on         => 'status.id = project_deltas.status_id',
+                        on => 'status.id = project_deltas.project_status_id',
                         where =>
                           { 'project_deltas.project_id' => $project->{id} },
                         order_by => 'project_deltas.id DESC',

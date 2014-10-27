@@ -6,7 +6,7 @@ use Bif::Mo;
 use DBIx::ThinSQL qw/ qv case concat coalesce sq/;
 use Time::Duration qw/concise duration/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -23,8 +23,8 @@ sub run {
                 (
                     inner_join => 'project_status ps',
                     on         => {
-                        'p.status_id' => \' ps.id',
-                        'ps.status'   => $opts->{project_status},
+                        'p.project_status_id' => \' ps.id',
+                        'ps.status'           => $opts->{project_status},
                     }
                 );
             }
@@ -41,8 +41,9 @@ sub run {
 
     require Text::FormatTable;
 
-    my $table = Text::FormatTable->new('ll l  l  l  r ');
-    my ( $white, $reset ) = $self->colours( 'dark white', 'reset' );
+    my $table = Text::FormatTable->new(' l l  l  l  r ');
+    my ( $white, $yellow, $reset ) =
+      $self->colours( 'yellow', 'yellow', 'reset' );
 
     my $i = 0;
     foreach my $project (@projects) {
@@ -54,22 +55,24 @@ sub run {
                 where => { 'b.key' => 'last_sync' },
             ),
             select => [
-                case (
-                    when => 't.first_change_id > b.start',
-                    then => qv('+'),
-                    when => 'b.start',
-                    then => qv('±'),
-                    else => qv(' '),
-                  )->as('new'),
                 qv('task')->as('type'),
                 'tasks.id AS id',
-                'tasks.title AS title',
+                concat(
+                    'tasks.title',
+                    case (
+                        when => 't.first_change_id > b.start',
+                        then => qv( $yellow . ' [+]' . $reset ),
+                        when => 'b.start',
+                        then => qv( $yellow . ' [±]' . $reset ),
+                        else => qv(''),
+                    )
+                  )->as('title'),
                 'task_status.status',
                 "strftime('%s','now') - t.ctime",
             ],
             from       => 'task_status',
             inner_join => 'tasks',
-            on         => 'tasks.status_id = task_status.id',
+            on         => 'tasks.task_status_id = task_status.id',
             inner_join => 'topics t',
             on         => 't.id = tasks.id',
             left_join  => 'b',
@@ -86,22 +89,24 @@ sub run {
                 },
             },
             union_all_select => [
-                case (
-                    when => 't.first_change_id > b.start',
-                    then => qv('+'),
-                    when => 'b.start',
-                    then => qv('±'),
-                    else => qv(' '),
-                  )->as('new'),
                 qv('issue')->as('type'),
                 'project_issues.id AS id',
-                'issues.title AS title',
+                concat(
+                    'issues.title',
+                    case (
+                        when => 't.first_change_id > b.start',
+                        then => qv( $yellow . ' [+]' . $reset ),
+                        when => 'b.start',
+                        then => qv( $yellow . ' [±]' . $reset ),
+                        else => qv(''),
+                    )
+                  )->as('title'),
                 'issue_status.status',
                 "strftime('%s','now') - t.ctime AS age",
             ],
             from       => 'issue_status',
             inner_join => 'project_issues',
-            on         => 'project_issues.status_id = issue_status.id',
+            on         => 'project_issues.issue_status_id = issue_status.id',
             inner_join => 'issues',
             on         => 'issues.id = project_issues.issue_id',
             inner_join => 'topics t',
@@ -130,14 +135,14 @@ sub run {
         }
 
         $table->head(
-            $white . ' ',
-            'TYPE', 'ID', "TOPIC [$project->[1]]",
-            'STATUS', 'AGE' . $reset
+            $white . 'Type',
+            'ID', "Topic [$project->[1]]",
+            'Status', 'Age' . $reset
         );
         $i++;
 
         foreach (@$data) {
-            $_->[5] = concise( duration( $_->[5], 1 ) ) . $reset;
+            $_->[4] = concise( duration( $_->[4], 1 ) ) . $reset;
             $table->row(@$_);
             $project->[2]++;
             $i++;
@@ -146,7 +151,7 @@ sub run {
 
     $self->start_pager;
 
-    print $table->render( $self->term_width );
+    print $table->render( $self->term_width ) . "\n";
 
     $self->ok( 'ListTopics', \@projects );
 }
@@ -162,7 +167,7 @@ bif-list-topics - list projects' tasks and issues
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

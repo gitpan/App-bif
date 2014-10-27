@@ -5,7 +5,7 @@ use App::bif;
 use AnyEvent;
 use Bif::DBW;
 use Bif::Mo;
-use Bif::Server;
+use Bif::Sync::Server;
 use Coro;
 use Log::Any '$log';
 use Log::Any::Adapter;
@@ -13,7 +13,7 @@ use Log::Any::Plugin;
 use OptArgs;
 use Path::Tiny;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 
 arg directory => (
     isa     => 'Str',
@@ -70,7 +70,7 @@ sub run {
     my $db = Bif::DBW->connect( 'dbi:SQLite:dbname=' . $sqlite,
         undef, undef, undef, $opts->{debug} );
 
-    my $server = Bif::Server->new(
+    my $server = Bif::Sync::Server->new(
         db       => $db,
         debug    => $opts->{debug},
         on_error => sub {

@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use DBIx::ThinSQL qw/case qv/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 
 sub Bif::DB::db::xprepare_changeset_ext {
     my $self = shift;
@@ -110,10 +110,9 @@ sub Bif::DB::db::xprepare_changeset_ext {
                 else => qv('hub_delta'),
             ),            # 0
             't.uuid',     # 1
-            'p.uuid',     # 2
-            'hd.name',    # 3
-            4, 5, 6, 7, 8, 9,
-            10,
+            'hd.name',    # 2
+            3, 4, 5, 6, 7, 8,
+            9, 10,
             'hd.id AS delta_id',    # 11
         ],
         from       => 'src',
@@ -121,8 +120,6 @@ sub Bif::DB::db::xprepare_changeset_ext {
         on         => 'hd.change_id = src.id',
         inner_join => 'topics t',
         on         => 't.id = hd.hub_id',
-        left_join  => 'topics p',
-        on         => 'p.id = hd.project_id',
 
         # hub_repos
         union_all_select => [
@@ -214,7 +211,7 @@ sub Bif::DB::db::xprepare_changeset_ext {
         inner_join => 'topics t',
         on         => 't.id = id.issue_id',
         left_join  => 'topics ist',
-        on         => 'ist.id = id.status_id',
+        on         => 'ist.id = id.issue_status_id',
         left_join  => 'topics p',
         on         => 'p.id = id.project_id',
 
@@ -248,25 +245,27 @@ sub Bif::DB::db::xprepare_changeset_ext {
                 when => 'pd.new',
                 then => qv('project'),
                 else => qv('project_delta'),
-            ),                # 0
-            'p.uuid',         # 1
-            'par.uuid',       # 2
-            'pd.name',        # 3
-            'pd.title',       # 4
-            's.uuid',         # 5
-            'pd.hub_uuid',    # 6
+            ),                       # 0
+            'p.uuid',                # 1
+            'par.uuid',              # 2
+            'pd.name',               # 3
+            'pd.title',              # 4
+            's.uuid',                # 5
+            'h.uuid AS hub_uuid',    # 6
             7, 8, 9, 10,
-            'pd.id AS delta_id',    # 11
+            'pd.id AS delta_id',     # 11
         ],
         from       => 'src',
         inner_join => 'project_deltas pd',
         on         => 'pd.change_id = src.id',
         inner_join => 'topics p',
         on         => 'p.id = pd.project_id',
+        left_join  => 'topics h',
+        on         => 'h.id = pd.hub_id',
         left_join  => 'topics par',
         on         => 'par.id = pd.parent_id',
         left_join  => 'topics s',
-        on         => 's.id = pd.status_id',
+        on         => 's.id = pd.project_status_id',
 
         # task_status
         union_all_select => [
@@ -313,7 +312,7 @@ sub Bif::DB::db::xprepare_changeset_ext {
         inner_join => 'topics t',
         on         => 't.id = td.task_id',
         left_join  => 'topics ts',
-        on         => 'ts.id = td.status_id',
+        on         => 'ts.id = td.task_status_id',
 
         # topics
         union_all_select => [
@@ -393,15 +392,12 @@ my %args = (
         qw/
           _
           topic_uuid
-          /,
-        undef,
-        qw/name/
+          name/
     ],
     hub_delta => [
         qw/
           _
           hub_uuid
-          project_uuid
           name/
     ],
     hub_repo => [
@@ -480,14 +476,14 @@ my %args = (
           title
           /
     ],
-    project_delta => [    # TODO: rename status_id to project_status_id
+    project_delta => [
         qw/
           _
           project_uuid
           parent_uuid
           name
           title
-          status_uuid
+          project_status_uuid
           hub_uuid
           /
     ],
@@ -563,10 +559,12 @@ sub Bif::DB::st::changeset_ext {
     while ( my $row = $self->arrayref ) {
         my $kind = $row->[0];
         if ( $i == 0 and $kind ne 'change' ) {
-            die "first row not an 'change' row";
+            use Data::Dumper;
+            warn "first row not a 'change' but $kind (for delta_id $row->[11]) "
+              . Dumper($row);
         }
 
-        $src = $args{$kind} || die "unhandled kind: $kind";
+        $src = $args{$kind} || ( warn "unhandled kind: $kind" && next );
 
         # skip column 1 (kind) and column 2 (delta_id)
         my $delta =
@@ -574,7 +572,9 @@ sub Bif::DB::st::changeset_ext {
               0 .. $#$src };
 
         if ( $i == 0 ) {
-            $dcount = delete $delta->{ucount} || die 'missing ucount';
+            $dcount = delete $delta->{ucount}
+              || ( warn 'missing ucount'
+                && next );
         }
 
         push( @changeset, $delta );
@@ -584,7 +584,7 @@ sub Bif::DB::st::changeset_ext {
     }
 
     return if 0 == $i;
-    die "i/dcount mismatch: $i/$dcount" unless $i == $dcount;
+    warn "delta dcount mismatch: got: $i want:$dcount" unless $i == $dcount;
 
     return \@changeset;
 }
@@ -599,7 +599,7 @@ Bif::DB::Plugin::Changes - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

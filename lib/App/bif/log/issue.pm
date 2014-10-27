@@ -4,7 +4,7 @@ use warnings;
 use feature 'state';
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::log';
 
 sub run {
@@ -14,14 +14,17 @@ sub run {
     my $info = $self->get_topic( $opts->{id}, 'issue' );
 
     state $have_dbix = DBIx::ThinSQL->import(qw/ qv concat /);
+    my $now = $self->now;
 
     my $sth = $db->xprepare(
         select => [
             'project_issues.issue_id AS "id"',
             concat( qv('c'), 'changes.id' )->as('change_id'),
             'SUBSTR(changes.uuid,1,8) AS change_uuid',
-            'changes.mtime',
-            'changes.mtimetz',
+            'changes.mtime AS mtime',
+            "changes.mtimetz AS mtimetz",
+            'changes.mtimetzhm AS mtimetzhm',
+            "$now - changes.mtime AS mtime_age",
             concat( 'changes.action', qv(' '), 'project_issues.id' )
               ->as('action'),
             'COALESCE(changes.author,e.name) AS author',
@@ -48,7 +51,7 @@ sub run {
             'project_issues.issue_id'   => \'issue_deltas.issue_id',
         },
         left_join  => 'issue_status',
-        on         => 'issue_status.id = issue_deltas.status_id',
+        on         => 'issue_status.id = issue_deltas.issue_status_id',
         inner_join => 'changes_tree',
         on         => {
             'changes_tree.child'  => \'changes.id',
@@ -61,7 +64,13 @@ sub run {
     $sth->execute;
     $self->start_pager;
 
-    $self->log_item( $sth->hashref, 'issue' );
+    my $first = $sth->hashref;
+    $first->{ctime}     = $first->{mtime};
+    $first->{ctimetz}   = $first->{mtimetz};
+    $first->{ctimetzhm} = $first->{mtimetzhm};
+    $first->{ctime_age} = $first->{mtime_age};
+    $self->log_item( $first, 'issue' );
+
     $self->log_comment($_) for $sth->hashrefs;
 
     return $self->ok('LogIssue');
@@ -78,7 +87,7 @@ bif-log-issue - review the history of a issue
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

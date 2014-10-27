@@ -11,7 +11,7 @@ run_in_tempdir {
 
     bif(qw/init/);
 
-    isa_ok bif(qw/log/), 'Bif::OK::LogRepoTime', 'log nothing gives repo';
+    isa_ok bif(qw/log/), 'Bif::OK::Log', 'log no arguments';
 
     isa_ok exception { bif(qw/ log unknown /) }, 'Bif::Error::TopicNotFound';
 

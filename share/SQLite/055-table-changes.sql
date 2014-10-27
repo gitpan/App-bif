@@ -9,6 +9,7 @@ CREATE TABLE changes (
         DEFAULT (strftime('%s','now')),
     mtimetz INTEGER NOT NULL
         DEFAULT (strftime('%s','now','localtime') - strftime('%s','now')),
+    mtimetzhm VARCHAR, -- NOT NULL
     path VARCHAR,
     identity_id INTEGER NOT NULL DEFAULT -1,
     author VARCHAR(255),
@@ -58,7 +59,15 @@ BEGIN
     UPDATE
         changes
     SET
-        itime = strftime('%s','now')
+        itime     = strftime('%s','now'),
+        mtimetzhm = printf(
+            "%+.2d%.2d",
+            CAST(NEW.mtimetz / 3600 AS INTEGER),
+            (
+                abs(NEW.mtimetz) -
+                CAST(abs(NEW.mtimetz) / 3600 AS INTEGER) * 3600
+            ) / 60
+        )
     WHERE
         id = NEW.id
     ;
@@ -113,8 +122,8 @@ BEGIN
         )
     SELECT
         NEW.id,
-        '---' || x'0A'
-            || '- _: change' || x'0A'
+        '---' || x'0A' || '-' || x'0A'
+            || '  _: change' || x'0A'
             || '  author: ' || COALESCE(NEW.author,'~') || x'0A'
             || '  email: ' || COALESCE(NEW.email,'~') || x'0A'
             || '  identity_uuid: ' || COALESCE(t.uuid,'~') || x'0A'
@@ -133,6 +142,10 @@ BEGIN
                             x'0A', '\n'
                         )
                     || '"' || x'0A'
+                WHEN
+                    instr(NEW.message, ' ') -- not at all sufficient
+                THEN
+                    '  message: ''' || NEW.message || '''' || x'0A'
                 ELSE
                     '  message: ' || NEW.message || x'0A'
                 END

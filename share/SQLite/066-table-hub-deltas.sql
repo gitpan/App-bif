@@ -3,11 +3,9 @@ CREATE TABLE hub_deltas (
     change_id INTEGER NOT NULL,
     hub_id INTEGER NOT NULL,
     name VARCHAR(128),
-    project_id INTEGER,
     new INTEGER,
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE,
-    FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE,
-    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
+    FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER
@@ -20,8 +18,7 @@ BEGIN
     SELECT debug(
         NEW.change_id,
         NEW.hub_id,
-        NEW.name,
-        NEW.project_id
+        NEW.name
     );
 
     UPDATE
@@ -45,16 +42,16 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: hub' || x'0A'
+                    '  _: hub' || x'0A'
                 ELSE
-                    '- _: hub_delta' || x'0A'
+                    '  _: hub_delta' || x'0A'
                     || '  hub_uuid: ' || topics.uuid || x'0A'
                 END
                 || '  name: ' || COALESCE(NEW.name, '~') || x'0A'
-                || '  project_uuid: ' || COALESCE(p.uuid, '~') || x'0A'
                 || CASE WHEN
                     NEW.new
                 THEN
@@ -64,10 +61,6 @@ BEGIN
                 END
             FROM
                 topics
-            LEFT JOIN
-                topics p
-            ON
-                p.id = NEW.project_id
             WHERE
                 topics.id = NEW.hub_id
         )
@@ -84,20 +77,6 @@ BEGIN
         NEW.change_id,
         NEW.hub_id
     );
-
-    INSERT INTO
-        hub_related_projects(
-            hub_id,
-            project_id,
-            change_id
-        )
-    SELECT
-        NEW.hub_id,
-        NEW.project_id,
-        NEW.change_id
-    WHERE
-        NEW.project_id IS NOT NULL
-    ;
 
     INSERT OR IGNORE INTO
         hubs_tomerge(hub_id) VALUES (NEW.hub_id);

@@ -34,6 +34,7 @@ run_in_tempdir {
     my $i2 = bif(qw/new task -p todo title -m m3 -s stalled/);
     isa_ok $i2, 'Bif::OK::NewTask';
 
+    bifcheck;
 };
 
 done_testing();

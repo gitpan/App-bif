@@ -4,8 +4,14 @@ use warnings;
 use Bif::Mo;
 use Carp ();
 use File::Which;
+use IO::Handle;
 
 our @CARP_NOT = (__PACKAGE__);
+
+has auto => (
+    is      => 'ro',
+    default => 1,
+);
 
 has encoding => (
     is      => 'ro',
@@ -17,14 +23,16 @@ has pager => (
     default => \&_build_pager,
 );
 
-has fh => ( is => 'rw' );
+has fh => (
+    is      => 'rw',
+    default => sub { IO::Handle->new },
+);
 
 has pid => ( is => 'rw' );
 
 has orig_fh => (
     is      => 'ro',
     default => sub { select },
-    lazy    => 0,
 );
 
 sub _build_pager {
@@ -49,17 +57,25 @@ sub _build_pager {
 }
 
 sub BUILD {
-    my $self  = shift;
+    my $self = shift;
+    $self->open if $self->auto;
+}
+
+sub open {
+    my $self = shift;
+    return unless -t $self->orig_fh and !$self->fh->opened;
+
     my $pager = $self->pager;
 
-    my $pid = open( my $fh, '|-', $pager )
+    my $pid = CORE::open( $self->fh, '|-', $pager )
       or Carp::croak "Could not pipe to PAGER ('$pager'): $!\n";
 
-    binmode( $fh, $self->encoding );
-    select $fh;
+    binmode( $self->fh, $self->encoding ? $self->encoding : () )
+      or Carp::cluck "Could not set bindmode: $!";
+
+    select $self->fh;
     $| = 1;
 
-    $self->fh($fh);
     $self->pid($pid);
 
     return;
@@ -67,10 +83,10 @@ sub BUILD {
 
 sub close {
     my $self = shift;
-    my $fh = $self->fh || return;
+    return unless $self->fh && $self->fh->opened;
+
     select $self->orig_fh;
-    CORE::close($fh);
-    $self->fh(undef);
+    $self->fh->close;
 }
 
 sub DESTROY {
@@ -90,13 +106,13 @@ App::bif::Pager - pipe output to a system (text) pager
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
     use App::bif::Pager;
 
-    my $pager = App::bif::Pager->new(encoding => ':utf8');
+    my $pager = App::bif::Pager->new;
     print "This text goes to a pager\n";
 
     undef $pager;
@@ -108,19 +124,24 @@ B<App::bif::Pager> opens a connection to a system pager and makes it
 the default filehandle so that by default any print statements are sent
 there.
 
-When the pager object goes out of scope the previously selected
-filehandle is selected again.
+When the pager object goes out of scope the previous default filehandle
+is selected again.
 
 =head1 CONSTRUCTOR
 
-The new() constuctor takes the following arguments:
+The C<new()> constuctor takes the following arguments.
 
 =over
 
+=item auto
+
+By default the pager is opened when the object is created. Set C<auto>
+to a false value to inhibit this behaviour.
+
 =item encoding
 
-The Perl IO layer encoding to set (with binmode) after the pager has
-been opened. This defaults to ':utf8'.
+The Perl IO layer encoding to set after the pager has been opened. This
+defaults to ':utf8'. Set it to 'undef' to get binary mode.
 
 =item pager
 
@@ -146,6 +167,23 @@ The process ID of the pager program (only set on UNIX systems)
 =item orig_fh
 
 The original filehandle that was selected before the pager was started.
+
+=back
+
+=head1 METHODS
+
+=over
+
+=item close
+
+Explicitly close the pager. This is useful if you want to keep the
+object around to start and stop the pager multiple times. Can be called
+safely when no pager is running.
+
+=item open
+
+Open the pager if it is not running. Can be called safely when the
+pager is already running.
 
 =back
 

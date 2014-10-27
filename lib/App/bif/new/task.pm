@@ -4,7 +4,7 @@ use warnings;
 use Bif::Mo;
 use IO::Prompt::Tiny qw/prompt/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -47,10 +47,10 @@ sub run {
             'unknown status: ' . join( ', ', @$invalid ) )
           if @$invalid;
 
-        $opts->{status_id} = $status_ids->[0];
+        $opts->{task_status_id} = $status_ids->[0];
     }
     else {
-        $opts->{status_id} = $dbw->xval(
+        $opts->{task_status_id} = $dbw->xval(
             select => 'id',
             from   => 'task_status',
             where  => { project_id => $pinfo->{id}, def => 1 },
@@ -76,10 +76,10 @@ sub run {
             $dbw->xdo(
                 insert_into => 'func_new_task',
                 values      => {
-                    id        => $id,
-                    change_id => $uid,
-                    status_id => $opts->{status_id},
-                    title     => $opts->{title},
+                    id             => $id,
+                    change_id      => $uid,
+                    task_status_id => $opts->{task_status_id},
+                    title          => $opts->{title},
                 },
             );
 
@@ -120,7 +120,7 @@ bif-new-task - add a new task to a project
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

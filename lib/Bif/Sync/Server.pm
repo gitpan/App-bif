@@ -1,53 +1,18 @@
-package Bif::Server;
+package Bif::Sync::Server;
 use strict;
 use warnings;
 use Bif::Mo;
+use Bif::Sync::Plugin::Identity;
+use Bif::Sync::Plugin::Project;
+use Bif::Sync::Plugin::Repo;
 use Coro::Handle;
 use DBIx::ThinSQL qw/sq/;
-use JSON;
 use Log::Any '$log';
-use Role::Basic qw/with/;
 
-our $VERSION = '0.1.2';
-
-with 'Bif::Role::Sync';
-
-has debug => ( is => 'rw' );
-
-has db => (
-    is       => 'ro',
-    required => 1,
-);
+our $VERSION = '0.1.4';
+extends 'Bif::Sync';
 
 has hub_id => ( is => 'rw', );
-
-has rh => ( is => 'rw' );
-
-has wh => ( is => 'rw' );
-
-has json => ( is => 'rw', default => sub { JSON->new->utf8 } );
-
-has changes_tosend => ( is => 'rw', default => 0, );
-
-has changes_torecv => ( is => 'rw', default => 0, );
-
-has changes_sent => ( is => 'rw', default => 0, );
-
-has changes_recv => ( is => 'rw', default => 0, );
-
-has on_update => (
-    is      => 'rw',
-    default => sub {
-        sub { }
-    }
-);
-
-has on_error => ( is => 'ro', required => 1 );
-
-has temp_table => (
-    is       => 'rw',
-    init_arg => undef,
-);
 
 # Names are reversed, so that the methods make sense from the server's
 # point of view.
@@ -74,7 +39,6 @@ my %METHODS = (
 
 sub BUILD {
     my $self = shift;
-    $self->json->pretty if $self->debug;
     $self->hub_id( $self->db->get_local_hub_id );
 }
 
@@ -83,14 +47,7 @@ sub run {
     $self->rh( Coro::Handle->new_from_fh( *STDIN, timeout => 30 ) );
     $self->wh( Coro::Handle->new_from_fh(*STDOUT) );
 
-    $self->temp_table( 'sync_' . sprintf( "%08x", rand(0xFFFFFFFF) ) );
-
-    $self->db->do( "CREATE TEMPORARY TABLE "
-          . $self->temp_table . "("
-          . "id INTEGER UNIQUE ON CONFLICT IGNORE,"
-          . "ucount INTEGER"
-          . ")" );
-
+    $self->new_temp_table;
     $self->db->begin_work;
 
     while (1) {
@@ -338,5 +295,5 @@ sub disconnect {
 
 =for bif-doc #perl
 
-Bif::Server - server for communication with a client
+Bif::Sync::Server - server for communication with a client
 

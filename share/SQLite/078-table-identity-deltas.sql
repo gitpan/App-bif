@@ -42,22 +42,17 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
-                    NEW.new
-                THEN
-                    '- _: identity' || x'0A'
-                ELSE
-                    '- _: identity_delta' || x'0A'
-                    || '  identity_uuid: ' || topics.uuid || x'0A'
-                END
-                || '  shortname: ' || COALESCE(NEW.shortname,'~') || x'0A'
+                '-' || x'0A'
                 || CASE WHEN
                     NEW.new
                 THEN
-                    '  topic_uuid: ' || topics.uuid || x'0A'
+                    '  _: identity' || x'0A'
+                    || '  entity_uuid: ' || topics.uuid || x'0A'
                 ELSE
-                    ''
+                    '  _: identity_delta' || x'0A'
+                    || '  identity_uuid: ' || topics.uuid || x'0A'
                 END
+                || '  shortname: ' || COALESCE(NEW.shortname,'~') || x'0A'
             FROM
                 topics
             WHERE

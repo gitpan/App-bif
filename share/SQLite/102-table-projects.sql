@@ -5,7 +5,7 @@ CREATE TABLE projects (
     title VARCHAR(1024) NOT NULL,
     path VARCHAR collate nocase,
     fullpath VARCHAR collate nocase,
-    status_id INTEGER NOT NULL DEFAULT -1,
+    project_status_id INTEGER NOT NULL DEFAULT -1,
     hub_id INTEGER,
     local INTEGER NOT NULL DEFAULT 0,
     num_changes INTEGER,
@@ -15,7 +15,7 @@ CREATE TABLE projects (
         ON DELETE CASCADE,
     FOREIGN KEY(hub_id) REFERENCES hubs(id)
         ON DELETE CASCADE
-    FOREIGN KEY(status_id,id) REFERENCES project_status(id,project_id)
+    FOREIGN KEY(project_status_id,id) REFERENCES project_status(id,project_id)
         DEFERRABLE INITIALLY DEFERRED
 );
 
@@ -102,6 +102,29 @@ BEGIN
     ;
 
 END;
+
+
+CREATE TRIGGER
+    projects_au_hub_id_1
+AFTER UPDATE OF
+    hub_id
+ON
+    projects
+FOR EACH ROW
+BEGIN
+
+    INSERT INTO
+        hub_related_projects(
+            hub_id,
+            project_id
+        )
+    SELECT
+        NEW.hub_id,
+        NEW.id
+    ;
+
+END;
+
 
 CREATE TRIGGER
     projects_au_path_1

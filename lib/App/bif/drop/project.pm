@@ -4,7 +4,7 @@ use warnings;
 use Bif::Mo;
 use DBIx::ThinSQL qw/sq/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -26,7 +26,13 @@ sub run {
               $info->{hub_id}
               ? "$info->{path}\@$info->{hub_name}"
               : $info->{path};
-            $self->new_change( message => "drop project $path", );
+
+            $self->new_change(
+                action  => "drop project $path",
+                message => "    [  Dropped Project:        ]\n"
+                  . "    [    Path: $path  ]",
+            );
+
             my $res;
 
             if ( $info->{hub_id} ) {
@@ -91,7 +97,7 @@ sub drop_shallow {
     $res += $dbw->xdo(
         delete_from => 'tasks',
         where       => [
-            'status_id IN ',
+            'task_status_id IN ',
             sq(
                 select => 'ts.id',
                 from   => 'task_status ts',
@@ -146,7 +152,7 @@ bif-drop-project - remove an project from the repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

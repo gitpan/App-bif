@@ -13,10 +13,10 @@ run_in_tempdir {
     isa_ok exception { bif(qw/sync/) }, 'Bif::Error::SyncNone';
 
     bif(qw/init hub/);
-    bif(qw/pull hub hub/);
+    bif(qw/pull hub hub.bif/);
 
     bif2(qw/init/);
-    bif2(qw!pull hub ../hub!);
+    bif2(qw!pull hub ../hub.bif!);
 
     isa_ok bif(qw/sync/), 'Bif::OK::Sync';
     isa_ok exception { bif(qw{show project hub/todo}) },

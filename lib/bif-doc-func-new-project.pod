@@ -4,7 +4,7 @@ bif-doc-func-new-project - add a new project to an change
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
@@ -101,8 +101,8 @@ at least one call to
 L<func_new_project_status()|bif-doc-func-new-project-status> is also
 made and a row is inserted into
 L<project_deltas|bif-doc-table-project-changes> resulting in
-C<projects.status_id> containing a valid foreign key value into the
-L<project_status|bif-doc-table-project-status> table.
+C<projects.project_status_id> containing a valid foreign key value into
+the L<project_status|bif-doc-table-project-status> table.
 
 =head1 SEE ALSO
 

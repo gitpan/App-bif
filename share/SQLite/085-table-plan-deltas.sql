@@ -106,12 +106,13 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: plan' || x'0A'
+                    '  _: plan' || x'0A'
                 ELSE
-                    '- _: plan_delta' || x'0A'
+                    '  _: plan_delta' || x'0A'
                 END
                 || '  add_remove: '
                 || COALESCE(NEW.add_remove,'~') || x'0A'

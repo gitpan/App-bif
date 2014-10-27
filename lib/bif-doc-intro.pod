@@ -6,7 +6,7 @@ This is an introduction to bif is based on project situations typically
 encountered by software developers. It is assumed that you are
 comfortable working with command line programs and your operating
 system shell (e.g. bash). This document is based on bif version
-0.1.0_28 (2014-10-08).
+0.1.0_28 (2014-10-27).
 
 =begin comment
 

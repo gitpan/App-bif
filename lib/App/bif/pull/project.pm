@@ -3,11 +3,12 @@ use strict;
 use warnings;
 use Bif::Mo;
 use AnyEvent;
-use Bif::Client;
+use Bif::Sync::Client;
 use Coro;
 use DBIx::ThinSQL qw/qv/;
+use List::Util 'max';
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -42,7 +43,7 @@ sub run {
     my $error;
     my $cv = AE::cv;
 
-    my $client = Bif::Client->new(
+    my $client = Bif::Sync::Client->new(
         name          => $hub->{name},
         db            => $dbw,
         location      => $hub->{location},
@@ -66,19 +67,26 @@ sub run {
                     my $uid = $dbw->get_max_change_id + 1;
 
                     foreach my $pinfo (@pinfo) {
-                        my $tmp =
-                          $self->new_change( message =>
-                                "pull project $pinfo->{path}\@$hub->{name}"
-                              . " from $hub->{location}" );
+                        my $max = max( map { length $_ } $pinfo->{path},
+                            $hub->{name}, $hub->{location} );
+
+                        my $msg =
+                          sprintf( "  [  Pulled:     %-${max}s  ]\n"
+                              . "  [    Project:  %-${max}s  ]\n"
+                              . "  [    Hub:      %-${max}s  ]\n"
+                              . "  [    Location: %-${max}s  ]\n",
+                            '',
+                            $pinfo->{path}, $hub->{name}, $hub->{location} );
+
+                        my $tmp = $self->new_change( message => $msg );
 
                         $dbw->xdo(
                             insert_into => 'change_deltas',
                             values      => {
                                 new           => 1,
                                 change_id     => $tmp,
-                                action_format => "pull project (%s) "
-                                  . "$pinfo->{path}\@$hub->{name}",
-                                action_topic_id_1 => $pinfo->{id},
+                                action_format => "pull project "
+                                  . "$hub->{name}/$pinfo->{path} ",
                             },
                         );
 
@@ -173,7 +181,7 @@ bif-pull-project -  import projects from a remote hub
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

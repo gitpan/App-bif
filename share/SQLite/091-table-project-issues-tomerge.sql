@@ -28,14 +28,14 @@ BEGIN
             id,
             issue_id,
             project_id,
-            status_id,
+            issue_status_id,
             change_id
         )
     SELECT
         COALESCE(project_issues.id, nextval('topics')),
         OLD.issue_id,
         OLD.project_id,
-        issue_deltas.status_id,
+        issue_deltas.issue_status_id,
         changes.id
     FROM
         issue_deltas
@@ -51,7 +51,7 @@ BEGIN
     WHERE
         issue_deltas.issue_id = OLD.issue_id AND
         issue_deltas.project_id = OLD.project_id AND
-        issue_deltas.status_id IS NOT NULL
+        issue_deltas.issue_status_id IS NOT NULL
     ORDER BY
         changes.mtime DESC,
         changes.uuid

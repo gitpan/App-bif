@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::show';
 
 sub run {
@@ -11,6 +11,7 @@ sub run {
     my $opts = $self->opts;
     my $db   = $self->db;
     my $info = $self->get_topic( $self->uuid2id( $opts->{id} ), 'task' );
+    my $now  = $self->now;
 
     DBIx::ThinSQL->import(qw/sum qv concat coalesce/);
 
@@ -23,10 +24,14 @@ sub run {
             'hr.location',
             'substr(t2.uuid,1,8) AS project_uuid',
             'tasks.title AS title',
-            't.mtime AS mtime',
-            't.mtimetz AS mtimetz',
             't.ctime AS ctime',
             't.ctimetz AS ctimetz',
+            't.ctimetzhm AS ctimetzhm',
+            "$now - t.ctime AS ctime_age",
+            'c2.mtime AS mtime',
+            'c2.mtimetz AS mtimetz',
+            'c2.mtimetzhm AS mtimetzhm',
+            "$now - c2.mtime AS mtime_age",
             'c1.author AS author',
             'c1.email AS email',
             'c1.message AS message',
@@ -47,7 +52,7 @@ sub run {
         inner_join => 'tasks',
         on         => 'tasks.id = t.id',
         inner_join => 'task_status ts',
-        on         => 'ts.id = tasks.status_id',
+        on         => 'ts.id = tasks.task_status_id',
         inner_join => 'projects p',
         on         => 'p.id = ts.project_id',
         left_join  => 'hubs h',
@@ -63,10 +68,9 @@ sub run {
 
     my @data;
     my ($bold) = $self->colours('bold');
-    my @ago = $self->ago( $ref->{smtime}, $ref->{mtimetz} );
 
     push( @data, $self->header( '  UUID', $ref->{uuid} ) );
-    my ( $t1, $t2 ) = $self->ago( $ref->{ctime}, $ref->{ctimetz} );
+    my ( $t1, $t2 ) = $self->ctime_ago($ref);
     push( @data,
         $self->header( '  Created-By', "$ref->{creator} ($t1)", $t2 ),
     );
@@ -90,7 +94,7 @@ sub run {
         );
     }
 
-    ( $t1, $t2 ) = $self->ago( $ref->{mtime}, $ref->{mtimetz} );
+    ( $t1, $t2 ) = $self->mtime_ago($ref);
     push( @data,
         $self->header( '  Updated-By', "$ref->{updator} ($t1)", $t2 ),
     ) unless $ref->{mtime} == $ref->{ctime};
@@ -114,7 +118,7 @@ bif-show-task - display a task's current status
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

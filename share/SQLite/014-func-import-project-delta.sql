@@ -2,7 +2,7 @@ CREATE TABLE func_import_project_delta(
     change_uuid VARCHAR(40) NOT NULL,
     project_uuid VARCHAR(40) NOT NULL,
     parent_uuid VARCHAR(40),
-    status_uuid VARCHAR(40),
+    project_status_uuid VARCHAR(40),
     hub_uuid VARCHAR(40),
     name VARCHAR(40),
     title VARCHAR(1024)
@@ -20,7 +20,7 @@ BEGIN
         NEW.change_uuid,
         NEW.project_uuid,
         NEW.parent_uuid,
-        NEW.status_uuid,
+        NEW.project_status_uuid,
         NEW.hub_uuid,
         NEW.name,
         NEW.title
@@ -31,8 +31,8 @@ BEGIN
             change_id,
             id,
             parent_id,
-            status_id,
-            hub_uuid,
+            project_status_id,
+            hub_id,
             name,
             title
         )
@@ -41,7 +41,7 @@ BEGIN
         projects.id,
         parents.id,
         project_status.id,
-        NEW.hub_uuid,
+        hubs.id,
         NEW.name,
         NEW.title
     FROM
@@ -57,7 +57,11 @@ BEGIN
     LEFT JOIN
         topics AS project_status
     ON
-        project_status.uuid = NEW.status_uuid
+        project_status.uuid = NEW.project_status_uuid
+    LEFT JOIN
+        topics AS hubs
+    ON
+        hubs.uuid = NEW.hub_uuid
     WHERE
         projects.uuid = NEW.project_uuid
     ;

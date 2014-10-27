@@ -4,7 +4,7 @@ use warnings;
 use locale;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::log';
 
 sub run {
@@ -20,6 +20,7 @@ sub run {
       unless $info->{kind} eq 'identity';
 
     my ( $dark, $reset, $yellow ) = $self->colours(qw/dark reset yellow/);
+    my $now = $self->now;
 
     DBIx::ThinSQL->import(qw/concat case qv/);
     my $sth = $db->xprepare(
@@ -29,6 +30,8 @@ sub run {
             'SUBSTR(c.uuid,1,8) AS change_uuid',
             'c.mtime AS mtime',
             'c.mtimetz AS mtimetz',
+            'c.mtimetzhm AS mtimetzhm',
+            "$now - c.mtime AS mtime_age",
             'c.action AS action',
             'COALESCE(c.author,e.name) AS author',
             'c.email AS email',
@@ -56,6 +59,8 @@ sub run {
             'SUBSTR(c.uuid,1,8) AS change_uuid',
             'c.mtime AS mtime',
             'c.mtimetz AS mtimetz',
+            'c.mtimetzhm AS mtimetzhm',
+            "$now - c.mtime AS mtime_age",
             'c.action AS action',
             'COALESCE(c.author,e.name) AS author',
             'c.email AS email',
@@ -84,6 +89,8 @@ sub run {
             'SUBSTR(c.uuid,1,8) AS change_uuid',
             'c.mtime',
             'c.mtimetz',
+            'c.mtimetzhm',
+            "$now - c.mtime AS mtime_age",
             'c.action',
             'COALESCE(c.author,e.name) AS author',
             'c.email',
@@ -149,12 +156,9 @@ sub run {
             );
         }
 
-        push(
-            @data,
+        push( @data,
             $self->header( 'From', $row->{author}, $row->{email} ),
-            $self->header(
-                'When', $self->ago( $row->{mtime}, $row->{mtimetz} )
-            ),
+            $self->header( 'When', $self->mtime_ago($row) ),
         );
 
         for my $i ( 1 .. ( $row->{ucount} - 2 ) ) {
@@ -190,7 +194,7 @@ bif-log-identity - review the history of a identity
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

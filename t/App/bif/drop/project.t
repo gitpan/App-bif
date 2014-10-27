@@ -13,7 +13,7 @@ run_in_tempdir {
 
     bif(qw/init/);
     bif(qw/init hub/);
-    bif(qw/pull hub hub/);
+    bif(qw/pull hub hub.bif/);
 
     isa_ok exception { bif(qw/drop project todo/) },
       'Bif::Error::ProjectNotFound';
@@ -107,6 +107,13 @@ run_in_tempdir {
     # tests. TODO.
     isa_ok bif( qw/show issue --uuid/, $i4->{uuid} ), 'Bif::OK::ShowIssue';
     isa_ok bif( qw/show task --uuid/,  $t2->{uuid} ), 'Bif::OK::ShowTask';
+
+  TODO: {
+        local $TODO = '"push issue" is not deleted properly';
+
+        # bifcheck;
+        isa_ok exception { bif(qw/check/) }, '';
+    }
 };
 
 done_testing();

@@ -3,13 +3,14 @@ use strict;
 use warnings;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::show';
 
 sub run {
     my $self = shift;
     my $opts = $self->opts;
     my $db   = $self->db;
+    my $now  = $self->now;
     $opts->{id} = $self->uuid2id( $opts->{id} );
 
     my @data;
@@ -18,12 +19,14 @@ sub run {
 
     my $ref = $db->xhashref(
         select => [
-            'pl.id',              'substr(t.uuid,1,8) as uuid',
-            'pl.name',            'pl.title',
-            'e.name AS provider', 't.ctime',
-            't.ctimetz',          't.mtime',
-            't.mtimetz',          'c.author',
-            'c.email',            'c.message',
+            'pl.id',                 'substr(t.uuid,1,8) as uuid',
+            'pl.name',               'pl.title',
+            'e.name AS provider',    't.ctime',
+            't.ctimetz',             't.ctimetzhm AS ctimetzhm',
+            "$now - t.mtime AS age", 't.mtime',
+            't.mtimetz',             't.mtimetzhm AS mtimetzhm',
+            "$now - t.mtime AS age", 'c.author',
+            'c.email',               'c.message',
         ],
         from       => 'plans pl',
         inner_join => 'topics t',
@@ -51,12 +54,7 @@ sub run {
     push( @data, $self->header( '  Contact', $ref->{contact} ), )
       if $ref->{other_contact};
 
-    push(
-        @data,
-        $self->header(
-            '  Updated', $self->ago( $ref->{mtime}, $ref->{mtimetz} )
-        ),
-    );
+    push( @data, $self->header( '  Updated', $self->mtime_ago($ref) ), );
 
     my @methods = $db->xhashrefs(
         select     => [ 'h.name', ],
@@ -87,7 +85,7 @@ bif-show-plan - display a plan's current status
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

@@ -1,8 +1,7 @@
 CREATE TABLE func_import_hub_delta(
     change_uuid VARCHAR(40) NOT NULL,
     hub_uuid VARCHAR(40) NOT NULL,
-    name VARCHAR(128),
-    project_uuid VARCHAR(40)
+    name VARCHAR(128)
 );
 
 CREATE TRIGGER
@@ -15,32 +14,25 @@ BEGIN
     SELECT debug(
         NEW.change_uuid,
         NEW.hub_uuid,
-        NEW.name,
-        NEW.project_uuid
+        NEW.name
     );
 
     INSERT INTO
         hub_deltas(
             change_id,
             hub_id,
-            name,
-            project_id
+            name
         )
     SELECT
         c.id,
         hubs.id,
-        NEW.name,
-        p.id
+        NEW.name
     FROM
         topics AS hubs
     INNER JOIN
         changes c
     ON
         c.uuid = NEW.change_uuid
-    LEFT JOIN
-        topics p
-    ON
-        p.uuid = NEW.project_uuid
     WHERE
         hubs.uuid = NEW.hub_uuid
     ;

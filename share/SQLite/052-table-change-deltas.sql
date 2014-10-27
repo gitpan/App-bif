@@ -55,8 +55,16 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                    '- _: change_delta' || x'0A'
-                || '  action_format: ' || NEW.action_format || x'0A'
+                '-' || x'0A'
+                || '  _: change_delta' || x'0A'
+                || CASE WHEN
+                    instr(NEW.action_format, ' ')
+                THEN
+                    '  action_format: ''' || NEW.action_format || '''' || x'0A'
+                ELSE
+                    '  action_format: ' 
+                    || COALESCE(NEW.action_format,'~') || x'0A'
+                END
                 || '  action_topic_uuid_1: '
                 || COALESCE(t1.uuid, '~') || x'0A'
                 || '  action_topic_uuid_2: '

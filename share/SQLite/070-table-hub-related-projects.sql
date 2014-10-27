@@ -7,17 +7,18 @@
     What probably would be smart is to use the projects.hub_id
     relationship anyway, and only use the hub_related_projects table
     for "external" projects.
+
+    2014-10-20 converted to projects.hub_id, but still need to think
+    about hub_related_projects for external projects.
 */
 
 CREATE TABLE hub_related_projects(
     hub_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
-    change_id INTEGER NOT NULL,
     hash VARCHAR(8) NOT NULL DEFAULT '',
     UNIQUE(hub_id,project_id),
     FOREIGN KEY(hub_id) REFERENCES hubs(id) ON DELETE CASCADE,
-    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE,
-    FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE
+    FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
 );
 
 CREATE TRIGGER
@@ -30,7 +31,6 @@ BEGIN
     SELECT debug(
         NEW.hub_id,
         NEW.project_id,
-        NEW.change_id,
         NEW.hash
     );
 
@@ -104,7 +104,6 @@ BEGIN
     SELECT debug(
         OLD.hub_id,
         OLD.project_id,
-        OLD.change_id,
         OLD.hash
     );
 

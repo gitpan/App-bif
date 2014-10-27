@@ -8,7 +8,7 @@ use inc::Module::Install;
 use Cwd;
 use FindBin '$Bin';
 use Time::Piece;
-my $VERSION = '0.1.2';
+my $VERSION = '0.1.4';
 
 name 'App-bif';
 abstract 'Distributed Project Management Tool';
@@ -46,7 +46,6 @@ WriteAll;
 {
     use Path::Tiny;
     my $bif     = path( $Bin, 'bin', 'bif' );
-    my $bifhub  = path( $Bin, 'bin', 'bifhub' );
     my $bifsync = path( $Bin, 'bin', 'bifsync' );
     my $lib     = path( $Bin, 'lib' );
     my $share   = path( $Bin, 'share' );
@@ -54,11 +53,12 @@ WriteAll;
     my $tbif    = $tbin->child('bif');
     my $tbifu   = $tbin->child('bifu');
     my $tbifsync = $tbin->child('bifsync');
-    my $tbifhub  = $tbin->child('bifhub');
 
     mkdir $tbin;
 
     # Setup test bif
+
+    my $sep = $^O eq 'MSWin32' ? ';' : ':';
 
     $tbif->spew_utf8(<<EOF);
 #!$^X
@@ -69,7 +69,7 @@ use OptArgs qw/class_optargs/;
 
 # Make sure that any subcommands that call bifsync locally find the
 # local testing version in t/bifsync
-\$ENV{PATH} = "$tbin" .':'.\$ENV{PATH};
+\$ENV{PATH} = "$tbin" .'$sep'.\$ENV{PATH};
 
 \$main::BIF_SHARE_DIR = "$share";
 
@@ -95,7 +95,7 @@ use OptArgs qw/class_optargs/;
 
 # Make sure that any subcommands that call bifsync locally find the
 # local testing version in t/bifsync
-\$ENV{PATH} = "$tbin" .':'.\$ENV{PATH};
+\$ENV{PATH} = "$tbin" .'$sep'.\$ENV{PATH};
 
 \$main::BIF_SHARE_DIR = "$share";
 
@@ -158,7 +158,7 @@ HIDDENApp::bif::Build - build-time constants for App-bif
 HIDDEN
 HIDDEN=head1 VERSION
 HIDDEN
-HIDDEN0.1.0_28 (2014-10-08)
+HIDDEN0.1.0_28 (2014-10-27)
 HIDDEN
 HIDDEN=head1 SYNOPSIS
 HIDDEN

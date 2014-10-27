@@ -57,11 +57,8 @@ requires:
   Log::Any::Adapter: '0.11'
   Log::Any::Plugin::Levels: '0'
   OptArgs: v0.1.16
-  POSIX: '0'
   Path::Tiny: '0.019'
-  Proc::InvokeEditor: '0'
-  Role::Basic: '0'
-  Sys::Cmd: v0.81.6
+  Sys::Cmd: v0.81.8
   Term::ANSIColor: '0'
   Term::Size::Perl: '0'
   Text::Autoformat: '0'
@@ -74,4 +71,4 @@ resources:
   bugtracker: bif://bifax.org/bif/
   homepage: http://bifax.org/bif/
   repository: git://bifax.org/bif.git/
-version: 0.1.2
+version: 0.1.4

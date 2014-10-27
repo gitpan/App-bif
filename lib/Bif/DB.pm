@@ -6,7 +6,7 @@ use DBIx::ThinSQL ();
 use Carp          ();
 use Log::Any '$log';
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 our @ISA     = ('DBIx::ThinSQL');
 
 sub _connected {
@@ -338,7 +338,7 @@ Bif::DB - helper methods for a read-only bif database
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

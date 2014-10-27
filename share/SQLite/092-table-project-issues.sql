@@ -2,11 +2,12 @@ CREATE TABLE project_issues (
     id INT NOT NULL PRIMARY KEY,
     issue_id INTEGER NOT NULL,
     project_id INTEGER NOT NULL,
-    status_id INTEGER NOT NULL,
+    issue_status_id INTEGER NOT NULL,
     change_id INTEGER NOT NULL,
     UNIQUE (issue_id,project_id),
     FOREIGN KEY(issue_id) REFERENCES issues(id) ON DELETE CASCADE,
-    FOREIGN KEY(project_id,status_id) REFERENCES issue_status(project_id,id)
+    FOREIGN KEY(project_id,issue_status_id)
+        REFERENCES issue_status(project_id,id)
         ON DELETE CASCADE,
     FOREIGN KEY(change_id) REFERENCES changes(id) ON DELETE CASCADE
 );
@@ -48,7 +49,7 @@ BEGIN
         NEW.id,
         NEW.issue_id,
         NEW.project_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.change_id
     );
 
@@ -95,7 +96,7 @@ BEGIN
         NEW.id,
         NEW.issue_id,
         NEW.project_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.change_id
     );
 
@@ -106,7 +107,7 @@ BEGIN
 -- Set these or not? They are not supposed to change
 --        issue_id = NEW.issue_id,
 --        project_id = NEW.project_id,
-        status_id = NEW.status_id,
+        issue_status_id = NEW.issue_status_id,
         change_id = NEW.change_id
     WHERE
         id = NEW.id
@@ -138,7 +139,7 @@ BEGIN
         'TRIGGER project_issues_ad_1',
         OLD.issue_id,
         OLD.project_id,
-        OLD.status_id,
+        OLD.issue_status_id,
         OLD.change_id
     );
 

@@ -1,21 +1,16 @@
-package Bif::Role::Sync::Repo;
+package Bif::Sync::Plugin::Project;
 use strict;
 use warnings;
 use DBIx::ThinSQL qw/qv sq/;
 use Log::Any '$log';
-use Role::Basic;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 
-my $hub_functions = {
+my $project_functions = {
     entity_contact_method_delta => 'func_import_entity_contact_method_delta',
     entity_contact_method       => 'func_import_entity_contact_method',
     entity_delta                => 'func_import_entity_delta',
     entity                      => 'func_import_entity',
-    hub_delta                   => 'func_import_hub_delta',
-    hub                         => 'func_import_hub',
-    hub_repo_delta              => 'func_import_hub_repo_delta',
-    hub_repo                    => 'func_import_hub_repo',
     identity_delta              => 'func_import_identity_delta',
     identity                    => 'func_import_identity',
     issue_delta                 => 'func_import_issue_delta',
@@ -35,37 +30,36 @@ my $hub_functions = {
     change                      => 'func_import_change',
 };
 
-sub real_import_hub {
+sub Bif::Sync::real_import_project {
     my $self   = shift;
-    my $uuid   = shift;
-    my $result = $self->recv_changesets($hub_functions);
-
-    if ( $result eq 'RecvChangesets' ) {
-        my ($ref) = $self->db->uuid2id($uuid);
-        return 'IDNotFound' unless $ref;
-        return ( 'RepoImported', $ref );
-    }
+    my $result = $self->recv_changesets($project_functions);
+    return 'ProjectImported' if $result eq 'RecvChangesets';
     return $result;
 }
 
-sub real_sync_hub {
+sub Bif::Sync::real_sync_project {
     my $self   = shift;
     my $id     = shift || die caller;
-    my $prefix = shift;
-    my $tmp    = $self->temp_table;
+    my $ids    = shift || die caller;
+    my $prefix = shift // '';
 
-    $prefix = '' unless defined $prefix;
+    my @ids       = grep { $_ != $id } @$ids;
+    my $tmp       = $self->temp_table;
     my $prefix2   = $prefix . '_';
     my $db        = $self->db;
     my $on_update = $self->on_update;
+    my $hub_id    = $self->hub_id;
 
     $on_update->( 'matching: ' . $prefix2 ) if $on_update;
 
     my @refs = $db->xarrayrefs(
-        select => [qw/rm.prefix rm.hash/],
-        from   => 'hub_related_changes_merkle rm',
-        where =>
-          [ 'rm.hub_id = ', qv($id), ' AND rm.prefix LIKE ', qv($prefix2) ],
+        select => [qw/pm.prefix pm.hash/],
+        from   => 'project_related_changes_merkle pm',
+        where  => [
+            'pm.project_id = ',     qv($id),
+            ' AND pm.hub_id = ',    qv($hub_id),
+            ' AND pm.prefix LIKE ', qv($prefix2)
+        ],
     );
 
     my $here = { map { $_->[0] => $_->[1] } @refs };
@@ -100,10 +94,16 @@ sub real_sync_hub {
             insert_into => "$tmp(id,ucount)",
             select      => [ 'c.id', 'c.ucount' ],
             from        => 'changes c',
-            inner_join  => 'hub_related_changes hrc',
+            inner_join  => 'project_related_changes pru',
             on          => {
-                'hrc.change_id' => \'c.id',
-                'hrc.hub_id'    => $id,
+                'pru.change_id'           => \'c.id',
+                'pru.project_id'          => $id,
+                'NOT pru.real_project_id' => \@ids,
+            },
+            inner_join => 'projects_tree pt',
+            on         => {
+                'pt.child'  => \'pru.project_id',
+                'pt.parent' => $id,
             },
             where => \@where,
         );
@@ -111,15 +111,16 @@ sub real_sync_hub {
 
     if (@next) {
         foreach my $next ( sort @next ) {
-            $self->real_sync_hub( $id, $next, $tmp );
+            $self->real_sync_project( $id, $ids, $next, $tmp );
         }
     }
 
     return unless $prefix eq '';
-    return 'RepoSync';
+
+    return 'ProjectSync';
 }
 
-sub real_transfer_hub_changes {
+sub Bif::Sync::real_transfer_project_related_changes {
     my $self = shift;
 
     my $tmp   = $self->temp_table;
@@ -138,23 +139,23 @@ sub real_transfer_hub_changes {
                 order_by => 't.id ASC',
             ),
         ],
-        $hub_functions,
+        $project_functions,
     );
 
     $self->db->xdo( delete_from => $tmp );
 
     return $r unless $r eq 'ExchangeChangesets';
-    return 'TransferHubChanges';
+    return 'TransferProjectRelatedChanges';
 }
 
-sub real_export_hub {
+sub Bif::Sync::real_export_project {
     my $self = shift;
     my $id   = shift;
 
     my $total = $self->db->xval(
-        select => 'COUNT(hru.change_id)',
-        from   => 'hub_related_changes hru',
-        where  => { 'hru.hub_id' => $id },
+        select => 'COUNT(oru.change_id)',
+        from   => 'project_related_changes pru',
+        where  => { 'pru.project_id' => $id },
     );
 
     my $recv = $self->send_changesets(
@@ -162,15 +163,15 @@ sub real_export_hub {
         [
             with => 'src',
             as   => sq(
-                select   => 'hru.change_id AS id',
-                from     => 'hub_related_changes hru',
-                where    => { 'hru.hub_id' => $id },
-                order_by => 'hru.change_id ASC',
+                select   => 'pru.change_id AS id',
+                from     => 'project_related_changes pru',
+                where    => { 'pru.project_id' => $id },
+                order_by => 'pru.change_id ASC',
             ),
         ]
     );
 
-    return 'RepoExported' if $recv eq 'ChangesetsSent';
+    return 'ProjectExported' if $recv eq 'ChangesetsSent';
     return $recv;
 }
 
@@ -180,5 +181,5 @@ sub real_export_hub {
 
 =for bif-doc #perl
 
-Bif::Role::Sync::Repo - synchronisation role for hubs
+Bif::Sync::Plugin::Project - synchronisation plugin for projects
 

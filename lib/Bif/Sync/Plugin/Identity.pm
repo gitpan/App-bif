@@ -1,12 +1,11 @@
-package Bif::Role::Sync::Identity;
+package Bif::Sync::Plugin::Identity;
 use strict;
 use warnings;
 use Coro;
 use DBIx::ThinSQL qw/qv sq/;
 use Log::Any '$log';
-use Role::Basic;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 
 my %import_functions = (
     CHANGESET => {},
@@ -26,14 +25,14 @@ my $identity_functions = {
     change                      => 'func_import_change',
 };
 
-sub real_import_identity {
+sub Bif::Sync::real_import_identity {
     my $self   = shift;
     my $result = $self->recv_changesets($identity_functions);
     return 'IdentityImported' if $result eq 'RecvChangesets';
     return $result;
 }
 
-sub real_sync_identity {
+sub Bif::Sync::real_sync_identity {
     my $self   = shift;
     my $id     = shift || die caller;
     my $prefix = shift;
@@ -104,7 +103,7 @@ sub real_sync_identity {
     return 'IdentitySync';
 }
 
-sub real_transfer_identity_changes {
+sub Bif::Sync::real_transfer_identity_changes {
     my $self = shift;
     my $tmp  = $self->temp_table;
 
@@ -162,7 +161,7 @@ sub real_transfer_identity_changes {
     return $r1;
 }
 
-sub real_export_identity {
+sub Bif::Sync::real_export_identity {
     my $self = shift;
     my $id   = shift;
 
@@ -195,5 +194,5 @@ sub real_export_identity {
 
 =for bif-doc #perl
 
-Bif::Role::Sync::Identity - synchronisation role for identities
+Bif::Sync::Plugin::Identity - synchronisation plugin for identities
 

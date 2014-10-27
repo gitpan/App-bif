@@ -27,7 +27,7 @@ BEGIN
             change_id,
             id,
             project_id,
-            status_id,
+            issue_status_id,
             title
         )
     SELECT

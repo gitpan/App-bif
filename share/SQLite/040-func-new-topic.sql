@@ -32,7 +32,8 @@ BEGIN
         changes_pending
     SET
         terms = terms
-            || '- _: topic' || x'0A'
+            || '-' || x'0A'
+            || '  _: topic' || x'0A'
             || '  kind: ' || NEW.kind || x'0A'
     WHERE
         change_id = NEW.change_id

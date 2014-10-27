@@ -34,7 +34,6 @@ on 'runtime' => sub {
 
     # App::bif::show/log
     requires 'Time::Duration' => 0;
-    requires 'POSIX'          => 0;
     requires 'locale'         => 0;
 
     # App::bif::show
@@ -47,7 +46,6 @@ on 'runtime' => sub {
     requires 'IO::Prompt::Tiny'   => 0;
     requires 'Log::Any::Adapter'  => '0.11';
     requires 'Path::Tiny'         => '0.019';
-    requires 'Proc::InvokeEditor' => 0;
     requires 'Term::ANSIColor'    => 0;
 
     if ( $^O eq 'MSWin32' ) {
@@ -67,8 +65,7 @@ on 'runtime' => sub {
     requires 'Coro';
     requires 'Coro::Handle';
     requires 'JSON';
-    requires 'Role::Basic' => 0;
-    requires 'Sys::Cmd'    => '0.81.6';
+    requires 'Sys::Cmd'    => '0.81.8';
 };
 
 on 'test' => sub {
@@ -92,5 +89,5 @@ on 'develop' => sub {
     requires 'Text::Diff';
     requires 'Test::Pod';
     requires 'Test::Pod::Coverage';
-    requires 'YAML::XS';
+    requires 'YAML::Tiny';
 };

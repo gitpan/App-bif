@@ -3,7 +3,7 @@ use strict;
 use warnings;
 use Bif::Mo;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::show';
 
 sub run {
@@ -11,6 +11,7 @@ sub run {
     my $opts = $self->opts;
     my $db   = $self->db;
     my $info = $self->get_project( $opts->{path} );
+    my $now  = $self->now;
 
     my @data;
 
@@ -18,14 +19,26 @@ sub run {
 
     my $ref = $db->xhashref(
         select => [
-            'topics.id',             'substr(topics.uuid,1,8) as uuid',
-            'projects.path',         'projects.title',
-            'topics.ctime',          'topics.ctimetz',
-            'topics.mtime',          'topics.mtimetz',
-            'changes.author',        'changes.email',
-            'changes.message',       'project_status.status',
-            'project_status.status', 'projects.local',
-            'h.name AS hub',         't2.uuid AS hub_uuid',
+            'topics.id',
+            'substr(topics.uuid,1,8) as uuid',
+            'projects.path',
+            'projects.title',
+            'topics.ctime AS ctime',
+            'topics.ctimetz AS ctimetz',
+            'topics.ctimetzhm AS ctimetzhm',
+            "$now - topics.ctime AS ctime_age",
+            'topics.mtime AS mtime',
+            'topics.mtimetz AS mtimetz',
+            'topics.mtimetzhm AS mtimetzhm',
+            "$now - topics.mtime AS mtime_age",
+            'changes.author',
+            'changes.email',
+            'changes.message',
+            'project_status.status',
+            'project_status.status',
+            'projects.local',
+            'h.name AS hub',
+            't2.uuid AS hub_uuid',
             'hr.location',
         ],
         from       => 'projects',
@@ -34,7 +47,7 @@ sub run {
         inner_join => 'changes',
         on         => 'changes.id = topics.first_change_id',
         inner_join => 'project_status',
-        on         => 'project_status.id = projects.status_id',
+        on         => 'project_status.id = projects.project_status_id',
         left_join  => 'hubs h',
         on         => 'h.id = projects.hub_id',
         left_join  => 'hub_repos hr',
@@ -52,12 +65,9 @@ sub run {
       if $ref->{hub};
 
     if ( $opts->{full} ) {
-        push(
-            @data,
+        push( @data,
             $self->header( '  Creator', $ref->{author}, $ref->{email} ),
-            $self->header(
-                '  Created', $self->ago( $ref->{ctime}, $ref->{ctimetz} )
-            ),
+            $self->header( '  Created', $self->ctime_ago($ref) ),
         );
     }
 
@@ -88,7 +98,7 @@ sub run {
             ],
             from       => 'project_issues',
             inner_join => 'issue_status',
-            on         => 'issue_status.id = project_issues.status_id',
+            on         => 'issue_status.id = project_issues.issue_status_id',
             where      => { 'project_issues.project_id' => $info->{id} },
         );
 
@@ -101,7 +111,7 @@ sub run {
             ],
             from       => 'task_status',
             inner_join => 'tasks',
-            on         => 'tasks.status_id = task_status.id',
+            on         => 'tasks.task_status_id = task_status.id',
             where      => { 'task_status.project_id' => $info->{id} },
         );
 
@@ -123,9 +133,7 @@ sub run {
             ),
 
             # TODO "Updated:..."
-            $self->header(
-                '  Updated', $self->ago( $ref->{mtime}, $ref->{mtimetz} )
-            ),
+            $self->header( '  Updated', $self->mtime_ago($ref) ),
         );
     }
 
@@ -163,7 +171,7 @@ bif-show-project - display a project's current status
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

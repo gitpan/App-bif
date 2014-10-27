@@ -4,7 +4,7 @@ use warnings;
 use Bif::Mo;
 use DBIx::ThinSQL qw/sum case coalesce concat qv/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::show';
 
 sub run {
@@ -15,15 +15,26 @@ sub run {
     $opts->{id} = $self->uuid2id( $opts->{id} );
 
     my @data;
+    my $now = $self->now;
 
     my $ref = $db->xhashref(
         select => [
-            'i.id',               'substr(t.uuid,1,8) as uuid',
-            'e.name',             'ct.contact_id != e.id AS other_contact',
-            'ct.name AS contact', 't.ctime',
-            't.ctimetz',          't.mtime',
-            't.mtimetz',          'c.author',
-            'c.email',            'c.message',
+            'i.id',
+            'substr(t.uuid,1,8) as uuid',
+            't.mtime AS mtime',
+            't.mtimetz AS mtimetz',
+            't.mtimetzhm AS mtimetzhm',
+            "$now - t.mtime AS mtime_age",
+            'e.name',
+            'ct.contact_id != e.id AS other_contact',
+            'ct.name AS contact',
+            't.ctime AS ctime',
+            't.ctimetz AS ctimetz',
+            't.ctimetzhm AS ctimetzhm',
+            "$now - t.ctime AS ctime_age",
+            'c.author',
+            'c.email',
+            'c.message',
             'e.local',
         ],
         from       => 'identities i',
@@ -43,8 +54,8 @@ sub run {
 
     my ($bold) = $self->colours('bold');
 
-    push( @data, $self->header( '  UUID', $ref->{uuid} ), );
-
+    push( @data, $self->header( '  UUID',    $ref->{uuid} ), );
+    push( @data, $self->header( '  Created', $self->ctime_ago($ref) ), );
     push( @data, $self->header( '  Contact', $ref->{contact} ), )
       if $ref->{other_contact};
 
@@ -71,12 +82,7 @@ sub run {
         ),
     ) for @methods;
 
-    push(
-        @data,
-        $self->header(
-            '  Updated', $self->ago( $ref->{mtime}, $ref->{mtimetz} )
-        ),
-    );
+    push( @data, $self->header( '  Updated', $self->mtime_ago($ref) ), );
 
     $self->start_pager;
     print $self->render_table( 'l  l', [ $bold . 'Identity', $ref->{name} ],
@@ -96,7 +102,7 @@ bif-show-identity - display a identity's current status
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

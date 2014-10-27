@@ -6,7 +6,7 @@ use DBIx::ThinSQL qw//;
 use DBIx::ThinSQL::SQLite ':all';
 use Log::Any '$log';
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 our @ISA     = ('Bif::DB');
 
 create_methods(qw/nextval currval/);
@@ -78,6 +78,7 @@ sub deploy {
                 my $sql = static::find($src)
                   or die 'unsupported database type: ' . $db->{Driver}->{Name};
 
+                DBIx::ThinSQL::SQLite::create_sqlite_sequence($db);
                 return $db->deploy_sql($sql);
             }
             else {
@@ -114,7 +115,7 @@ Bif::DBW - read-write helper methods for a bif database
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

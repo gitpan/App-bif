@@ -1,10 +1,11 @@
 package App::bif::show::change;
 use strict;
 use warnings;
-use DBIx::ThinSQL qw/sq qv/;
+use App::bif::log;
 use Bif::Mo;
+use DBIx::ThinSQL qw/sq qv/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif::show';
 
 sub run {
@@ -12,19 +13,20 @@ sub run {
     my $opts = $self->opts;
     my $dbw  = $self->dbw;
     my $info = $self->get_change( $opts->{uid} );
+    my $now  = $self->now;
 
     my $ref = $dbw->xhashref(
         select => [
             'c.id',
-            'c.mtime',
-            'c.mtimetz',
-            'SUBSTR(c.uuid,1,8) AS uuid',
+            'c.mtime AS mtime',
+            'c.mtimetz AS mtimetz',
+            'c.mtimetzhm AS mtimetzhm',
+            "$now - c.mtime AS mtime_age",
+            'c.uuid AS uuid',
             'c.action',
             'e.name',
             'COALESCE(c.author,e.name) AS author',
             'COALESCE(c.email,ecm.mvalue) AS email',
-            't.id AS topic_id',
-            't.kind',
             'c.message',
         ],
         from       => 'changes c',
@@ -36,25 +38,55 @@ sub run {
         on         => 'ecm.id = e.default_contact_method_id',
         left_join  => 'change_deltas cd',
         on         => 'cd.change_id = c.id',
-        left_join  => 'topics t',
-        on         => 't.id = cd.action_topic_id_1',
         where      => { 'c.id' => $info->{id} },
     );
 
+    # YAML::Tiny only installed by cpanm --with-develop
+    my $yaml    = '';
+    my $invalid = '';
+
+    if ( eval { require YAML::Tiny } ) {
+        require Bif::DB::Plugin::Changes;
+        require Digest::SHA;
+
+        my $sth = $dbw->xprepare_changeset_ext(
+            with => 'src',
+            as   => sq(
+                select => qv( $info->{id} )->as('id'),
+            ),
+        );
+
+        $sth->execute;
+        my $ref2 = $sth->changeset_ext;
+        delete $ref2->[0]->{uuid};
+
+        $yaml = YAML::Tiny::Dump($ref2);
+        my ( $green, $red, $reset ) = $self->colours(qw/green red reset/);
+
+        $invalid =
+          Digest::SHA::sha1_hex($yaml) eq $ref->{uuid}
+          ? ' (' . $green . 'VALID' . $reset . ')'
+          : ' (' . $red . 'INVALID!' . $reset . ')';
+    }
+
     my @data;
     push( @data,
-        $self->header( '  UUID', $ref->{uuid},              '' ),
-        $self->header( '  From', $ref->{author},            $ref->{email} ),
-        $self->header( '  When', $self->ago( $ref->{mtime}, $ref->{mtimetz} ) ),
-        $self->header( '  Topic',   "$ref->{kind} $ref->{topic_id}", ),
-        $self->header( '  Message', $ref->{message} ),
+        $self->header( '  From', $ref->{author}, $ref->{email} ),
+        $self->header( '  When', $self->mtime_ago($ref) ),
+        $self->header( '  UUID', $ref->{uuid} . $invalid ),
     );
 
     $self->start_pager;
 
     print $self->render_table( 'l  l',
-        [ 'Change ' . $ref->{id}, $ref->{action} ],
+        [ 'a' . $ref->{id} . ':', $ref->{action} ],
         \@data, 1 );
+
+    print "\n";
+    print App::bif::log->reformat( $ref->{message} );
+
+    ( my $x = $yaml ) =~ s/^/ /mg;
+    print $x;
 
     return $self->ok('ShowChange');
 }
@@ -70,7 +102,7 @@ bif-show-change - show change information
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 
@@ -79,8 +111,12 @@ bif-show-change - show change information
 =head1 DESCRIPTION
 
 The B<bif-show-change> command displays information about an action in
-the repository. This command has possibly no purpose, but is a leftover
-from development activities.
+the repository, similar to how each change is displayed by L<bif-log>
+commands. This command is likely only useful for developers.
+
+If the L<YAML::Tiny> module is installed then B<bif-show-change> also
+displays the change as a YAML document and reports on whether the UUID
+is valid or not.
 
 =head1 ARGUMENTS & OPTIONS
 

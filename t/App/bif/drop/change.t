@@ -16,6 +16,8 @@ run_in_tempdir {
 
     isa_ok bif(qw/drop change c1/),         'Bif::OK::DropNoForce';
     isa_ok bif(qw/drop change c1 --force/), 'Bif::OK::DropChange';
+
+    bifcheck;
 };
 
 done_testing();

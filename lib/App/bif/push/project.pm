@@ -2,11 +2,11 @@ package App::bif::push::project;
 use strict;
 use warnings;
 use AnyEvent;
-use Bif::Client;
+use Bif::Sync::Client;
 use Bif::Mo;
 use Coro;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -51,7 +51,7 @@ sub run {
     my $error;
     my $cv = AE::cv;
 
-    my $client = Bif::Client->new(
+    my $client = Bif::Sync::Client->new(
         name          => $hub->{name},
         db            => $dbw,
         location      => $hub->{location},
@@ -73,9 +73,24 @@ sub run {
             $dbw->txn(
                 sub {
                     foreach my $pinfo (@pinfo) {
+
+                        my $msg = "[ push: $hub->{location} ($hub->{name}) ]";
+                        if ( $opts->{message} ) {
+                            $msg .= "\n\n$opts->{message}\n";
+                        }
+
                         my $uid = $self->new_change(
-                            parent_id => $hub->{first_change_id},
-                            message   => "Imported $pinfo->{path}",
+                            parent_id => $pinfo->{first_change_id},
+                            message   => $msg,
+                        );
+
+                        $dbw->xdo(
+                            insert_into => 'func_update_project',
+                            values      => {
+                                id        => $pinfo->{id},
+                                change_id => $uid,
+                                hub_id    => $hub->{id},
+                            },
                         );
 
                         $dbw->xdo(
@@ -83,48 +98,9 @@ sub run {
                             values      => {
                                 change_id     => $uid,
                                 new           => 1,
-                                action_format => "imported $pinfo->{path} (%s)",
-                                action_topic_id_1 => $pinfo->{id},
-                            },
-                        );
-
-                        # TODO make this a trigger somehow?
-                        $dbw->xdo(
-                            insert_into => 'hub_deltas',
-                            values      => {
-                                change_id  => $uid,
-                                hub_id     => $hub->{id},
-                                project_id => $pinfo->{id},
-                            },
-                        );
-
-                        my $msg = "[ push: $hub->{location} ($hub->{name}) ]";
-                        if ( $opts->{message} ) {
-                            $msg .= "\n\n$opts->{message}\n";
-                        }
-
-                        $opts->{change_id} = $self->new_change(
-                            parent_id => $pinfo->{first_change_id},
-                            message   => $msg,
-                        );
-
-                        $dbw->xdo(
-                            insert_into => 'change_deltas',
-                            values      => {
-                                change_id     => $opts->{change_id},
-                                new           => 1,
                                 action_format => "push project $pinfo->{path} "
                                   . "(%s) $hub->{name}",
                                 action_topic_id_1 => $pinfo->{id},
-                            },
-                        );
-
-                        $dbw->xdo(
-                            insert_into => 'func_update_project',
-                            values      => {
-                                id        => $pinfo->{id},
-                                change_id => $opts->{change_id},
-                                hub_uuid  => $hub->{uuid},
                             },
                         );
 
@@ -198,7 +174,7 @@ bif-push-project -  export a project to a remote hub
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

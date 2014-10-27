@@ -47,6 +47,8 @@ BEGIN
     WHERE
         change_id = NEW.change_id
     ;
-*/
+
     SELECT RAISE(IGNORE);
+*/
+
 END;

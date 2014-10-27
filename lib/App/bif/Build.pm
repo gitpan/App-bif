@@ -1,9 +1,9 @@
 package App::bif::Build;
 use strict;
 use warnings;
-$App::bif::Build::VERSION = '0.1.2';
-$App::bif::Build::COMMIT = '4e59bc4478c68636b7a9c2b5df1b668a64c86c3c';
-$App::bif::Build::DATE = '2014-10-08 20:50:55';
+$App::bif::Build::VERSION = '0.1.4';
+$App::bif::Build::COMMIT = 'd229ca1cf888a3666e406c210da0105a06ab3928';
+$App::bif::Build::DATE = '2014-10-27 08:20:37';
 $App::bif::Build::FILE = __FILE__;
 1;
 __END__
@@ -14,7 +14,7 @@ App::bif::Build - build-time constants for App-bif
 
 =head1 VERSION
 
-0.1.0_28 (2014-10-08)
+0.1.0_28 (2014-10-27)
 
 =head1 SYNOPSIS
 
@@ -40,12 +40,12 @@ were set as follows:
 
 =over
 
-=item $App::bif::Build::COMMIT = "4e59bc4478c68636b7a9c2b5df1b668a64c86c3c"
+=item $App::bif::Build::COMMIT = "d229ca1cf888a3666e406c210da0105a06ab3928"
 
 The Git commit hash at the head of the branch when the App-bif
 distribution was created.
 
-=item $App::bif::Build::DATE = "2014-10-08 20:50:55"
+=item $App::bif::Build::DATE = "2014-10-27 08:20:37"
 
 The UTC date that the Makefile.PL file was run.
 
@@ -54,7 +54,7 @@ The UTC date that the Makefile.PL file was run.
 The installation location of this module, which cannot be
 documented here as it is only known at runtime.
 
-=item $App::bif::Build::VERSION = "0.1.2"
+=item $App::bif::Build::VERSION = "0.1.4"
 
 The version of the App-bif distribution.
 

@@ -33,6 +33,7 @@ BEGIN
     UPDATE entity_contact_methods_tomerge SET resolve = 1;
     UPDATE hubs_tomerge                   SET resolve = 1;
     UPDATE hub_repos_tomerge              SET resolve = 1;
+    UPDATE identities_tomerge             SET resolve = 1;
     UPDATE projects_tomerge               SET resolve = 1;
     UPDATE project_status_tomerge         SET resolve = 1;
     UPDATE task_status_tomerge            SET resolve = 1;

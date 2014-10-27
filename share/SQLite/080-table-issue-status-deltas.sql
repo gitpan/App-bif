@@ -50,12 +50,13 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: issue_status' || x'0A'
+                    '  _: issue_status' || x'0A'
                 ELSE
-                    '- _: issue_status_delta' || x'0A'
+                    '  _: issue_status_delta' || x'0A'
                 END
                 || '  def: ' || COALESCE(NEW.def, '~') || x'0A'
                 || CASE WHEN

@@ -7,7 +7,7 @@ use DBIx::ThinSQL qw/bv/;
 use IO::Prompt::Tiny qw/prompt/;
 use Path::Tiny qw/path/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -174,7 +174,7 @@ bif-new-identity - create a new identity in the repository
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

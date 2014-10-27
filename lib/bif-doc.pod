@@ -89,6 +89,8 @@
 
 =item * L<bif-show-project> - display a project's current status
 
+=item * L<bif-show-table> - display a table's SQL schema
+
 =item * L<bif-show-task> - display a task's current status
 
 
@@ -99,6 +101,8 @@
 
 =over
 
+=item * L<bif-list-actions> - review the actions in the current repository
+
 =item * L<bif-log> - review the repository or topic history
 
 =item * L<bif-log-hub> - review the history of a hub
@@ -108,8 +112,6 @@
 =item * L<bif-log-issue> - review the history of a issue
 
 =item * L<bif-log-project> - review a project history
-
-=item * L<bif-log-repo> - review the history of the current repository
 
 =item * L<bif-log-task> - review a task history
 
@@ -144,6 +146,8 @@
 =item * L<bif-drop> - delete a topic or topic change
 
 =item * L<bif-drop-change> - remove an change from the repository
+
+=item * L<bif-drop-hub> - remove an hub from the repository
 
 =item * L<bif-drop-issue> - remove an issue from the repository
 
@@ -181,10 +185,6 @@
 
 =over
 
-=item * L<bif-new-repo> - create an empty repository
-
-=item * L<bif-sql> - run an SQL command against the database
-
 =item * L<bif-upgrade> - upgrade a repository
 
 
@@ -195,25 +195,15 @@
 
 =over
 
-=item * L<bif-doc-hub> - how to manage remote hub repositories
-
 =item * L<bif-list-hosts> - list hosts present in repository
 
 =item * L<bif-list-plans> - list plans present in repository
 
 =item * L<bif-list-providers> - list providers present in repository
 
-=item * L<bif-new-host> - create a new host in the repository
-
 =item * L<bif-new-hub> - create a new hub in the repository
 
-=item * L<bif-new-plan> - create a new plan in the repository
-
-=item * L<bif-new-provider> - create a new provider in the repository
-
 =item * L<bif-show-plan> - display a plan's current status
-
-=item * L<bif-update-plan> - update or comment an plan
 
 
 
@@ -235,19 +225,33 @@
 
 =back
 
+=head2 Useful Development Commands
+
+=over
+
+=item * L<bif-check> - check all changeset UUIDs
+
+=item * L<bif-new-repo> - create an empty repository
+
+=item * L<bif-sql> - run an SQL command against the database
+
+
+
+=back
+
 =head2 Perl Module Reference Documentation
 
 =over
 
 =item * L<App::bif> - A base class for App::bif::* commands
 
+=item * L<App::bif::Editor> - run a system (text) editor
+
 =item * L<App::bif::LAA> - Simple adapter for logging to current filehandle
 
 =item * L<App::bif::OptArgs> - bif command argument & option definitions
 
 =item * L<App::bif::Pager> - pipe output to a system (text) pager
-
-=item * L<Bif::Client> - client for communication with a bif hub
 
 =item * L<Bif::DB> - helper methods for a read-only bif database
 
@@ -257,15 +261,17 @@
 
 =item * L<Bif::Mo> - mini object-oriented module
 
-=item * L<Bif::Role::Sync> - synchronisation role
+=item * L<Bif::Sync> - synchronisation role
 
-=item * L<Bif::Role::Sync::Identity> - synchronisation role for identities
+=item * L<Bif::Sync::Client> - client for communication with a bif hub
 
-=item * L<Bif::Role::Sync::Project> - synchronisation role for projects
+=item * L<Bif::Sync::Plugin::Identity> - synchronisation plugin for identities
 
-=item * L<Bif::Role::Sync::Repo> - synchronisation role for hubs
+=item * L<Bif::Sync::Plugin::Project> - synchronisation plugin for projects
 
-=item * L<Bif::Server> - server for communication with a client
+=item * L<Bif::Sync::Plugin::Repo> - synchronisation plugin for hubs
+
+=item * L<Bif::Sync::Server> - server for communication with a client
 
 
 

@@ -215,9 +215,9 @@ run_in_tempdir {
 
             is_deeply $db->selectrow_arrayref(
                 'select
-            project_issues.status_id,
+            project_issues.issue_status_id,
             project_issues.change_id,
-            issue_deltas.status_id
+            issue_deltas.issue_status_id
          from issue_deltas
          inner join project_issues
          on project_issues.issue_id = issue_deltas.issue_id
@@ -244,9 +244,9 @@ run_in_tempdir {
 
             is_deeply $db->selectrow_arrayref(
                 'select
-            project_issues.status_id,
+            project_issues.issue_status_id,
             project_issues.change_id,
-            issue_deltas.status_id
+            issue_deltas.issue_status_id
          from issue_deltas
          inner join project_issues
          on project_issues.issue_id = issue_deltas.issue_id

@@ -2,7 +2,7 @@ CREATE TABLE func_new_issue(
     change_id INTEGER NOT NULL,
     id INTEGER NOT NULL DEFAULT (nextval('topics')),
     topic_id INTEGER NOT NULL,
-    status_id INTEGER NOT NULL,
+    issue_status_id INTEGER NOT NULL,
     title VARCHAR(1024) NOT NULL DEFAULT ''
 );
 
@@ -17,7 +17,7 @@ BEGIN
         'TRIGGER func_new_issue_bi_1',
         NEW.id,
         NEW.topic_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.title,
         NEW.change_id
     );
@@ -35,7 +35,7 @@ BEGIN
             new,
             issue_id,
             project_id,
-            status_id,
+            issue_status_id,
             title
         )
     SELECT
@@ -43,12 +43,12 @@ BEGIN
         1,
         NEW.topic_id,
         issue_status.project_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.title
     FROM
         issue_status
     WHERE
-        issue_status.id = NEW.status_id
+        issue_status.id = NEW.issue_status_id
     ;
 
     /*
@@ -62,19 +62,19 @@ BEGIN
             id,
             issue_id,
             project_id,
-            status_id,
+            issue_status_id,
             change_id
         )
     SELECT
         NEW.id,
         NEW.topic_id,
         issue_status.project_id,
-        NEW.status_id,
+        NEW.issue_status_id,
         NEW.change_id
     FROM
         issue_status
     WHERE
-        issue_status.id = NEW.status_id
+        issue_status.id = NEW.issue_status_id
     ;
 
     SELECT RAISE(IGNORE);

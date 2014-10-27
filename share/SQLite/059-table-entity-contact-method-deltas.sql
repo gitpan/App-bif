@@ -47,14 +47,15 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: entity_contact_method' || x'0A'
+                    '  _: entity_contact_method' || x'0A'
                     || '  entity_uuid: '
                     || e.uuid || x'0A'
                 ELSE
-                    '- _: entity_contact_method_delta' || x'0A'
+                    '  _: entity_contact_method_delta' || x'0A'
                     || '  entity_contact_method_uuid: '
                     || topics.uuid || x'0A'
                 END

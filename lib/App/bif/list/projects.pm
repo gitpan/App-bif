@@ -4,9 +4,8 @@ use warnings;
 use utf8;
 use Bif::Mo;
 use DBIx::ThinSQL qw/ qv sq case coalesce concat /;
-use Term::ANSIColor qw/color/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub _invalid_status {
@@ -84,43 +83,35 @@ sub run {
 
     return $self->ok('ListProjects') unless $data;
 
-    require Term::ANSIColor;
-    my $dark  = Term::ANSIColor::color('dark');
-    my $reset = Term::ANSIColor::color('reset');
-
     # TODO do this as a sub-select?
     foreach my $i ( 0 .. $#$data ) {
         my $row = $data->[$i];
-        if ( !$row->[8] ) {
-            $row->[5] = $row->[6] = $row->[7] = '*';
-            $row->[4] = $row->[5];
-            $row->[7] = '*' . $reset;
+        if ( !$row->[7] ) {
+            $row->[4] = $row->[5] = $row->[6] = '*';
+            $row->[3] = $row->[4];
+            $row->[6] = '*';
         }
         else {
-            if ( $row->[7] ) {
-                $row->[7] =
-                  int( 100 * $row->[7] / ( $row->[7] + $row->[6] + $row->[5] ) )
+            if ( $row->[6] ) {
+                $row->[6] =
+                  int( 100 * $row->[6] / ( $row->[6] + $row->[5] + $row->[4] ) )
                   . '%';
             }
             else {
-                $row->[7] = '0%';
+                $row->[6] = '0%';
             }
         }
 
-        $row->[8] = '';
+        $row->[7] = '';
     }
 
     $self->start_pager( scalar @$data );
 
     print $self->render_table(
-        'll  l  l  l  r r rl',
-        [
-            ' ',     'TYPE', 'PATH',    'TITLE',
-            'PHASE', 'OPEN', 'STALLED', 'PROGRESS',
-            ''
-        ],
+        ' l  l  l  l  r r rl',
+        [ 'Type', 'Path', 'Title', 'Phase', 'Open', 'Stalled', 'Progress', '' ],
         $data
-    );
+    ) . "\n";
 
     return $self->ok('ListProjects');
 }
@@ -129,9 +120,11 @@ sub _get_data {
     my $self = shift;
     my $opts = $self->opts;
 
+    my ( $dark, $yellow, $reset ) = $self->colours(qw/yellow yellow reset/);
+
     return $self->db->xarrayrefs(
         select => [
-            qv( color('dark') . 'project' . color('reset') )->as('type'),
+            qv( $dark . 'project' . $reset )->as('type'),
             'p.fullpath',
             'p.title',
             'project_status.status',
@@ -159,12 +152,12 @@ sub _get_data {
         on         => do {
             if ( $opts->{status} ) {
                 {
-                    'project_status.id'     => \'p.status_id',
+                    'project_status.id'     => \'p.project_status_id',
                     'project_status.status' => $opts->{status},
                 };
             }
             else {
-                'project_status.id = p.status_id';
+                'project_status.id = p.project_status_id';
             }
         },
         left_join => sq(
@@ -191,7 +184,7 @@ sub _get_data {
                 if ( $opts->{status} ) {
                     inner_join => 'project_status',
                       on       => {
-                        'project_status.id'     => \'p.status_id',
+                        'project_status.id'     => \'p.project_status_id',
                         'project_status.status' => $opts->{status},
                       };
                 }
@@ -202,7 +195,7 @@ sub _get_data {
             inner_join       => 'task_status',
             on               => 'task_status.project_id = p.id',
             inner_join       => 'tasks',
-            on               => 'tasks.status_id = task_status.id',
+            on               => 'tasks.task_status_id = task_status.id',
             where            => { 'hrp.hub_id' => $opts->{hub_id} },
             group_by         => 'p.id',
             union_all_select => [
@@ -228,7 +221,7 @@ sub _get_data {
                 if ( $opts->{status} ) {
                     inner_join => 'project_status',
                       on       => [
-                        'project_status.id'     => \'p.status_id',
+                        'project_status.id'     => \'p.project_status_id',
                         'project_status.status' => $opts->{status},
                       ],
                       ;
@@ -240,7 +233,7 @@ sub _get_data {
             inner_join => 'issue_status',
             on         => 'issue_status.project_id = p.id',
             inner_join => 'project_issues',
-            on         => 'project_issues.status_id = issue_status.id',
+            on         => 'project_issues.issue_status_id = issue_status.id',
             where      => { 'hrp.hub_id' => $opts->{hub_id} },
             group_by   => 'p.id',
           )->as('total'),
@@ -255,10 +248,10 @@ sub _get_data2 {
     my $self = shift;
     my $opts = $self->opts;
 
-    my $reset = Term::ANSIColor::color('reset');
-    my $bold  = Term::ANSIColor::color('bold');
+    my ( $dark, $yellow, $reset ) = $self->colours(qw/dark yellow reset/);
+
     return $self->db->xarrayrefs(
-        select => [qw/new type path title status open stalled closed local/],
+        select => [qw/type path title status open stalled closed local/],
         from   => sq(
             with => 'b',
             as   => sq(
@@ -267,16 +260,19 @@ sub _get_data2 {
                 where => { 'b.key' => 'last_sync' },
             ),
             select => [
-                case (
-                    when => 't.first_change_id > b.start',
-                    then => qv('+'),
-                    when => 'b.start',
-                    then => qv('±'),
-                    else => qv(' '),
-                  )->as('new'),
-                qv('project')->as('type'),
-                'p.fullpath AS path',
+                concat(
+                    'p.fullpath',
+                    ,
+                    case (
+                        when => 't.first_change_id > b.start',
+                        then => qv( $yellow . ' [+]' . $reset ),
+                        when => 'b.start',
+                        then => qv( $yellow . ' [±]' . $reset ),
+                        else => qv(' '),
+                    )
+                  )->as('path'),
                 'p.title AS title',
+                qv('project')->as('type'),
                 'project_status.status',
                 'sum( coalesce( total.open, 0 ) ) AS open',
                 'sum( coalesce( total.stalled, 0 ) )  AS stalled',
@@ -295,12 +291,12 @@ sub _get_data2 {
             on         => do {
                 if ( $opts->{status} ) {
                     {
-                        'project_status.id'     => \'p.status_id',
+                        'project_status.id'     => \'p.project_status_id',
                         'project_status.status' => $opts->{status},
                     };
                 }
                 else {
-                    'project_status.id = p.status_id';
+                    'project_status.id = p.project_status_id';
                 }
             },
             left_join => sq(
@@ -315,7 +311,7 @@ sub _get_data2 {
                     if ( $opts->{status} ) {
                         inner_join => 'project_status',
                           on       => {
-                            'project_status.id'     => \'p.status_id',
+                            'project_status.id'     => \'p.project_status_id',
                             'project_status.status' => $opts->{status},
                           };
                     }
@@ -326,7 +322,7 @@ sub _get_data2 {
                 inner_join => 'task_status',
                 on         => 'task_status.project_id = p.id',
                 inner_join => 'tasks',
-                on         => 'tasks.status_id = task_status.id',
+                on         => 'tasks.task_status_id = task_status.id',
                 do {
                     if ( $opts->{local} ) {
                         ( where => 'p.local = 1' );
@@ -347,7 +343,7 @@ sub _get_data2 {
                     if ( $opts->{status} ) {
                         inner_join => 'project_status',
                           on       => {
-                            'project_status.id'     => \'p.status_id',
+                            'project_status.id'     => \'p.project_status_id',
                             'project_status.status' => $opts->{status},
                           },
                           ;
@@ -359,7 +355,7 @@ sub _get_data2 {
                 inner_join => 'issue_status',
                 on         => 'issue_status.project_id = p.id',
                 inner_join => 'project_issues',
-                on         => 'project_issues.status_id = issue_status.id',
+                on => 'project_issues.issue_status_id = issue_status.id',
                 do {
                     if ( $opts->{local} ) {
                         ( where => 'p.local = 1' );
@@ -397,7 +393,7 @@ bif-list-projects - list projects with task/issue count & progress
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

@@ -23,6 +23,8 @@ run_in_tempdir {
 
     isa_ok bif(qw/pull identity --self .bifu/), 'Bif::OK::PullIdentity';
     isa_ok bif(qw/show identity 1/),            'Bif::OK::ShowIdentity';
+
+    bifcheck;
 };
 
 done_testing();

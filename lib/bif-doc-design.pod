@@ -8,7 +8,7 @@ management tool does what it does.
 
 =head1 Version
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 Background
 
@@ -78,13 +78,8 @@ engineering means that the CLI is anyway a thin layer over the
 database, meaning that adding other interfaces later is relatively
 easy.
 
-CLI should be consistent, semi-similar to other CLI programs.  Oh yeah,
-I almost forgot. The CLI should be responsive enough to be almost
-instantaneous. There will be no Moose in this CLI tool. Even though I
-upgraded my laptop recently with an SSD I still can't believe how much
-it affects the startup time in things like App::TimeTracker.  If I
-release something like that the thoughts of the first (non-Perl-aware)
-user will be "Do we need to rewrite this in Go?"
+CLI should be consistent, semi-similar to other CLI programs, and
+responsive enough to be almost instantaneous.
 
 =item Powerful Querying
 
@@ -171,17 +166,6 @@ to task and issue changes.
 
 =head1 Data Model
 
-=head2 User Data
-
-There are tables for $THINGS which usually also have a row in the
-"topics" table: projects, tasks, issues, hubs, hub locations, and
-status types for all of those. They have columns for a current state if
-applicable, and may have columns that indicate a relationship (e.g.
-projects.hub_id).
-
-There are sometimes tables for many-to-many relationships, such as an
-issue having a different status for each project.
-
 =head2 Changes
 
 A Bif change can actually be composed of many operations in the
@@ -202,11 +186,21 @@ signing changes in the future. The main purposes of the UUID however is
 for looking up local IDs when inserting changes with foreign key
 requirements.
 
+=head2 User Data
+
+There are tables for $THINGS which usually also have a row in the
+"topics" table: projects, tasks, issues, hubs, hub locations, and
+status types for all of those. They have columns for a current state if
+applicable, and may have columns that indicate a relationship (e.g.
+projects.hub_id).
+
+There are sometimes tables for many-to-many relationships, such as an
+issue having a different status for each project.
+
 =head2 Deltas
 
 There are tables for $THINGS_deltas, which relate changes to $THINGS
 with a particular change.
-
 
 Operations happen like this:
 
@@ -450,7 +444,7 @@ Database access.
 
 Roles that implement the core of the bif network protocol.
 
-=item Bif::Client, Bif::Server
+=item Bif::Sync::Client, Bif::Sync::Server
 
 Classes that provide client and server interfaces for the App::bif::*
 commands.
@@ -504,8 +498,9 @@ the insert with a C<SELECT RAISE(IGNORE)> statement.
 Bif uses ssh to run the L<bifsync> program on remote hosts when
 exchanging changes with a hub, or else calls L<bifsync> directly when
 exchanging changes with a local repository. Regardless, it ends up
-being L<Bif::Client> that is talking to L<Bif::Server>, although most
-of the functionality is in the parent L<Bif::Role::Sync> class.
+being L<Bif::Sync::Client> that is talking to L<Bif::Sync::Server>,
+although most of the functionality is in the parent L<Bif::Role::Sync>
+class.
 
 Client/Server is a bit of a misnomer, as the protocol is actually about
 exchanging changes equally, and not particularly about a user needing a

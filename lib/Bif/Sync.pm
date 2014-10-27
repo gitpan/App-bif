@@ -1,19 +1,85 @@
-package Bif::Role::Sync;
+package Bif::Sync;
 use strict;
 use warnings;
 use Bif::DB::Plugin::Changes;
-use DBIx::ThinSQL qw/coalesce qv/;
+use Bif::Mo;
 use Coro;
 use Log::Any '$log';
-use Role::Basic;
+use JSON;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 
-with qw/
-  Bif::Role::Sync::Identity
-  Bif::Role::Sync::Repo
-  Bif::Role::Sync::Project
-  /;
+has changes_dup => (
+    is      => 'rw',
+    default => 0
+);
+
+has changes_sent => (
+    is      => 'rw',
+    default => 0
+);
+
+has changes_torecv => (
+    is      => 'rw',
+    default => 0
+);
+
+has changes_tosend => (
+    is      => 'rw',
+    default => 0
+);
+
+has changes_recv => (
+    is      => 'rw',
+    default => 0
+);
+
+has debug => (
+    is      => 'rw',
+    default => 0,
+);
+
+has db => (
+    is       => 'ro',
+    required => 1,
+);
+
+has hub_id => ( is => 'rw', );
+
+has on_error => ( is => 'ro', required => 1 );
+
+has on_update => (
+    is      => 'rw',
+    default => sub { },
+);
+
+has rh => ( is => 'rw', );
+
+has wh => ( is => 'rw', );
+
+has json => (
+    is      => 'rw',
+    default => sub { JSON->new->utf8 },
+);
+
+has temp_table => (
+    is       => 'rw',
+    init_arg => undef,
+);
+
+sub new_temp_table {
+    my $self = shift;
+    my $tmp = 'sync_' . $$ . sprintf( "%08x", rand(0xFFFFFFFF) );
+
+    $self->db->do( 'CREATE TEMPORARY TABLE '
+          . $tmp . '('
+          . 'id INTEGER UNIQUE ON CONFLICT IGNORE,'
+          . 'ucount INTEGER'
+          . ')' );
+
+    $self->temp_table($tmp);
+    return $tmp;
+}
 
 sub read {
     my $self = shift;
@@ -26,14 +92,20 @@ sub read {
         return 'EOF';
     }
 
-    $log->debug( 'r: ' . $json );
     my $msg = eval { $self->json->decode($json) };
 
-    if ( $@ or !defined $msg ) {
-        $self->on_error->( $@ || 'no message received' );
+    if ($@) {
+        $self->on_error->($@);
         $self->write('InvalidEncoding');
         return 'INVALID';
     }
+    elsif ( !defined $msg ) {
+        $self->on_error->('no message received');
+        $self->write('NoMessage');
+        return 'INVALID';
+    }
+
+    $log->debugf( 'r: %s', $msg );
 
     return @$msg;
 }
@@ -41,41 +113,13 @@ sub read {
 sub write {
     my $self = shift;
 
-    $log->debugf(
-        'w: %s', $log->is_debug
-        ? $self->json->encode( \@_ )
-        : \@_
-    );
+    $log->debugf( 'w: %s', \@_ );
 
     return $self->wh->print( $self->json->encode( \@_ ) . "\n\n" );
 }
 
-sub trigger_on_update {
-    my $self = shift;
-    if ( $self->changes_tosend ) {
-        if ( $self->changes_torecv ) {
-            $self->on_update->( 'sent: '
-                  . ( $self->changes_sent // '' ) . '/'
-                  . $self->changes_tosend
-                  . ' received: '
-                  . ( $self->changes_recv // '' ) . '/'
-                  . $self->changes_torecv );
-        }
-        else {
-            $self->on_update->( 'sent: '
-                  . ( $self->changes_sent // '' ) . '/'
-                  . $self->changes_tosend );
-        }
-    }
-    elsif ( $self->changes_torecv ) {
-        $self->on_update->( 'received: '
-              . ( $self->changes_recv // '' ) . '/'
-              . $self->changes_torecv );
-    }
-    else {
-        $self->on_update->('no changes');
-    }
-}
+# Let sub classes override if necessary
+sub trigger_on_update { }
 
 sub real_send_changesets {
     my $self       = shift;
@@ -163,14 +207,17 @@ sub recv_changesets {
                 $uuid = $delta->{uuid} || return 'missing [0]->{uuid}';
 
                 # For entities in particular we may already have this
-                # changeset so ignore it. TODO record the count
+                # changeset so ignore it.
                 my $id = $db->xval(
                     select => 'c.id',
                     from   => 'changes c',
                     where  => { 'c.uuid' => $uuid },
                 );
 
-                last if $id;
+                if ($id) {
+                    $self->changes_dup( $self->changes_dup + 1 );
+                    last;
+                }
             }
             else {
                 $delta->{change_uuid} = $uuid;
@@ -242,5 +289,5 @@ sub exchange_changesets {
 
 =for bif-doc #perl
 
-Bif::Role::Sync - synchronisation role
+Bif::Sync - synchronisation role
 

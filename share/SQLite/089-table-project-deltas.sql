@@ -6,13 +6,12 @@ CREATE TABLE project_deltas (
     parent_id INTEGER,
     name VARCHAR(40),
     title VARCHAR(1024),
-    status_id INTEGER,
-    hub_uuid VARCHAR,
-    FOREIGN KEY(change_id) REFERENCES changes(id)
+    project_status_id INTEGER,
+    hub_id VARCHAR,
+    FOREIGN KEY(project_status_id,project_id)
+        REFERENCES project_status(id,project_id)
         ON DELETE CASCADE,
-    FOREIGN KEY(project_id) REFERENCES projects(id)
-        ON DELETE CASCADE
-    FOREIGN KEY(status_id,project_id) REFERENCES project_status(id,project_id)
+    FOREIGN KEY(hub_id) REFERENCES hubs(id)
         ON DELETE CASCADE
 );
 
@@ -28,9 +27,9 @@ BEGIN
         NEW.project_id,
         NEW.name,
         NEW.title,
-        NEW.status_id,
+        NEW.project_status_id,
         NEW.parent_id,
-        NEW.hub_uuid
+        NEW.hub_id
     );
 
     UPDATE
@@ -54,13 +53,14 @@ BEGIN
     SET
         terms = terms || (
             SELECT
-                CASE WHEN
+                '-' || x'0A'
+                || CASE WHEN
                     NEW.new
                 THEN
-                    '- _: project' || x'0A'
+                    '  _: project' || x'0A'
                 ELSE
-                    '- _: project_delta' || x'0A'
-                || '  hub_uuid: ' || COALESCE(NEW.hub_uuid, '~') || x'0A'
+                    '  _: project_delta' || x'0A'
+                || '  hub_uuid: ' || COALESCE(hubs.uuid, '~') || x'0A'
                 END
                 || '  name: ' || COALESCE(NEW.name, '~') || x'0A'
                 || '  parent_uuid: '
@@ -91,7 +91,11 @@ BEGIN
             LEFT JOIN
                 topics AS status
             ON
-                status.id = NEW.status_id
+                status.id = NEW.project_status_id
+            LEFT JOIN
+                topics AS hubs
+            ON
+                hubs.id = NEW.hub_id
             WHERE
                 topics.id = NEW.project_id
         )
@@ -108,8 +112,9 @@ BEGIN
         parent_id = parent_id + (NEW.parent_id IS NOT NULL),
         name      = name + (NEW.name IS NOT NULL),
         title     = title + (NEW.title IS NOT NULL),
-        status_id = status_id + (NEW.status_id IS NOT NULL),
-        hub_id   = hub_id + (NEW.hub_uuid IS NOT NULL)
+        project_status_id = project_status_id +
+            (NEW.project_status_id IS NOT NULL),
+        hub_id   = hub_id + (NEW.hub_id IS NOT NULL)
     WHERE
         project_id = NEW.project_id
     ;
@@ -138,7 +143,7 @@ BEGIN
         'TRIGGER project_deltas_ad_1',
         OLD.project_id,
         OLD.name,
-        OLD.status_id,
+        OLD.project_status_id,
         OLD.parent_id
     );
 
@@ -151,8 +156,9 @@ BEGIN
         parent_id = parent_id + (OLD.parent_id IS NOT NULL),
         name      = name + (OLD.name IS NOT NULL),
         title     = title + (OLD.title IS NOT NULL),
-        status_id = status_id + (OLD.status_id IS NOT NULL),
-        hub_id   = hub_id + (OLD.hub_uuid IS NOT NULL)
+        project_status_id = project_status_id
+            + (OLD.project_status_id IS NOT NULL),
+        hub_id   = hub_id + (OLD.hub_id IS NOT NULL)
     WHERE
         project_id = OLD.project_id
     ;

@@ -4,9 +4,9 @@ CREATE TABLE func_update_project(
     name VARCHAR(40),
     parent_id INTEGER,
     parent_uuid INTEGER,
-    status_id INTEGER,
+    project_status_id INTEGER,
     status_uuid VARCHAR(40),
-    hub_uuid VARCHAR(40),
+    hub_id INTEGER,
     title VARCHAR
 );
 
@@ -22,9 +22,9 @@ FOR EACH ROW BEGIN
         NEW.change_id,
         NEW.parent_id,
         NEW.parent_uuid,
-        NEW.status_id,
+        NEW.project_status_id,
         NEW.status_uuid,
-        NEW.hub_uuid,
+        NEW.hub_id,
         NEW.title
     );
 
@@ -35,8 +35,8 @@ FOR EACH ROW BEGIN
             parent_id,
             name,
             title,
-            status_id,
-            hub_uuid
+            project_status_id,
+            hub_id
         )
     VALUES(
         NEW.change_id,
@@ -44,8 +44,8 @@ FOR EACH ROW BEGIN
         NEW.parent_id,
         NEW.name,
         NEW.title,
-        NEW.status_id,
-        NEW.hub_uuid
+        NEW.project_status_id,
+        NEW.hub_id
     );
 
     SELECT RAISE(IGNORE);

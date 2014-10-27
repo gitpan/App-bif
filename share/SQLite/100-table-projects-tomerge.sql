@@ -3,7 +3,7 @@ CREATE TABLE projects_tomerge(
     parent_id INTEGER DEFAULT 0,
     name INTEGER DEFAULT 0,
     title INTEGER DEFAULT 0,
-    status_id INTEGER DEFAULT 0,
+    project_status_id INTEGER DEFAULT 0,
     hub_id INTEGER DEFAULT 0,
     resolve INTEGER,
     FOREIGN KEY(project_id) REFERENCES projects(id) ON DELETE CASCADE
@@ -197,7 +197,7 @@ ON
     projects_tomerge
 FOR EACH ROW WHEN
     NEW.resolve = 1 AND
-    OLD.status_id != 0
+    OLD.project_status_id != 0
 BEGIN
 
     SELECT debug(
@@ -208,9 +208,9 @@ BEGIN
     UPDATE
         projects
     SET
-        status_id = (
+        project_status_id = (
             SELECT
-                project_deltas.status_id
+                project_deltas.project_status_id
             FROM
                 project_deltas
             INNER JOIN
@@ -219,7 +219,7 @@ BEGIN
                 changes.id = project_deltas.change_id
             WHERE
                 project_deltas.project_id = OLD.project_id AND
-                project_deltas.status_id IS NOT NULL
+                project_deltas.project_status_id IS NOT NULL
             ORDER BY
                 changes.mtime DESC,
                 changes.uuid
@@ -253,29 +253,22 @@ BEGIN
     SET
         hub_id = (
             SELECT
-                t.id
+                project_deltas.hub_id
             FROM
-                topics t
+                project_deltas
+            INNER JOIN
+                changes
+            ON
+                changes.id = project_deltas.change_id
             WHERE
-                t.uuid = (
-                    SELECT
-                        project_deltas.hub_uuid
-                    FROM
-                        project_deltas
-                    INNER JOIN
-                        changes
-                    ON
-                        changes.id = project_deltas.change_id
-                    WHERE
-                        project_deltas.project_id = OLD.project_id AND
-                        project_deltas.hub_uuid IS NOT NULL
-                    ORDER BY
-                        changes.mtime DESC,
-                        changes.uuid
-                    LIMIT
-                        1
-                )
-            )
+                project_deltas.project_id = OLD.project_id AND
+                project_deltas.hub_id IS NOT NULL
+            ORDER BY
+                changes.mtime DESC,
+                changes.uuid
+            LIMIT
+                1
+        )
     WHERE
         id = OLD.project_id
     ;

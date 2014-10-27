@@ -5,7 +5,7 @@ use feature 'state';
 use Bif::Mo;
 use DBIx::ThinSQL qw/concat qv/;
 
-our $VERSION = '0.1.2';
+our $VERSION = '0.1.4';
 extends 'App::bif';
 
 sub run {
@@ -34,7 +34,7 @@ sub run {
                         'pi2.project_id' => $pinfo->{id},
                     },
                     inner_join => 'issue_status',
-                    on         => 'issue_status.id = pi2.status_id',
+                    on         => 'issue_status.id = pi2.issue_status_id',
                     where      => {
                         'project_issues.id' => $info->{project_issue_id},
                     },
@@ -89,8 +89,6 @@ sub run {
 
                 $opts->{message} ||= $self->prompt_edit;
 
-                my $rid = $dbw->nextval('changes');
-
                 my $src = $dbw->xval(
                     select    => 'p.fullpath',
                     from      => 'projects p',
@@ -126,10 +124,10 @@ sub run {
                 $dbw->xdo(
                     insert_into => 'func_update_issue',
                     values      => {
-                        change_id  => $uid,
-                        id         => $info->{id},
-                        project_id => $pinfo->{id},
-                        status_id  => $status_id,
+                        change_id       => $uid,
+                        id              => $info->{id},
+                        project_id      => $pinfo->{id},
+                        issue_status_id => $status_id,
                     },
                 );
 
@@ -160,7 +158,7 @@ bif-push-issue - push an issue to another project
 
 =head1 VERSION
 
-0.1.2 (2014-10-08)
+0.1.4 (2014-10-27)
 
 =head1 SYNOPSIS
 

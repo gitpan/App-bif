@@ -14,10 +14,9 @@ About bif
         the real world.
 
     This flexibility comes with minimal additional complexity; bif commands
-    are designed for consistency and ease of use.
-
-    Bif should eventually run on any system that supports Perl and SQLite,
-    but at present tests are only successful on Linux and BSD systems.
+    are designed for consistency and ease of use. Bif currently only passes
+    tests on Linux and BSD systems but should eventually run on any system
+    that supports Perl and SQLite.
 
   Who is bif for?
     Bif is typically useful for software development teams and other
@@ -44,13 +43,11 @@ About bif
         progress in a browser is a painful and inefficient way to break up
         your day. You would be better off going for a walk.
 
-    When your network connectivity is unreliable
-        It is a difficult task to maintain communication and status tracking
-        within a distributed project when the data network is an uncertain,
-        or expensive resource. If developers can check in code, but can't
-        update the bug tracker because they are travelling, productivity
-        drops. When you cannot always link your project data with internal
-        systems (e.g. billing) then other business functions can suffer.
+    When your network connectivity is uncertain
+        It is a difficult task to maintain good communication and status
+        tracking within a distributed project when the data network is an
+        unreliable or expensive resource. Efficiency and productivity are
+        improved with a local tool.
 
     When your success depends on factors outside the project organisation
         Projects can experience time and cost difficulties when they have
